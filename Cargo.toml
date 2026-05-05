@@ -1,0 +1,35 @@
+[package]
+name = "stem_slot"
+version = "0.1.0"
+edition = "2024"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+approx = { package = "approxim", version = "0.6" }
+compare_variables = { version = "0.3.0", features = ["proc_macro"] }
+gauss-quad = "0.1.8"
+akima_spline = "0.1.7"
+planar_geo = { version = "0.4.2", features = ["cairo"] }
+stem_material = "0.3.4"
+cart_lin = "0.2.1"
+nalgebra = "0.32"
+num = "0.4.0"
+rayon = "1.5"
+deserialize_untagged_verbose_error = { version = "0.1.5", optional = true }
+serde = { version = "1", features = ["derive", "rc"], optional = true }
+cairo_viewport = { version = "0.2.5", optional = true}
+dyn-clone = "1"
+typetag = { version = "^0.2", optional = true }
+
+[features]
+default = []
+serde = ["dep:deserialize_untagged_verbose_error", "dep:serde", "dep:typetag",
+         "stem_material/serde"]
+cairo = ["dep:cairo_viewport"]
+
+[dev-dependencies]
+indoc = "1.0"
+serde_yaml = "0.8"
+cairo_viewport = { version = "0.2.5", features = ["image-compare"]}
+stem_slot = { path = ".", features = ["serde", "cairo"] } # Solution from https://stackoverflow.com/questions/68618789/is-it-possible-to-enable-a-rust-feature-only-in-test to enable feature during integration test
