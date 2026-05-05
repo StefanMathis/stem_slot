@@ -3,7 +3,7 @@ pub mod current_displacement;
 pub mod error;
 pub mod open_trapezoid;
 pub mod rectangular;
-// pub mod semi_trapezoid;
+pub mod semi_trapezoid;
 pub mod slot;
 
 pub const ORANGE: planar_geo::draw::Color = planar_geo::draw::Color {
@@ -23,6 +23,7 @@ pub mod prelude {
     pub use crate::coil_layout::CoilLayout;
     pub use crate::open_trapezoid::OpenTrapezoidSlot;
     pub use crate::rectangular::RectangularSlot;
+    pub use crate::semi_trapezoid::SemiTrapezoidSlot;
     pub use crate::slot::Slot;
 
     pub use stem_material::prelude::*;
