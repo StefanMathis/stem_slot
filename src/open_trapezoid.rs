@@ -302,7 +302,6 @@ impl TryFrom<OpenTrapezoidBuilder> for OpenTrapezoidSlot {
 
         // Points 0 - 7 as defined in [20201109_BerechnungNut.pdf]. Only the first tree
         // vertices are needed
-        let mut polysegment = Polysegment::new();
 
         let v1 = [opening_width.get::<meter>() / 2.0, 0.0];
         let v2 = [
@@ -311,81 +310,33 @@ impl TryFrom<OpenTrapezoidBuilder> for OpenTrapezoidSlot {
         ];
         let v3 = [bottom_width.get::<meter>() / 2.0, height.get::<meter>()];
 
-        let f_slope_bottom = ArcSegment::fillet(
-            v1,
-            v2,
-            v3,
-            slope_bottom_radius.get::<meter>(),
-            DEFAULT_EPSILON,
-            DEFAULT_MAX_ULPS,
-        )
-        .ok();
+        let polysegment = Polysegment::from_fillet_chain(
+            &[
+                v1,
+                v2,
+                v3,
+                [-v3[0], v3[1]],
+                [-v2[0], v2[1]],
+                [-v1[0], v1[1]],
+            ],
+            &[
+                slope_bottom_radius.get::<meter>(),
+                bottom_radius.get::<meter>(),
+                bottom_radius.get::<meter>(),
+                slope_bottom_radius.get::<meter>(),
+            ],
+        );
 
-        let f_bottom = ArcSegment::fillet(
-            v2,
-            v3,
-            [-v3[0], v3[1]],
-            bottom_radius.get::<meter>(),
-            DEFAULT_EPSILON,
-            DEFAULT_MAX_ULPS,
-        )
-        .ok();
-
-        if bottom_side_width > bottom_width && height > side_height + opening_height {
-            let stop = if let Some(f) = f_slope_bottom.as_ref() {
-                f.start()
-            } else {
-                v2
-            };
-            let s = LineSegment::new(v1, stop, DEFAULT_EPSILON, DEFAULT_MAX_ULPS)?;
-            polysegment.push_back(s.into());
-            if let Some(f) = f_slope_bottom {
-                polysegment.push_back(f.into());
-            }
-
-            let stop = if let Some(f) = f_bottom.as_ref() {
-                f.start()
-            } else {
-                v3
-            };
-            polysegment.extend_back(stop);
-            if let Some(f) = f_bottom {
-                polysegment.push_back(f.into());
-            }
-        } else {
-            let stop = if let Some(f) = f_bottom.as_ref() {
-                f.start()
-            } else {
-                v3
-            };
-            polysegment.extend_back(stop);
-            if let Some(f) = f_bottom {
-                polysegment.push_back(f.into());
-            }
+        // Assert that the outline does not intersect itself
+        if let Some(intersection) = polysegment
+            .intersections_polysegment_par(&polysegment, DEFAULT_EPSILON, DEFAULT_MAX_ULPS)
+            .find_map_any(|v| Some(v))
+        {
+            return Err(crate::error::Error::OutlineIntersection {
+                intersection,
+                outline: polysegment,
+            });
         }
-
-        let number_segs = polysegment.len();
-
-        for seg in 0..number_segs {
-            let mut s = polysegment
-                .get(number_segs - seg - 1)
-                .expect("must exist")
-                .clone();
-            s.line_reflection([0.0, 0.0], [0.0, 1.0]);
-            s.reverse();
-            polysegment.push_back(s);
-        }
-
-        // // Assert that the outline does not intersect itself
-        // if let Some(intersection) = polysegment
-        //     .intersections_polysegment_par(&polysegment, DEFAULT_EPSILON,
-        // DEFAULT_MAX_ULPS)     .find_map_any(|v| Some(v))
-        // {
-        //     return Err(crate::error::Error::OutlineIntersection {
-        //         intersection,
-        //         outline: polysegment,
-        //     });
-        // }
 
         return Ok(Self {
             bottom_width,
