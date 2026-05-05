@@ -64,6 +64,16 @@ fn test_angle_bottom() {
         slot.magnetic_opening_height().get::<millimeter>(),
         epsilon = 1e-6
     );
+    approx::assert_abs_diff_eq!(
+        16.8455,
+        slot.side_height().get::<millimeter>(),
+        epsilon = 1e-3
+    );
+    approx::assert_abs_diff_eq!(
+        1.154,
+        slot.bottom_height().get::<millimeter>(),
+        epsilon = 1e-3
+    );
 
     // Partial value calculation
     let contour = slot.contour();
@@ -169,7 +179,7 @@ fn test_different_layers() {
 fn test_open_slot_bottom_height() {
     let slot: OpenTrapezoidSlot = OpenTrapezoidWithBottomHeightBuilder {
         opening_width: Length::new::<millimeter>(5.0),
-        height: Length::new::<millimeter>(5.0),
+        height: Length::new::<millimeter>(20.0),
         opening_height: Length::new::<millimeter>(2.0),
         bottom_height: Length::new::<millimeter>(1.154),
         bottom_width: Length::new::<millimeter>(5.0),
@@ -184,13 +194,18 @@ fn test_open_slot_bottom_height() {
 
     // Check some geometric parameters
     approx::assert_abs_diff_eq!(
+        16.8455,
+        slot.side_height().get::<millimeter>(),
+        epsilon = 1e-3
+    );
+    approx::assert_abs_diff_eq!(
         122.4,
         slot.winding_area().get::<square_millimeter>(),
         epsilon = 1e-1
     );
 
     // Image comparison
-    let drawables = slot.drawables(CoilLayout::DoubleVertical, true);
+    let drawables = slot.drawables(CoilLayout::DoubleHorizontal, true);
     compare_to_reference(
         drawables.as_slice(),
         "tests/img/open_trapezoid_slot_vert.png",
@@ -407,7 +422,11 @@ fn test_deserialize() {
         let slot: OpenTrapezoidSlot = serde_yaml::from_str(yaml).unwrap();
 
         let drawables = slot.drawables(CoilLayout::DoubleHorizontal, false);
-        compare_to_reference(drawables.as_slice(), "tests/img/slot_MEAS.png", None);
+        compare_to_reference(
+            drawables.as_slice(),
+            "tests/img/open_trapezoid_slot_MEAS-Servo.png",
+            None,
+        );
     }
     {
         let yaml = indoc! {"

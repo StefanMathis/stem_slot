@@ -203,8 +203,12 @@ impl OpenTrapezoidSlot {
         return self.opening_width;
     }
 
-    pub fn top_height(&self) -> Length {
-        return Length::new::<meter>(0.0);
+    pub fn side_height(&self) -> Length {
+        return self.side_height;
+    }
+
+    pub fn bottom_height(&self) -> Length {
+        return self.height - self.side_height - self.opening_height;
     }
 }
 
@@ -310,22 +314,29 @@ impl TryFrom<OpenTrapezoidBuilder> for OpenTrapezoidSlot {
         ];
         let v3 = [bottom_width.get::<meter>() / 2.0, height.get::<meter>()];
 
-        let polysegment = Polysegment::from_fillet_chain(
-            &[
-                v1,
-                v2,
-                v3,
-                [-v3[0], v3[1]],
-                [-v2[0], v2[1]],
-                [-v1[0], v1[1]],
-            ],
-            &[
-                slope_bottom_radius.get::<meter>(),
-                bottom_radius.get::<meter>(),
-                bottom_radius.get::<meter>(),
-                slope_bottom_radius.get::<meter>(),
-            ],
-        );
+        let polysegment = if (side_height + opening_height) == height {
+            Polysegment::from_fillet_chain(
+                &[v1, v3, [-v3[0], v3[1]], [-v1[0], v1[1]]],
+                &[bottom_radius.get::<meter>(), bottom_radius.get::<meter>()],
+            )
+        } else {
+            Polysegment::from_fillet_chain(
+                &[
+                    v1,
+                    v2,
+                    v3,
+                    [-v3[0], v3[1]],
+                    [-v2[0], v2[1]],
+                    [-v1[0], v1[1]],
+                ],
+                &[
+                    slope_bottom_radius.get::<meter>(),
+                    bottom_radius.get::<meter>(),
+                    bottom_radius.get::<meter>(),
+                    slope_bottom_radius.get::<meter>(),
+                ],
+            )
+        };
 
         // Assert that the outline does not intersect itself
         if let Some(intersection) = polysegment
