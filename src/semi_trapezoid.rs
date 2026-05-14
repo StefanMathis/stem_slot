@@ -12,12 +12,13 @@ use std::{
 use stem_material::prelude::*;
 
 use crate::slot::{
-    angle_bottom_from_width_height, angle_bottom_no_slope, angle_bottom_slope,
-    angle_top_from_width_height, angle_top_no_slope, angle_top_slope,
-    serde_impl::{
-        deserialize_angle_bottom_from_width_height, deserialize_angle_top_from_width_height,
-    },
-    slot_side_bottom_and_top_width_from_rot_core,
+    AngleBottomFromWidthHeight, AngleTopFromWidthHeight, angle_bottom_no_slope, angle_bottom_slope,
+    angle_top_no_slope, angle_top_slope, slot_side_bottom_and_top_width_from_rot_core,
+};
+
+#[cfg(feature = "serde")]
+use crate::slot::serde_impl::{
+    deserialize_angle_bottom_from_width_height, deserialize_angle_top_from_width_height,
 };
 
 #[cfg(feature = "serde")]
@@ -25,8 +26,95 @@ use serde::{Deserialize, Serialize};
 
 use crate::slot::Slot;
 
-/// Trapezoid semi-open slot according [20201109_BerechnungNut.pdf], possibly
-/// including slopes and radii
+/**
+TODO
+
+# Constructors
+
+The primary constructor for an [`SemiTrapezoidSlot`] is the
+[`new`](SemiTrapezoidSlot::new) method, which basically takes the fields of the
+struct as an arguments, sanity-checks them and then returns a struct instance.
+Besides this one, the following "builder" structs are available:
+- [`SemiTrapezoidBuilder`] (builder version of [`new`](SemiTrapezoidSlot::new))
+- [`SemiTrapezoidWithoutSlopesBuilder`]
+- [`SemiTrapezoidWithTopHeightBuilder`]
+- [`SemiTrapezoidWithBottomHeightBuilder`]
+- [`SemiTrapezoidWithSideTopWidthBuilder`]
+- [`SemiTrapezoidWithSideBottomWidthBuilder`]
+- [`SemiTrapezoidFromToothWidthRotBuilder`]
+- [`SemiTrapezoidFromToothWidthRotWithoutSlopesBuilder`]
+
+These structs are "plain data" and all their fields are public. They are meant
+to be (fallibly) converted to an [`SemiTrapezoidSlot`] via their [`TryFrom`]
+implementations:
+
+```
+use approx;
+use std::f64::consts::PI;
+use stem_slot::prelude::*;
+
+let builder = SemiTrapezoidWithoutSlopesBuilder {
+    opening_width: Length::new::<millimeter>(5.0),
+    opening_height: Length::new::<millimeter>(2.0),
+    height: Length::new::<millimeter>(20.0),
+    angle_slot: PI / 18.0,
+    bottom_radius: Length::new::<millimeter>(1.0),
+    effective_opening_height: Some(Length::new::<millimeter>(2.0)),
+    consider_tooth_tip_leakage: true,
+};
+let slot = SemiTrapezoidSlot::try_from(builder).expect("valid inputs");
+approx::assert_abs_diff_eq!(magnet.opening_width().get::<millimeter>(), 5, epsilon=1e-3);
+```
+
+# Deserialization
+
+This struct can be deserialized from the same parameters used in
+[`SemiTrapezoidSlot::new`] (see below). Besides that, all the builder structs
+listed in the previous section implement [`Deserialize`], hence an
+[`SemiTrapezoidSlot] can be deserialized directly from their respective
+serialized representation (without the need for a tag).
+
+```
+use approx;
+use stem_slot::prelude::*;
+use serde_yaml;
+
+// Parameters from "new" method
+let str = indoc::indoc! {"
+opening_width: 5 mm
+opening_height: 2 mm
+bottom_width: 5 mm
+height: 20 mm
+side_height: 16 mm
+effective_opening_height: 2 mm
+angle_slot: PI / 18
+bottom_radius: 2 mm 
+slope_bottom_radius: 1 mm
+consider_tooth_tip_leakage: true
+"};
+
+let slot: SemiTrapezoidSlot = serde_yaml::from_str(&str).expect("valid dimensions");
+approx::assert_abs_diff_eq!(magnet.opening_width().get::<millimeter>(), 5, epsilon=1e-3);
+
+// Using OpenTrapezoidWithoutSlopesBuilder as an intermediate stage:
+let str = indoc::indoc! {"
+opening_width: 5 mm
+opening_height: 2 mm
+bottom_width: 5 mm
+height: 20 mm
+effective_opening_height: 2 mm
+angle_slot: PI / 18
+bottom_radius: 2 mm 
+consider_tooth_tip_leakage: true
+"};
+
+let slot: SemiTrapezoidSlot = serde_yaml::from_str(&str).expect("valid dimensions");
+approx::assert_abs_diff_eq!(slot.opening_width().get::<millimeter>(), 5, epsilon=1e-3);
+```
+
+##
+
+ */
 #[derive(Clone, Debug)]
 #[cfg_attr(feature = "serde", derive(Serialize))]
 pub struct SemiTrapezoidSlot {
@@ -49,7 +137,7 @@ pub struct SemiTrapezoidSlot {
     consider_tooth_tip_leakage: bool, /* Whether to consider the tooth tip leakage according to
                                * diagram 3.7.2 of [MVP08] or not. */
     #[cfg_attr(feature = "serde", serde(skip))]
-    polysegment: Polysegment,
+    outline: Polysegment,
 }
 
 impl SemiTrapezoidSlot {
@@ -121,6 +209,14 @@ impl SemiTrapezoidSlot {
         return self.dependent_parameters().top_height;
     }
 
+    pub fn angle_bottom(&self) -> f64 {
+        return self.angle_bottom;
+    }
+
+    pub fn angle_top(&self) -> f64 {
+        return self.angle_top;
+    }
+
     /// Helper function, not to be called directly
     fn dependent_parameters(&self) -> DependentParametersSemiTrapezoidSlot {
         let alpha = angle_bottom_slope(self.angle_bottom, self.angle_slot);
@@ -174,7 +270,6 @@ impl SemiTrapezoidSlot {
         }
 
         return DependentParametersSemiTrapezoidSlot {
-            _bottom_height: bottom_height,
             top_height,
             side_bottom_width,
             side_top_width,
@@ -184,8 +279,8 @@ impl SemiTrapezoidSlot {
 
 #[cfg_attr(feature = "serde", typetag::serde)]
 impl Slot for SemiTrapezoidSlot {
-    fn polysegment(&self) -> Cow<'_, Polysegment> {
-        return Cow::Borrowed(&self.polysegment);
+    fn outline(&self) -> Cow<'_, Polysegment> {
+        return Cow::Borrowed(&self.outline);
     }
 
     /// Returns the total slot height
@@ -203,20 +298,18 @@ impl Slot for SemiTrapezoidSlot {
         return self.opening_height;
     }
 
-    /// Returns the effective magnetic slot opening height.
-    fn magnetic_opening_height(&self) -> Length {
-        return self.opening_height;
-    }
-
-    fn consider_tooth_tip_leakage(&self) -> bool {
-        return self.consider_tooth_tip_leakage;
+    fn leakage_coefficient_tooth_tip(&self, magnetic_air_gap: Length) -> f64 {
+        if self.consider_tooth_tip_leakage {
+            crate::slot::leakage_coefficient_tooth_tip(self.opening_width(), magnetic_air_gap)
+        } else {
+            0.0
+        }
     }
 }
 
 /// Helper struct for the calculation of dependent properties, not meant for
 /// external use
 struct DependentParametersSemiTrapezoidSlot {
-    _bottom_height: Length,
     top_height: Length,
     side_bottom_width: Length,
     side_top_width: Length,
@@ -320,15 +413,15 @@ impl TryFrom<SemiTrapezoidBuilder> for SemiTrapezoidSlot {
             slope_top_radius,
             opening_radius,
             consider_tooth_tip_leakage: builder.consider_tooth_tip_leakage,
-            polysegment: Polysegment::new(),
+            outline: Polysegment::new(),
         };
 
         let dep_params = this.dependent_parameters();
+        let is_open = builder.opening_width.get::<meter>() > 0.0;
 
         // Vertex 1
-        if builder.opening_width.get::<meter>() > 0.0 {
+        if is_open {
             points.push([builder.opening_width.get::<meter>() / 2.0, 0.0]);
-            radii.push(0.0);
         }
 
         // Vertex 2
@@ -336,7 +429,9 @@ impl TryFrom<SemiTrapezoidBuilder> for SemiTrapezoidSlot {
             builder.opening_width.get::<meter>() / 2.0,
             builder.opening_height.get::<meter>(),
         ]);
-        radii.push(builder.opening_radius.get::<meter>());
+        if is_open {
+            radii.push(builder.opening_radius.get::<meter>());
+        }
 
         // Vertex 3
         if !approx::abs_diff_eq!(
@@ -381,23 +476,45 @@ impl TryFrom<SemiTrapezoidBuilder> for SemiTrapezoidSlot {
             let i_rev = n_points_half - i - 1;
             let pt = points[i_rev];
             points.push([-pt[0], pt[1]]);
+        }
+
+        let n_radii_half = radii.len();
+        for i in 0..n_radii_half {
+            let i_rev = n_radii_half - i - 1;
             radii.push(radii[i_rev]);
         }
 
-        let polysegment = Polysegment::from_fillet_chain(&points, &radii);
+        let outline = if is_open {
+            let outline = Polysegment::from_fillet_chain(&points, &radii);
 
-        // Assert that the outline does not intersect itself
-        if let Some(intersection) = polysegment
-            .intersections_polysegment_par(&polysegment, DEFAULT_EPSILON, DEFAULT_MAX_ULPS)
-            .find_map_any(|v| Some(v))
-        {
-            return Err(crate::error::Error::OutlineIntersection {
-                intersection,
-                outline: polysegment,
-            });
-        }
+            // Assert that the outline does not intersect itself
+            if let Some(intersection) = outline
+                .intersections_polysegment_par(&outline, DEFAULT_EPSILON, DEFAULT_MAX_ULPS)
+                .find_map_any(|v| Some(v))
+            {
+                return Err(crate::error::Error::OutlineIntersection {
+                    intersection,
+                    outline,
+                });
+            }
+            outline
+        } else {
+            let contour = Contour::new(Polysegment::from_fillet_chain(&points, &radii));
 
-        this.polysegment = polysegment;
+            // Assert that the contour does not intersect itself
+            if let Some(intersection) = contour
+                .intersections_contour_par(&contour, DEFAULT_EPSILON, DEFAULT_MAX_ULPS)
+                .find_map_any(|v| Some(v))
+            {
+                return Err(crate::error::Error::OutlineIntersection {
+                    intersection,
+                    outline: contour.into(),
+                });
+            }
+            contour.into()
+        };
+
+        this.outline = outline;
         return Ok(this);
     }
 }
@@ -578,43 +695,45 @@ impl TryFrom<SemiTrapezoidWithTopHeightBuilder> for SemiTrapezoidSlot {
 #[cfg_attr(feature = "serde", serde(deny_unknown_fields))]
 pub struct SemiTrapezoidWithBottomHeightBuilder {
     #[cfg_attr(feature = "serde", serde(deserialize_with = "deserialize_quantity"))]
-    bottom_width: Length, // Slot width at the slot bottom (opposite side of the slot opening)
+    pub bottom_width: Length, // Slot width at the slot bottom (opposite side of the slot opening)
     #[cfg_attr(feature = "serde", serde(deserialize_with = "deserialize_quantity"))]
-    top_width: Length, // Slot width at the slot top (side of the slot opening)
+    pub top_width: Length, // Slot width at the slot top (side of the slot opening)
     #[cfg_attr(feature = "serde", serde(deserialize_with = "deserialize_quantity"))]
-    opening_width: Length, // Width of the slot opening
+    pub opening_width: Length, // Width of the slot opening
     #[cfg_attr(feature = "serde", serde(deserialize_with = "deserialize_quantity"))]
-    height: Length, // Total slot height (including slot opening)
+    pub height: Length, // Total slot height (including slot opening)
     #[cfg_attr(feature = "serde", serde(deserialize_with = "deserialize_quantity"))]
-    bottom_height: Length, // Bottom slope height
+    pub bottom_height: Length, // Bottom slope height
     #[cfg_attr(feature = "serde", serde(deserialize_with = "deserialize_quantity"))]
-    opening_height: Length, // Height of the slot opening
+    pub opening_height: Length, // Height of the slot opening
     #[cfg_attr(feature = "serde", serde(deserialize_with = "deserialize_angle"))]
-    angle_slot: f64, // Angle between the slot sides
+    pub angle_slot: f64, // Angle between the slot sides
     #[cfg_attr(
         feature = "serde",
         serde(deserialize_with = "deserialize_angle_bottom_from_width_height")
     )]
-    angle_bottom: f64, // Angle between the slot sides and the slot bottom in degree
+    pub angle_bottom: f64, // Angle between the slot sides and the slot bottom in degree
     #[cfg_attr(
         feature = "serde",
         serde(deserialize_with = "deserialize_angle_top_from_width_height")
     )]
-    angle_top: f64, // Angle between the slot sides and the slot top in degree
+    pub angle_top: f64, // Angle between the slot sides and the slot top in degree
     #[cfg_attr(feature = "serde", serde(deserialize_with = "deserialize_quantity"))]
-    bottom_radius: Length, /* Edge fillet radii of the trapezoid at the slot bottom (opposite
-                            * side of the slot opening) */
+    pub bottom_radius: Length, /* Edge fillet radii of the trapezoid at the slot bottom
+                                * (opposite side of the slot
+                                * opening) */
     #[cfg_attr(feature = "serde", serde(deserialize_with = "deserialize_quantity"))]
-    slope_bottom_radius: Length, // Edge fillet radii between bottom slope and slot side
+    pub slope_bottom_radius: Length, // Edge fillet radii between bottom slope and slot side
     #[cfg_attr(feature = "serde", serde(deserialize_with = "deserialize_quantity"))]
-    top_radius: Length, /* Edge fillet radii of the trapezoid at the slot top (side of the slot
-                         * opening) */
+    pub top_radius: Length, /* Edge fillet radii of the trapezoid at the slot top (side of the
+                             * slot opening) */
     #[cfg_attr(feature = "serde", serde(deserialize_with = "deserialize_quantity"))]
-    slope_top_radius: Length, // Edge fillet radii between top slope and slot side
+    pub slope_top_radius: Length, // Edge fillet radii between top slope and slot side
     #[cfg_attr(feature = "serde", serde(deserialize_with = "deserialize_quantity"))]
-    opening_radius: Length, // Edge fillet radii of the slot opening at the slot inside
-    consider_tooth_tip_leakage: bool, /* Whether to consider the tooth tip leakage according to
-                                       * diagram 3.7.2 of [MVP08] or not. */
+    pub opening_radius: Length, // Edge fillet radii of the slot opening at the slot inside
+    pub consider_tooth_tip_leakage: bool, /* Whether to consider the tooth tip leakage according
+                                           * to
+                                           * diagram 3.7.2 of [MVP08] or not. */
 }
 
 impl TryFrom<SemiTrapezoidWithBottomHeightBuilder> for SemiTrapezoidSlot {
@@ -669,12 +788,12 @@ impl TryFrom<SemiTrapezoidWithBottomHeightBuilder> for SemiTrapezoidSlot {
             opening_width: builder.opening_width,
             height: builder.height,
             side_height,
-            opening_height: builder.top_width,
+            opening_height: builder.opening_height,
             angle_slot: builder.angle_slot,
             angle_bottom: builder.angle_bottom,
             angle_top: builder.angle_top,
-            bottom_radius: builder.top_width,
-            slope_bottom_radius: builder.top_width,
+            bottom_radius: builder.bottom_radius,
+            slope_bottom_radius: builder.slope_bottom_radius,
             top_radius: builder.top_radius,
             slope_top_radius: builder.slope_top_radius,
             opening_radius: builder.opening_radius,
@@ -686,51 +805,53 @@ impl TryFrom<SemiTrapezoidWithBottomHeightBuilder> for SemiTrapezoidSlot {
 
 #[cfg_attr(feature = "serde", derive(Deserialize))]
 #[cfg_attr(feature = "serde", serde(deny_unknown_fields))]
-pub struct NewWithSideTopWidth {
+pub struct SemiTrapezoidWithSideTopWidthBuilder {
     #[cfg_attr(feature = "serde", serde(deserialize_with = "deserialize_quantity"))]
-    bottom_width: Length, // Slot width at the slot bottom (opposite side of the slot opening)
+    pub bottom_width: Length, // Slot width at the slot bottom (opposite side of the slot opening)
     #[cfg_attr(feature = "serde", serde(deserialize_with = "deserialize_quantity"))]
-    top_width: Length, // Slot width at the slot top (side of the slot opening)
+    pub top_width: Length, // Slot width at the slot top (side of the slot opening)
     #[cfg_attr(feature = "serde", serde(deserialize_with = "deserialize_quantity"))]
-    opening_width: Length, // Width of the slot opening
+    pub opening_width: Length, // Width of the slot opening
     #[cfg_attr(feature = "serde", serde(deserialize_with = "deserialize_quantity"))]
-    height: Length, // Total slot height (including slot opening)
+    pub height: Length, // Total slot height (including slot opening)
     #[cfg_attr(feature = "serde", serde(deserialize_with = "deserialize_quantity"))]
-    side_top_width: Length,
+    pub side_top_width: Length,
     #[cfg_attr(feature = "serde", serde(deserialize_with = "deserialize_quantity"))]
-    opening_height: Length, // Height of the slot opening
+    pub opening_height: Length, // Height of the slot opening
     #[cfg_attr(feature = "serde", serde(deserialize_with = "deserialize_angle"))]
-    angle_slot: f64, // Angle between the slot sides
+    pub angle_slot: f64, // Angle between the slot sides
     #[cfg_attr(
         feature = "serde",
         serde(deserialize_with = "deserialize_angle_bottom_from_width_height")
     )]
-    angle_bottom: f64, // Angle between the slot sides and the slot bottom in degree
+    pub angle_bottom: f64, // Angle between the slot sides and the slot bottom in degree
     #[cfg_attr(
         feature = "serde",
         serde(deserialize_with = "deserialize_angle_top_from_width_height")
     )]
-    angle_top: f64, // Angle between the slot sides and the slot top in degree
+    pub angle_top: f64, // Angle between the slot sides and the slot top in degree
     #[cfg_attr(feature = "serde", serde(deserialize_with = "deserialize_quantity"))]
-    bottom_radius: Length, /* Edge fillet radii of the trapezoid at the slot bottom (opposite
-                            * side of the slot opening) */
+    pub bottom_radius: Length, /* Edge fillet radii of the trapezoid at the slot bottom
+                                * (opposite side of the slot
+                                * opening) */
     #[cfg_attr(feature = "serde", serde(deserialize_with = "deserialize_quantity"))]
-    slope_bottom_radius: Length, // Edge fillet radii between bottom slope and slot side
+    pub slope_bottom_radius: Length, // Edge fillet radii between bottom slope and slot side
     #[cfg_attr(feature = "serde", serde(deserialize_with = "deserialize_quantity"))]
-    top_radius: Length, /* Edge fillet radii of the trapezoid at the slot top (side of the slot
-                         * opening) */
+    pub top_radius: Length, /* Edge fillet radii of the trapezoid at the slot top (side of the
+                             * slot opening) */
     #[cfg_attr(feature = "serde", serde(deserialize_with = "deserialize_quantity"))]
-    slope_top_radius: Length, // Edge fillet radii between top slope and slot side
+    pub slope_top_radius: Length, // Edge fillet radii between top slope and slot side
     #[cfg_attr(feature = "serde", serde(deserialize_with = "deserialize_quantity"))]
-    opening_radius: Length, // Edge fillet radii of the slot opening at the slot inside
-    consider_tooth_tip_leakage: bool, /* Whether to consider the tooth tip leakage according to
-                                       * diagram 3.7.2 of [MVP08] or not. */
+    pub opening_radius: Length, // Edge fillet radii of the slot opening at the slot inside
+    pub consider_tooth_tip_leakage: bool, /* Whether to consider the tooth tip leakage according
+                                           * to
+                                           * diagram 3.7.2 of [MVP08] or not. */
 }
 
-impl TryFrom<NewWithSideTopWidth> for SemiTrapezoidSlot {
+impl TryFrom<SemiTrapezoidWithSideTopWidthBuilder> for SemiTrapezoidSlot {
     type Error = crate::error::Error;
 
-    fn try_from(builder: NewWithSideTopWidth) -> Result<Self, Self::Error> {
+    fn try_from(builder: SemiTrapezoidWithSideTopWidthBuilder) -> Result<Self, Self::Error> {
         let delta = 0.5 * (builder.side_top_width - builder.top_width);
         let beta = angle_top_slope(builder.angle_top, builder.angle_slot);
         let top_height = delta * beta.tan();
@@ -809,12 +930,12 @@ impl TryFrom<NewWithSideTopWidth> for SemiTrapezoidSlot {
             opening_width: builder.opening_width,
             height: builder.height,
             side_height,
-            opening_height: builder.top_width,
+            opening_height: builder.opening_height,
             angle_slot: builder.angle_slot,
             angle_bottom: builder.angle_bottom,
             angle_top: builder.angle_top,
-            bottom_radius: builder.top_width,
-            slope_bottom_radius: builder.top_width,
+            bottom_radius: builder.bottom_radius,
+            slope_bottom_radius: builder.slope_bottom_radius,
             top_radius: builder.top_radius,
             slope_top_radius: builder.slope_top_radius,
             opening_radius: builder.opening_radius,
@@ -826,51 +947,53 @@ impl TryFrom<NewWithSideTopWidth> for SemiTrapezoidSlot {
 
 #[cfg_attr(feature = "serde", derive(Deserialize))]
 #[cfg_attr(feature = "serde", serde(deny_unknown_fields))]
-pub struct NewWithSideBottomWidth {
+pub struct SemiTrapezoidWithSideBottomWidthBuilder {
     #[cfg_attr(feature = "serde", serde(deserialize_with = "deserialize_quantity"))]
-    bottom_width: Length, // Slot width at the slot bottom (opposite side of the slot opening)
+    pub bottom_width: Length, // Slot width at the slot bottom (opposite side of the slot opening)
     #[cfg_attr(feature = "serde", serde(deserialize_with = "deserialize_quantity"))]
-    top_width: Length, // Slot width at the slot top (side of the slot opening)
+    pub top_width: Length, // Slot width at the slot top (side of the slot opening)
     #[cfg_attr(feature = "serde", serde(deserialize_with = "deserialize_quantity"))]
-    opening_width: Length, // Width of the slot opening
+    pub opening_width: Length, // Width of the slot opening
     #[cfg_attr(feature = "serde", serde(deserialize_with = "deserialize_quantity"))]
-    height: Length, // Total slot height (including slot opening)
+    pub height: Length, // Total slot height (including slot opening)
     #[cfg_attr(feature = "serde", serde(deserialize_with = "deserialize_quantity"))]
-    side_bottom_width: Length, // Bottom slope height
+    pub side_bottom_width: Length, // Bottom slope height
     #[cfg_attr(feature = "serde", serde(deserialize_with = "deserialize_quantity"))]
-    opening_height: Length, // Height of the slot opening
+    pub opening_height: Length, // Height of the slot opening
     #[cfg_attr(feature = "serde", serde(deserialize_with = "deserialize_angle"))]
-    angle_slot: f64, // Angle between the slot sides
+    pub angle_slot: f64, // Angle between the slot sides
     #[cfg_attr(
         feature = "serde",
         serde(deserialize_with = "deserialize_angle_bottom_from_width_height")
     )]
-    angle_bottom: f64, // Angle between the slot sides and the slot bottom in degree
+    pub angle_bottom: f64, // Angle between the slot sides and the slot bottom in degree
     #[cfg_attr(
         feature = "serde",
         serde(deserialize_with = "deserialize_angle_top_from_width_height")
     )]
-    angle_top: f64, // Angle between the slot sides and the slot top in degree
+    pub angle_top: f64, // Angle between the slot sides and the slot top in degree
     #[cfg_attr(feature = "serde", serde(deserialize_with = "deserialize_quantity"))]
-    bottom_radius: Length, /* Edge fillet radii of the trapezoid at the slot bottom (opposite
-                            * side of the slot opening) */
+    pub bottom_radius: Length, /* Edge fillet radii of the trapezoid at the slot bottom
+                                * (opposite side of the slot
+                                * opening) */
     #[cfg_attr(feature = "serde", serde(deserialize_with = "deserialize_quantity"))]
-    slope_bottom_radius: Length, // Edge fillet radii between bottom slope and slot side
+    pub slope_bottom_radius: Length, // Edge fillet radii between bottom slope and slot side
     #[cfg_attr(feature = "serde", serde(deserialize_with = "deserialize_quantity"))]
-    top_radius: Length, /* Edge fillet radii of the trapezoid at the slot top (side of the slot
-                         * opening) */
+    pub top_radius: Length, /* Edge fillet radii of the trapezoid at the slot top (side of the
+                             * slot opening) */
     #[cfg_attr(feature = "serde", serde(deserialize_with = "deserialize_quantity"))]
-    slope_top_radius: Length, // Edge fillet radii between top slope and slot side
+    pub slope_top_radius: Length, // Edge fillet radii between top slope and slot side
     #[cfg_attr(feature = "serde", serde(deserialize_with = "deserialize_quantity"))]
-    opening_radius: Length, // Edge fillet radii of the slot opening at the slot inside
-    consider_tooth_tip_leakage: bool, /* Whether to consider the tooth tip leakage according to
-                                       * diagram 3.7.2 of [MVP08] or not. */
+    pub opening_radius: Length, // Edge fillet radii of the slot opening at the slot inside
+    pub consider_tooth_tip_leakage: bool, /* Whether to consider the tooth tip leakage according
+                                           * to
+                                           * diagram 3.7.2 of [MVP08] or not. */
 }
 
-impl TryFrom<NewWithSideBottomWidth> for SemiTrapezoidSlot {
+impl TryFrom<SemiTrapezoidWithSideBottomWidthBuilder> for SemiTrapezoidSlot {
     type Error = crate::error::Error;
 
-    fn try_from(builder: NewWithSideBottomWidth) -> Result<Self, Self::Error> {
+    fn try_from(builder: SemiTrapezoidWithSideBottomWidthBuilder) -> Result<Self, Self::Error> {
         let delta = 0.5 * (builder.side_bottom_width - builder.bottom_width);
         let alpha = angle_bottom_slope(builder.angle_bottom, builder.angle_slot);
         let bottom_height = delta * alpha.tan();
@@ -919,12 +1042,12 @@ impl TryFrom<NewWithSideBottomWidth> for SemiTrapezoidSlot {
             opening_width: builder.opening_width,
             height: builder.height,
             side_height,
-            opening_height: builder.top_width,
+            opening_height: builder.opening_height,
             angle_slot: builder.angle_slot,
             angle_bottom: builder.angle_bottom,
             angle_top: builder.angle_top,
-            bottom_radius: builder.top_width,
-            slope_bottom_radius: builder.top_width,
+            bottom_radius: builder.bottom_radius,
+            slope_bottom_radius: builder.slope_bottom_radius,
             top_radius: builder.top_radius,
             slope_top_radius: builder.slope_top_radius,
             opening_radius: builder.opening_radius,
@@ -936,39 +1059,39 @@ impl TryFrom<NewWithSideBottomWidth> for SemiTrapezoidSlot {
 
 #[cfg_attr(feature = "serde", derive(Deserialize))]
 #[cfg_attr(feature = "serde", serde(deny_unknown_fields))]
-struct SemiTrapezoidFromToothWidthRotBuilder {
+pub struct SemiTrapezoidFromToothWidthRotBuilder {
     #[cfg_attr(feature = "serde", serde(deserialize_with = "deserialize_quantity"))]
-    tooth_width: Length,
+    pub tooth_width: Length,
     #[cfg_attr(feature = "serde", serde(deserialize_with = "deserialize_quantity"))]
-    air_gap_radius: Length,
+    pub air_gap_radius: Length,
     #[cfg_attr(feature = "serde", serde(deserialize_with = "deserialize_quantity"))]
-    yoke_radius: Length,
-    slots: u16,
+    pub yoke_radius: Length,
+    pub slots: u16,
     #[cfg_attr(feature = "serde", serde(deserialize_with = "deserialize_quantity"))]
-    bottom_width: Length,
+    pub bottom_width: Length,
     #[cfg_attr(feature = "serde", serde(deserialize_with = "deserialize_quantity"))]
-    top_width: Length,
+    pub top_width: Length,
     #[cfg_attr(feature = "serde", serde(deserialize_with = "deserialize_quantity"))]
     opening_width: Length,
     #[cfg_attr(feature = "serde", serde(deserialize_with = "deserialize_quantity"))]
-    height: Length,
+    pub height: Length,
     #[cfg_attr(feature = "serde", serde(deserialize_with = "deserialize_quantity"))]
-    bottom_height: Length,
+    pub bottom_height: Length,
     #[cfg_attr(feature = "serde", serde(deserialize_with = "deserialize_quantity"))]
-    top_height: Length,
+    pub top_height: Length,
     #[cfg_attr(feature = "serde", serde(deserialize_with = "deserialize_quantity"))]
-    opening_height: Length,
+    pub opening_height: Length,
     #[cfg_attr(feature = "serde", serde(deserialize_with = "deserialize_quantity"))]
-    bottom_radius: Length,
+    pub bottom_radius: Length,
     #[cfg_attr(feature = "serde", serde(deserialize_with = "deserialize_quantity"))]
     slope_bottom_radius: Length,
     #[cfg_attr(feature = "serde", serde(deserialize_with = "deserialize_quantity"))]
-    top_radius: Length,
+    pub top_radius: Length,
     #[cfg_attr(feature = "serde", serde(deserialize_with = "deserialize_quantity"))]
-    slope_top_radius: Length,
+    pub slope_top_radius: Length,
     #[cfg_attr(feature = "serde", serde(deserialize_with = "deserialize_quantity"))]
-    opening_radius: Length,
-    consider_tooth_tip_leakage: bool,
+    pub opening_radius: Length,
+    pub consider_tooth_tip_leakage: bool,
 }
 
 impl TryFrom<SemiTrapezoidFromToothWidthRotBuilder> for SemiTrapezoidSlot {
@@ -987,18 +1110,22 @@ impl TryFrom<SemiTrapezoidFromToothWidthRotBuilder> for SemiTrapezoidSlot {
         );
 
         let angle_slot = TAU / builder.slots as f64;
-        let angle_bottom = angle_bottom_from_width_height(
-            builder.bottom_width,
+
+        let angle_bottom = AngleBottomFromWidthHeight {
+            bottom_width: builder.bottom_width,
             side_bottom_width,
-            builder.bottom_height,
+            bottom_height: builder.bottom_height,
             angle_slot,
-        );
-        let angle_top = angle_top_from_width_height(
-            builder.top_width,
+        }
+        .get();
+
+        let angle_top = AngleTopFromWidthHeight {
+            top_width: builder.top_width,
             side_top_width,
-            builder.top_height,
+            top_height: builder.top_height,
             angle_slot,
-        );
+        }
+        .get();
 
         return SemiTrapezoidBuilder {
             bottom_width: builder.bottom_width,
@@ -1006,12 +1133,12 @@ impl TryFrom<SemiTrapezoidFromToothWidthRotBuilder> for SemiTrapezoidSlot {
             opening_width: builder.opening_width,
             height: builder.height,
             side_height,
-            opening_height: builder.top_width,
+            opening_height: builder.opening_height,
             angle_slot,
             angle_bottom,
             angle_top,
-            bottom_radius: builder.top_width,
-            slope_bottom_radius: builder.top_width,
+            bottom_radius: builder.bottom_radius,
+            slope_bottom_radius: builder.slope_bottom_radius,
             top_radius: builder.top_radius,
             slope_top_radius: builder.slope_top_radius,
             opening_radius: builder.opening_radius,
@@ -1023,33 +1150,35 @@ impl TryFrom<SemiTrapezoidFromToothWidthRotBuilder> for SemiTrapezoidSlot {
 
 #[cfg_attr(feature = "serde", derive(Deserialize))]
 #[cfg_attr(feature = "serde", serde(deny_unknown_fields))]
-struct NewFromToothWidthWithoutSlopesRot {
+pub struct SemiTrapezoidFromToothWidthRotWithoutSlopesBuilder {
     #[cfg_attr(feature = "serde", serde(deserialize_with = "deserialize_quantity"))]
-    tooth_width: Length,
+    pub tooth_width: Length,
     #[cfg_attr(feature = "serde", serde(deserialize_with = "deserialize_quantity"))]
-    air_gap_radius: Length,
+    pub air_gap_radius: Length,
     #[cfg_attr(feature = "serde", serde(deserialize_with = "deserialize_quantity"))]
-    yoke_radius: Length,
-    slots: u16,
+    pub yoke_radius: Length,
+    pub slots: u16,
     #[cfg_attr(feature = "serde", serde(deserialize_with = "deserialize_quantity"))]
-    opening_width: Length,
+    pub opening_width: Length,
     #[cfg_attr(feature = "serde", serde(deserialize_with = "deserialize_quantity"))]
-    height: Length,
+    pub height: Length,
     #[cfg_attr(feature = "serde", serde(deserialize_with = "deserialize_quantity"))]
-    opening_height: Length,
+    pub opening_height: Length,
     #[cfg_attr(feature = "serde", serde(deserialize_with = "deserialize_quantity"))]
-    bottom_radius: Length,
+    pub bottom_radius: Length,
     #[cfg_attr(feature = "serde", serde(deserialize_with = "deserialize_quantity"))]
-    top_radius: Length,
+    pub top_radius: Length,
     #[cfg_attr(feature = "serde", serde(deserialize_with = "deserialize_quantity"))]
-    opening_radius: Length,
-    consider_tooth_tip_leakage: bool,
+    pub opening_radius: Length,
+    pub consider_tooth_tip_leakage: bool,
 }
 
-impl TryFrom<NewFromToothWidthWithoutSlopesRot> for SemiTrapezoidSlot {
+impl TryFrom<SemiTrapezoidFromToothWidthRotWithoutSlopesBuilder> for SemiTrapezoidSlot {
     type Error = crate::error::Error;
 
-    fn try_from(builder: NewFromToothWidthWithoutSlopesRot) -> Result<Self, Self::Error> {
+    fn try_from(
+        builder: SemiTrapezoidFromToothWidthRotWithoutSlopesBuilder,
+    ) -> Result<Self, Self::Error> {
         let side_height = builder.height - builder.opening_height;
         let [bottom_width, top_width] = slot_side_bottom_and_top_width_from_rot_core(
             builder.tooth_width,
@@ -1097,16 +1226,38 @@ impl<'de> Deserialize<'de> for SemiTrapezoidSlot {
         #[derive(deserialize_untagged_verbose_error::DeserializeUntaggedVerboseError)]
         enum SlotEnum {
             SemiTrapezoidBuilder(SemiTrapezoidBuilder),
+            SemiTrapezoidWithoutSlopesBuilder(SemiTrapezoidWithoutSlopesBuilder),
+            SemiTrapezoidWithTopHeightBuilder(SemiTrapezoidWithTopHeightBuilder),
             SemiTrapezoidWithBottomHeightBuilder(SemiTrapezoidWithBottomHeightBuilder),
+            SemiTrapezoidWithSideTopWidthBuilder(SemiTrapezoidWithSideTopWidthBuilder),
+            SemiTrapezoidWithSideBottomWidthBuilder(SemiTrapezoidWithSideBottomWidthBuilder),
             SemiTrapezoidFromToothWidthRotBuilder(SemiTrapezoidFromToothWidthRotBuilder),
+            SemiTrapezoidFromToothWidthRotWithoutSlopesBuilder(
+                SemiTrapezoidFromToothWidthRotWithoutSlopesBuilder,
+            ),
         }
-        let s = SlotEnum::deserialize(deserializer)?;
-        match s {
+        let se = SlotEnum::deserialize(deserializer)?;
+        match se {
             SlotEnum::SemiTrapezoidBuilder(s) => s.try_into().map_err(serde::de::Error::custom),
+            SlotEnum::SemiTrapezoidWithoutSlopesBuilder(s) => {
+                s.try_into().map_err(serde::de::Error::custom)
+            }
+            SlotEnum::SemiTrapezoidWithTopHeightBuilder(s) => {
+                s.try_into().map_err(serde::de::Error::custom)
+            }
             SlotEnum::SemiTrapezoidWithBottomHeightBuilder(s) => {
                 s.try_into().map_err(serde::de::Error::custom)
             }
+            SlotEnum::SemiTrapezoidWithSideTopWidthBuilder(s) => {
+                s.try_into().map_err(serde::de::Error::custom)
+            }
+            SlotEnum::SemiTrapezoidWithSideBottomWidthBuilder(s) => {
+                s.try_into().map_err(serde::de::Error::custom)
+            }
             SlotEnum::SemiTrapezoidFromToothWidthRotBuilder(s) => {
+                s.try_into().map_err(serde::de::Error::custom)
+            }
+            SlotEnum::SemiTrapezoidFromToothWidthRotWithoutSlopesBuilder(s) => {
                 s.try_into().map_err(serde::de::Error::custom)
             }
         }

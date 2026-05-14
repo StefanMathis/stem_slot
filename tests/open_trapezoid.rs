@@ -36,12 +36,11 @@ fn test_angle_bottom() {
         angle_slot: 10.0 * PI / 180.0,
         bottom_radius: Length::new::<millimeter>(2.0),
         slope_bottom_radius: Length::new::<millimeter>(1.0),
-        effective_opening_height: None,
         consider_tooth_tip_leakage: true,
     };
     let slot = OpenTrapezoidSlot::try_from(builder).unwrap();
 
-    approx::assert_abs_diff_eq!(slot.outline().get::<meter>(), 0.0465666, epsilon = 1e-6);
+    approx::assert_abs_diff_eq!(slot.outline().length(), 0.0465666, epsilon = 1e-6);
     approx::assert_abs_diff_eq!(
         slot.area().get::<square_millimeter>(),
         132.78895,
@@ -60,11 +59,6 @@ fn test_angle_bottom() {
         epsilon = 1e-1
     );
     approx::assert_abs_diff_eq!(
-        10.0,
-        slot.magnetic_opening_height().get::<millimeter>(),
-        epsilon = 1e-6
-    );
-    approx::assert_abs_diff_eq!(
         16.8455,
         slot.side_height().get::<millimeter>(),
         epsilon = 1e-3
@@ -75,39 +69,15 @@ fn test_angle_bottom() {
         epsilon = 1e-3
     );
 
-    // Partial value calculation
-    let contour = slot.contour();
-    let bb = contour.bounding_box();
-    approx::assert_abs_diff_eq!(
-        7.625,
-        slot.width(
-            slot.height() - Length::new::<millimeter>(5.0),
-            &contour,
-            &bb
-        )
-        .get::<millimeter>(),
-        epsilon = 1e-3
-    );
-    approx::assert_abs_diff_eq!(
-        5.875,
-        slot.width(
-            slot.height() - Length::new::<millimeter>(15.0),
-            &contour,
-            &bb
-        )
-        .get::<millimeter>(),
-        epsilon = 1e-3
-    );
-
     // Check the slot leakage coefficients
     approx::assert_abs_diff_eq!(
         1.08016,
         slot.self_inductance_leakage_coefficient(0, &CoilLayout::Single),
         epsilon = 0.001
     );
-    approx::assert_abs_diff_eq!(2.0, slot.leakage_coefficient_opening(), epsilon = 0.001);
+    approx::assert_abs_diff_eq!(0.4, slot.leakage_coefficient_opening(), epsilon = 0.001);
     approx::assert_abs_diff_eq!(
-        -0.05635,
+        -0.06939,
         slot.leakage_coefficient_tooth_tip(Length::new::<millimeter>(1.0)),
         epsilon = 0.001
     );
@@ -130,7 +100,6 @@ fn test_different_layers() {
         angle_slot: 10.0 * PI / 180.0,
         bottom_radius: Length::new::<millimeter>(2.0),
         slope_bottom_radius: Length::new::<millimeter>(1.0),
-        effective_opening_height: None,
         consider_tooth_tip_leakage: true,
     };
     let slot = OpenTrapezoidSlot::try_from(builder).unwrap();
@@ -186,7 +155,6 @@ fn test_open_slot_bottom_height() {
         angle_slot: 10.0 * PI / 180.0,
         bottom_radius: Length::new::<millimeter>(2.0),
         slope_bottom_radius: Length::new::<millimeter>(1.0),
-        effective_opening_height: None,
         consider_tooth_tip_leakage: true,
     }
     .try_into()
@@ -224,7 +192,6 @@ fn test_open_slot_bottom_slope_width() {
         angle_slot: 10.0 * PI / 180.0,
         bottom_radius: Length::new::<millimeter>(2.0),
         slope_bottom_radius: Length::new::<millimeter>(1.0),
-        effective_opening_height: None,
         consider_tooth_tip_leakage: true,
     }
     .try_into()
@@ -258,7 +225,6 @@ fn test_open_slot_side_height_bugfix() {
         height: Length::new::<millimeter>(17.75),
         side_height: Length::new::<millimeter>(17.0),
         opening_height: Length::new::<millimeter>(0.75),
-        effective_opening_height: None,
         angle_slot,
         bottom_radius,
         slope_bottom_radius: Length::new::<millimeter>(0.0),
@@ -277,43 +243,6 @@ fn test_open_slot_side_height_bugfix() {
 }
 
 #[test]
-fn test_magnetic_slot_opening_value_invalid() {
-    // Negative value for the magnetic slot opening height
-    let angle = 30.0 / 180.0 * PI;
-    let height = Length::new::<millimeter>(20.0);
-    let opening_width = Length::new::<millimeter>(9.6);
-
-    let slot = OpenTrapezoidSlot::new(
-        opening_width + 2.0 * height * (0.5 * angle).sin(),
-        opening_width,
-        height,
-        Length::new::<millimeter>(19.0),
-        Length::new::<millimeter>(1.0),
-        Some(Length::new::<millimeter>(-1.0)), // <== NEGATIVE VALUE!
-        angle,
-        Length::new::<millimeter>(0.0),
-        Length::new::<millimeter>(0.0),
-        true,
-    );
-    assert!(slot.is_err());
-
-    // Magnetic slot opening height larger than the total slot height
-    let slot = OpenTrapezoidSlot::new(
-        opening_width + 2.0 * height * (0.5 * angle).sin(),
-        opening_width,
-        height,
-        Length::new::<millimeter>(19.0),
-        Length::new::<millimeter>(1.0),
-        Some(Length::new::<millimeter>(30.0)), // <== VALUE TOO LARGE
-        angle,
-        Length::new::<millimeter>(0.0),
-        Length::new::<millimeter>(0.0),
-        true,
-    );
-    assert!(slot.is_err());
-}
-
-#[test]
 fn test_test_from_rotary_core() {
     let slot: OpenTrapezoidSlot = OpenTrapezoidFromToothWidthRotBuilder {
         tooth_width: Length::new::<millimeter>(10.0),
@@ -326,7 +255,6 @@ fn test_test_from_rotary_core() {
         opening_height: Length::new::<millimeter>(1.0),
         bottom_radius: Length::new::<millimeter>(0.0),
         slope_bottom_radius: Length::new::<millimeter>(0.0),
-        effective_opening_height: Some(Length::new::<millimeter>(1.0)),
         consider_tooth_tip_leakage: false,
     }
     .try_into()
@@ -352,7 +280,6 @@ fn test_multilayer_vertical() {
         angle_slot: 10.0 * PI / 180.0,
         bottom_radius: Length::new::<millimeter>(2.0),
         slope_bottom_radius: Length::new::<millimeter>(1.0),
-        effective_opening_height: None,
         consider_tooth_tip_leakage: true,
     }
     .try_into()
@@ -416,7 +343,6 @@ fn test_deserialize() {
                 opening_height: 0.0 mm
                 angle_slot: 30.0 deg
                 bottom_radius: 1 mm
-                effective_opening_height: 1 mm
                 consider_tooth_tip_leakage: false
                 "};
         let slot: OpenTrapezoidSlot = serde_yaml::from_str(yaml).unwrap();
@@ -436,7 +362,6 @@ fn test_deserialize() {
                         opening_height: 1.0 mm
                         angle_slot: 30.0 deg
                         bottom_radius: 1 mm
-                        effective_opening_height: 1 mm
                         consider_tooth_tip_leakage: false
                         "};
         let slot: OpenTrapezoidSlot = serde_yaml::from_str(yaml).unwrap();
@@ -444,7 +369,7 @@ fn test_deserialize() {
         let drawables = slot.drawables(CoilLayout::DoubleHorizontal, false);
         compare_to_reference(
             drawables.as_slice(),
-            "tests/img/slot_trapezoid_open_opening_height_1mm.png",
+            "tests/img/open_trapezoid_opening_height_1mm.png",
             None,
         );
     }
@@ -456,7 +381,6 @@ fn test_deserialize() {
                         opening_height: 5.0 mm
                         angle_slot: 30.0 deg
                         bottom_radius: 1 mm
-                        effective_opening_height: 5 mm
                         consider_tooth_tip_leakage: false
                         "};
         let slot: OpenTrapezoidSlot = serde_yaml::from_str(yaml).unwrap();
@@ -464,7 +388,7 @@ fn test_deserialize() {
         let drawables = slot.drawables(CoilLayout::DoubleHorizontal, false);
         compare_to_reference(
             drawables.as_slice(),
-            "tests/img/slot_trapezoid_open_opening_height_5mm.png",
+            "tests/img/open_trapezoid_opening_height_5mm.png",
             None,
         );
     }

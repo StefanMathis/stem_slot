@@ -29,7 +29,7 @@ The primary constructor for an [`OpenTrapezoidSlot`] is the
 struct as an arguments, sanity-checks them and then returns a struct instance.
 Besides this one, the following "builder" structs are available:
 - [`OpenTrapezoidBuilder`] (builder version of [`new`](OpenTrapezoidSlot::new))
-- [`OpenTrapezoidWithoutSlopeBuilder`]
+- [`OpenTrapezoidWithoutSlopesBuilder`]
 - [`OpenTrapezoidWithBottomHeightBuilder`]
 - [`OpenTrapezoidWithBottomSideWidthBuilder`]
 - [`OpenTrapezoidWithAngleBottomBuilder`]
@@ -44,13 +44,12 @@ use approx;
 use std::f64::consts::PI;
 use stem_slot::prelude::*;
 
-let builder = OpenTrapezoidWithoutSlopeBuilder {
+let builder = OpenTrapezoidWithoutSlopesBuilder {
     opening_width: Length::new::<millimeter>(5.0),
     opening_height: Length::new::<millimeter>(2.0),
     height: Length::new::<millimeter>(20.0),
     angle_slot: PI / 18.0,
     bottom_radius: Length::new::<millimeter>(1.0),
-    effective_opening_height: Some(Length::new::<millimeter>(2.0)),
     consider_tooth_tip_leakage: true,
 };
 let slot = OpenTrapezoidSlot::try_from(builder).expect("valid inputs");
@@ -77,7 +76,6 @@ opening_height: 2 mm
 bottom_width: 5 mm
 height: 20 mm
 side_height: 16 mm
-effective_opening_height: 2 mm
 angle_slot: PI / 18
 bottom_radius: 2 mm 
 slope_bottom_radius: 1 mm
@@ -87,13 +85,12 @@ consider_tooth_tip_leakage: true
 let slot: OpenTrapezoidSlot = serde_yaml::from_str(&str).expect("valid dimensions");
 approx::assert_abs_diff_eq!(magnet.opening_width().get::<millimeter>(), 5, epsilon=1e-3);
 
-// Using OpenTrapezoidWithoutSlopeBuilder as an intermediate stage:
+// Using OpenTrapezoidWithoutSlopesBuilder as an intermediate stage:
 let str = indoc::indoc! {"
 opening_width: 5 mm
 opening_height: 2 mm
 bottom_width: 5 mm
 height: 20 mm
-effective_opening_height: 2 mm
 angle_slot: PI / 18
 bottom_radius: 2 mm 
 consider_tooth_tip_leakage: true
@@ -114,17 +111,14 @@ pub struct OpenTrapezoidSlot {
     height: Length,       // Total slot height (including slot opening)
     side_height: Length,  // Slot side height (slot height - slot opening - slopes)
     opening_height: Length, // Height of the slot opening
-    effective_opening_height: Option<Length>, /* Magnetically effective height of the slot
-                           * opening. Is set to side_height/2, if its value
-                           * is none */
-    angle_slot: f64, // Angle between the slot sides and the slot bottom in degree
+    angle_slot: f64,      // Angle between the slot sides and the slot bottom in degree
     bottom_radius: Length, /* Edge fillet radii of the trapezoid at the slot bottom (opposite
-                      * side of the slot opening) */
+                           * side of the slot opening) */
     slope_bottom_radius: Length, // Edge fillet radii between bottom slope and slot side
     consider_tooth_tip_leakage: bool, /* Whether to consider the tooth tip leakage according to
                                   * diagram 3.7.2 of [MVP08] or not. */
     #[cfg_attr(feature = "serde", serde(skip))]
-    polysegment: Polysegment,
+    outline: Polysegment,
 }
 
 struct DependentParametersSlotTrapezoidOpen {
@@ -143,12 +137,9 @@ impl OpenTrapezoidSlot {
         height: Length,       // Total slot height (including slot opening)
         opening_height: Length, // Height of the slot opening
         side_height: Length,  // Slot side height (slot height - slot opening - slopes)
-        effective_opening_height: Option<Length>, /* Magnetically effective height of the slot
-                               * opening. Is set to side_height/2, if its
-                               * value is none */
-        angle_slot: f64, // Angle between the slot sides and the slot bottom in degree
+        angle_slot: f64,      // Angle between the slot sides and the slot bottom in degree
         bottom_radius: Length, /* Edge fillet radii of the trapezoid at the slot bottom
-                          * (opposite side of the slot opening) */
+                               * (opposite side of the slot opening) */
         slope_bottom_radius: Length, // Edge fillet radii between bottom slope and slot side
         consider_tooth_tip_leakage: bool, /* Whether to consider the tooth tip leakage according to
                                       * diagram 3.7.2 of [MVP08] or not. */
@@ -159,7 +150,6 @@ impl OpenTrapezoidSlot {
             height,
             side_height,
             opening_height,
-            effective_opening_height,
             angle_slot,
             bottom_radius,
             slope_bottom_radius,
@@ -214,8 +204,8 @@ impl OpenTrapezoidSlot {
 
 #[cfg_attr(feature = "serde", typetag::serde)]
 impl Slot for OpenTrapezoidSlot {
-    fn polysegment(&self) -> Cow<'_, Polysegment> {
-        return Cow::Borrowed(&self.polysegment);
+    fn outline(&self) -> Cow<'_, Polysegment> {
+        return Cow::Borrowed(&self.outline);
     }
 
     /// Returns the total slot height
@@ -233,39 +223,33 @@ impl Slot for OpenTrapezoidSlot {
         return self.opening_height;
     }
 
-    /// Returns the effective magnetic slot opening height.
-    fn magnetic_opening_height(&self) -> Length {
-        match self.effective_opening_height {
-            Some(val) => return val,
-            None => return self.height / 2.0,
+    fn leakage_coefficient_tooth_tip(&self, magnetic_air_gap: Length) -> f64 {
+        if self.consider_tooth_tip_leakage {
+            crate::slot::leakage_coefficient_tooth_tip(self.opening_width(), magnetic_air_gap)
+        } else {
+            0.0
         }
-    }
-
-    fn consider_tooth_tip_leakage(&self) -> bool {
-        return self.consider_tooth_tip_leakage;
     }
 }
 
 #[cfg_attr(feature = "serde", derive(Deserialize))]
 #[cfg_attr(feature = "serde", serde(deny_unknown_fields))]
 pub struct OpenTrapezoidBuilder {
-    #[serde(deserialize_with = "deserialize_quantity")]
+    #[cfg_attr(feature = "serde", serde(deserialize_with = "deserialize_quantity"))]
     pub bottom_width: Length,
-    #[serde(deserialize_with = "deserialize_quantity")]
+    #[cfg_attr(feature = "serde", serde(deserialize_with = "deserialize_quantity"))]
     pub opening_width: Length, // Width of the slot opening
-    #[serde(deserialize_with = "deserialize_quantity")]
+    #[cfg_attr(feature = "serde", serde(deserialize_with = "deserialize_quantity"))]
     pub height: Length,
-    #[serde(deserialize_with = "deserialize_quantity")]
+    #[cfg_attr(feature = "serde", serde(deserialize_with = "deserialize_quantity"))]
     pub side_height: Length,
-    #[serde(deserialize_with = "deserialize_quantity")]
+    #[cfg_attr(feature = "serde", serde(deserialize_with = "deserialize_quantity"))]
     pub opening_height: Length,
-    #[serde(deserialize_with = "deserialize_opt_quantity")]
-    pub effective_opening_height: Option<Length>,
-    #[serde(deserialize_with = "deserialize_angle")]
+    #[cfg_attr(feature = "serde", serde(deserialize_with = "deserialize_angle"))]
     pub angle_slot: f64,
-    #[serde(deserialize_with = "deserialize_quantity")]
+    #[cfg_attr(feature = "serde", serde(deserialize_with = "deserialize_quantity"))]
     pub bottom_radius: Length,
-    #[serde(deserialize_with = "deserialize_quantity")]
+    #[cfg_attr(feature = "serde", serde(deserialize_with = "deserialize_quantity"))]
     pub slope_bottom_radius: Length,
     pub consider_tooth_tip_leakage: bool,
 }
@@ -280,7 +264,6 @@ impl TryFrom<OpenTrapezoidBuilder> for OpenTrapezoidSlot {
         let bottom_radius = builder.bottom_radius;
         let slope_bottom_radius = builder.slope_bottom_radius;
         let opening_height = builder.opening_height;
-        let effective_opening_height = builder.effective_opening_height;
         let side_height = builder.side_height;
         let angle_slot = builder.angle_slot;
 
@@ -293,10 +276,6 @@ impl TryFrom<OpenTrapezoidBuilder> for OpenTrapezoidSlot {
         compare_variables!(val zero <= bottom_radius)?;
         compare_variables!(val zero <= slope_bottom_radius)?;
         compare_variables!(opening_height < height)?;
-
-        if let Some(val) = effective_opening_height {
-            compare_variables!(val zero <= val as effective_opening_height < height)?;
-        }
 
         // The slot height height is the sum of opening_height, side_height and
         // bottom_height
@@ -314,7 +293,7 @@ impl TryFrom<OpenTrapezoidBuilder> for OpenTrapezoidSlot {
         ];
         let v3 = [bottom_width.get::<meter>() / 2.0, height.get::<meter>()];
 
-        let polysegment = if (side_height + opening_height) == height {
+        let outline = if (side_height + opening_height) == height {
             Polysegment::from_fillet_chain(
                 &[v1, v3, [-v3[0], v3[1]], [-v1[0], v1[1]]],
                 &[bottom_radius.get::<meter>(), bottom_radius.get::<meter>()],
@@ -339,13 +318,13 @@ impl TryFrom<OpenTrapezoidBuilder> for OpenTrapezoidSlot {
         };
 
         // Assert that the outline does not intersect itself
-        if let Some(intersection) = polysegment
-            .intersections_polysegment_par(&polysegment, DEFAULT_EPSILON, DEFAULT_MAX_ULPS)
+        if let Some(intersection) = outline
+            .intersections_polysegment_par(&outline, DEFAULT_EPSILON, DEFAULT_MAX_ULPS)
             .find_map_any(|v| Some(v))
         {
             return Err(crate::error::Error::OutlineIntersection {
                 intersection,
-                outline: polysegment,
+                outline,
             });
         }
 
@@ -358,16 +337,15 @@ impl TryFrom<OpenTrapezoidBuilder> for OpenTrapezoidSlot {
             angle_slot,
             bottom_radius,
             slope_bottom_radius,
-            effective_opening_height,
             consider_tooth_tip_leakage: builder.consider_tooth_tip_leakage,
-            polysegment,
+            outline,
         });
     }
 }
 
 #[cfg_attr(feature = "serde", derive(Deserialize))]
 #[cfg_attr(feature = "serde", serde(deny_unknown_fields))]
-pub struct OpenTrapezoidWithoutSlopeBuilder {
+pub struct OpenTrapezoidWithoutSlopesBuilder {
     #[cfg_attr(feature = "serde", serde(deserialize_with = "deserialize_quantity"))]
     pub opening_width: Length,
     #[cfg_attr(feature = "serde", serde(deserialize_with = "deserialize_quantity"))]
@@ -378,18 +356,13 @@ pub struct OpenTrapezoidWithoutSlopeBuilder {
     pub angle_slot: f64,
     #[cfg_attr(feature = "serde", serde(deserialize_with = "deserialize_quantity"))]
     pub bottom_radius: Length,
-    #[cfg_attr(
-        feature = "serde",
-        serde(deserialize_with = "deserialize_opt_quantity")
-    )]
-    pub effective_opening_height: Option<Length>,
     pub consider_tooth_tip_leakage: bool,
 }
 
-impl TryFrom<OpenTrapezoidWithoutSlopeBuilder> for OpenTrapezoidSlot {
+impl TryFrom<OpenTrapezoidWithoutSlopesBuilder> for OpenTrapezoidSlot {
     type Error = crate::error::Error;
 
-    fn try_from(value: OpenTrapezoidWithoutSlopeBuilder) -> Result<Self, Self::Error> {
+    fn try_from(value: OpenTrapezoidWithoutSlopesBuilder) -> Result<Self, Self::Error> {
         let bottom_width =
             value.opening_width + 2.0 * value.height * (0.5 * value.angle_slot).sin();
         let side_height = value.height - value.opening_height;
@@ -400,7 +373,6 @@ impl TryFrom<OpenTrapezoidWithoutSlopeBuilder> for OpenTrapezoidSlot {
             value.height,
             value.opening_height,
             side_height,
-            value.effective_opening_height,
             value.angle_slot,
             value.bottom_radius,
             Length::new::<meter>(0.0),
@@ -428,11 +400,6 @@ pub struct OpenTrapezoidWithBottomHeightBuilder {
     pub bottom_radius: Length,
     #[cfg_attr(feature = "serde", serde(deserialize_with = "deserialize_quantity"))]
     pub slope_bottom_radius: Length,
-    #[cfg_attr(
-        feature = "serde",
-        serde(deserialize_with = "deserialize_opt_quantity")
-    )]
-    pub effective_opening_height: Option<Length>,
     pub consider_tooth_tip_leakage: bool,
 }
 
@@ -447,7 +414,6 @@ impl TryFrom<OpenTrapezoidWithBottomHeightBuilder> for OpenTrapezoidSlot {
             value.height,
             value.opening_height,
             side_height,
-            value.effective_opening_height,
             value.angle_slot,
             value.bottom_radius,
             value.slope_bottom_radius,
@@ -475,11 +441,6 @@ pub struct OpenTrapezoidWithBottomSideWidthBuilder {
     pub bottom_radius: Length,
     #[cfg_attr(feature = "serde", serde(deserialize_with = "deserialize_quantity"))]
     pub slope_bottom_radius: Length,
-    #[cfg_attr(
-        feature = "serde",
-        serde(deserialize_with = "deserialize_opt_quantity")
-    )]
-    pub effective_opening_height: Option<Length>,
     pub consider_tooth_tip_leakage: bool,
 }
 
@@ -496,7 +457,6 @@ impl TryFrom<OpenTrapezoidWithBottomSideWidthBuilder> for OpenTrapezoidSlot {
             value.height,
             value.opening_height,
             side_height,
-            value.effective_opening_height,
             value.angle_slot,
             value.bottom_radius,
             value.slope_bottom_radius,
@@ -527,11 +487,6 @@ pub struct OpenTrapezoidWithAngleBottomBuilder {
     pub bottom_radius: Length,
     #[cfg_attr(feature = "serde", serde(deserialize_with = "deserialize_quantity"))]
     pub slope_bottom_radius: Length,
-    #[cfg_attr(
-        feature = "serde",
-        serde(deserialize_with = "deserialize_opt_quantity")
-    )]
-    pub effective_opening_height: Option<Length>,
     pub consider_tooth_tip_leakage: bool,
 }
 
@@ -574,7 +529,6 @@ impl TryFrom<OpenTrapezoidWithAngleBottomBuilder> for OpenTrapezoidSlot {
             value.height,
             value.opening_height,
             side_height,
-            value.effective_opening_height,
             value.angle_slot,
             value.bottom_radius,
             value.slope_bottom_radius,
@@ -605,11 +559,6 @@ pub struct OpenTrapezoidFromToothWidthRotBuilder {
     pub bottom_radius: Length,
     #[cfg_attr(feature = "serde", serde(deserialize_with = "deserialize_quantity"))]
     pub slope_bottom_radius: Length,
-    #[cfg_attr(
-        feature = "serde",
-        serde(deserialize_with = "deserialize_opt_quantity")
-    )]
-    pub effective_opening_height: Option<Length>,
     pub consider_tooth_tip_leakage: bool,
 }
 
@@ -635,7 +584,6 @@ impl TryFrom<OpenTrapezoidFromToothWidthRotBuilder> for OpenTrapezoidSlot {
             value.height,
             value.opening_height,
             side_height,
-            value.effective_opening_height,
             angle_slot,
             value.bottom_radius,
             value.slope_bottom_radius,
@@ -655,7 +603,7 @@ impl<'de> Deserialize<'de> for OpenTrapezoidSlot {
         #[derive(deserialize_untagged_verbose_error::DeserializeUntaggedVerboseError)]
         enum SlotEnum {
             OpenTrapezoidBuilder(OpenTrapezoidBuilder),
-            OpenTrapezoidWithoutSlopeBuilder(OpenTrapezoidWithoutSlopeBuilder),
+            OpenTrapezoidWithoutSlopesBuilder(OpenTrapezoidWithoutSlopesBuilder),
             OpenTrapezoidWithBottomHeightBuilder(OpenTrapezoidWithBottomHeightBuilder),
             OpenTrapezoidWithBottomSideWidthBuilder(OpenTrapezoidWithBottomSideWidthBuilder),
             OpenTrapezoidWithAngleBottomBuilder(OpenTrapezoidWithAngleBottomBuilder),
@@ -664,7 +612,7 @@ impl<'de> Deserialize<'de> for OpenTrapezoidSlot {
         let s = SlotEnum::deserialize(deserializer)?;
         match s {
             SlotEnum::OpenTrapezoidBuilder(s) => s.try_into().map_err(serde::de::Error::custom),
-            SlotEnum::OpenTrapezoidWithoutSlopeBuilder(s) => {
+            SlotEnum::OpenTrapezoidWithoutSlopesBuilder(s) => {
                 s.try_into().map_err(serde::de::Error::custom)
             }
             SlotEnum::OpenTrapezoidWithBottomHeightBuilder(s) => {

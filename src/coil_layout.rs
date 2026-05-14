@@ -1,41 +1,117 @@
+/*!
+This module provides the [`CoilLayout`] enum, which defines how the individual
+coils / winding layers are positioned within a [`Slot`](crate::slot::Slot).
+*/
 use std::cmp::Ordering;
 
 #[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
 
+/// Index of the layer on the slot bottom, left side of a quadruple layer
+/// winding. Is used in the definition of that winding and hence exposed here.
+pub const QUADRUPLE_LAYER_BOTTOM_LEFT: u16 = 0;
+
+/// Index of the layer on the slot top, left side of a quadruple layer
+/// winding. Is used in the definition of that winding and hence exposed here.
+pub const QUADRUPLE_LAYER_TOP_LEFT: u16 = 1;
+
+/// Index of the layer on the slot top, right side of a quadruple layer
+/// winding. Is used in the definition of that winding and hence exposed here.
+pub const QUADRUPLE_LAYER_TOP_RIGHT: u16 = 2;
+
+/// Index of the layer on the slot bottom, right side of a quadruple layer
+/// winding. Is used in the definition of that winding and hence exposed here.
+pub const QUADRUPLE_LAYER_BOTTOM_RIGHT: u16 = 3;
+
 /**
-The "coil layout" describes how the coils of a winding are arranged in a slot.
+An enum defining the position of individual coils / winding layers within a
+[`Slot`](crate::slot::Slot).
+
+This enum is used by various methods of [`Slot`](crate::slot::Slot) like e.g.
+[`self_inductance_leakage_coefficient`](crate::slot::Slot::self_inductance_leakage_coefficient)
+to represent the coil / layer positioning of different winding types. For
+example, in a double-layer distributed winding, the two coils in a slot are
+placed on top of each other (variant [`CoilLayout::DoubleVertical`]). By
+contrast, a double-layer tooth-coil winding is represented by a
+[`CoilLayout::DoubleHorizontal`]. The following drawing shows the layout for all
+variants, using the example of a
+[`RectangularSlot`](crate::rectangular::RectangularSlot).
+ */
+#[doc = ""]
+#[cfg_attr(
+    feature = "doc-images",
+    doc = "![Coil layout variants][cad_coil_layout]"
+)]
+#[cfg_attr(
+    feature = "doc-images",
+    embed_doc_image::embed_doc_image("cad_coil_layout", "docs/img/cad_coil_layout.svg")
+)]
+#[cfg_attr(
+    not(feature = "doc-images"),
+    doc = "**Doc images not enabled**. Compile docs with
+    `cargo doc --features 'doc-images'` and Rust version >= 1.54."
+)]
+/**
+
+In stem, the `Winding` trait from the
+[stem_winding](https://crates.io/crates/stem_winding) crate requires the
+implementation of a `coil_layout` method which returns the corresponding variant
+of this enum. This is used to calculate properties like e.g. the slot leakage
+inductance for motors.
  */
 #[derive(Clone, Copy, Debug)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub enum CoilLayout {
     /**
-    Only applicable for single-layer windings. The single coil of a slot fills it entirely.
+    A variant representing single-layer windings. The single coil / layer fills
+    the slot completely.
      */
     Single,
     /**
-    Only applicable for double-layer windings. The coil in the first layer is placed at the slot bottom, the one in the second layer at the slot top.
+    A variant representing double layer windings (e.g. distributed windings).
+    The coil in the first layer is placed at the slot bottom, the one in the
+    second layer at the slot top.
      */
     DoubleVertical,
     /**
-    Only applicable for double-layer windings. The coil in the first layer is placed on the left side of the slot, the one in the second layer on the right side.
+    A variant representing double layer windings (e.g. tooth-coil windings).
+    The coil in the first layer is placed on the left side of the slot, the one
+    in the second layer on the right side.
      */
     DoubleHorizontal,
     /**
-    Only applicable to quadruple-layer windings. The coils are placed as follows:
-    `0  1` <- slot bottom
-    `2  3` <- slot top
+    A variant representing a quadruple-layer winding, which is essentially a
+    tooth-coil winding where the coils at the two slot sides are split in the
+    middle again. The individual coils / layers are placed as follows:
+    `0  3` <- slot bottom
+    `1  2` <- slot top
      */
     Quadruple,
     /**
-    The slot is vertically separated into multiple sections of identical height.
+    A variant representing a winding with an arbitrary number of layers, which
+    is equal to the value of the anonymous field of the variant. The individual
+    layers are placed on top of each other, starting with the first layer at the
+    slot bottom (see the drawing in the enum docstring). The height of the
+    individual slot slices is identical.
      */
     MultiVertical(u16),
 }
 
 impl CoilLayout {
     /**
-    Returns the number of layers associated with the coil layout.
+    Returns the number of layers for `self`.
+
+    # Examples
+
+    ```
+    use stem_slot::coil_layout::CoilLayout;
+
+    assert_eq!(CoilLayout::Single.layers(), 1);
+    assert_eq!(CoilLayout::DoubleVertical.layers(), 2);
+    assert_eq!(CoilLayout::DoubleHorizontal.layers(), 2);
+    assert_eq!(CoilLayout::Quadruple.layers(), 4);
+    assert_eq!(CoilLayout::MultiVertical(5).layers(), 5);
+    ```
      */
     pub fn layers(&self) -> u16 {
         return match self {
@@ -48,16 +124,22 @@ impl CoilLayout {
     }
 
     /**
-    Returns the vertical position of a layer compared to another layer. The coordinate system starts at the slot bottom.
+    Returns the vertical position of the `first_layer` relative to the
+    `second_layer` to another layer (viewed from the slot bottom)
 
     # Panics
-    Panics if one of the layers is equal to or larger than the total number of layers of the `self`. This property can be requested by the `layers` method.
+    Panics if one of the layers is equal to or larger than the total number of
+    layers of `self` (see [`CoilLayout::layers`]).
 
     # Examples
 
-    A `CoilLayout::DoubleVertical` aranges the first layer at the bottom and the second at the top. Hence, the first layer is "lesser" compared to the second.
+    ## DoubleVertical
+
+    A [`CoilLayout::DoubleVertical`] aranges the first layer at the slot bottom
+    and the second at the slot top. Hence, the first layer is "lesser" compared
+    to the second.
     ```
-    use slot::coil_layout::CoilLayout;
+    use stem_slot::coil_layout::CoilLayout;
 
     let coil_layout = CoilLayout::DoubleVertical;
 
@@ -66,9 +148,12 @@ impl CoilLayout {
     assert_eq!(std::cmp::Ordering::Equal, coil_layout.ordering_vertical(0, 0));
     ```
 
-    A `CoilLayout::DoubleHorizontal` aranges both layers in the same vertical position. Hence, both layers are "equal".
+    ## DoubleHorizontal
+
+    A [`CoilLayout::DoubleHorizontal`] aranges both layers in the same vertical
+    position. Hence, both layers are "equal".
     ```
-    use slot::coil_layout::CoilLayout;
+    use stem_slot::coil_layout::CoilLayout;
 
     let coil_layout = CoilLayout::DoubleHorizontal;
 
@@ -76,13 +161,21 @@ impl CoilLayout {
     assert_eq!(std::cmp::Ordering::Equal, coil_layout.ordering_vertical(1, 0));
     ```
 
-    A `CoilLayout::Quadruple` aranges its layers as follows:
-      1  2  |  1  2  |
-      0  3  |  0  3  |
-            |        |
+    ## Quadruple
+
+    A [`CoilLayout::Quadruple`] arranges its layers as follows:
+    ```ignore
+      0  3  |  1  2  |     <- slot bottom
+      1  2  |  0  3  |     <- slot top
+            |        |     <- air gap
      slot 0 | slot 1 | ...
     ```
-    use slot::coil_layout::CoilLayout;
+
+    Correspondingly, 0 is equal to 3, 1 is equal to 2, and both 0 and 3 are
+    lesser than 1 and 2:
+
+    ```
+    use stem_slot::coil_layout::CoilLayout;
 
     let coil_layout = CoilLayout::Quadruple;
 
@@ -91,9 +184,12 @@ impl CoilLayout {
     assert_eq!(std::cmp::Ordering::Greater, coil_layout.ordering_vertical(2, 3));
     ```
 
-    A `CoilLayout::MultiVertical` aranges the all layers on top of each other, starting at the slot bottom
+    ## MultiVertical
+
+    A [`CoilLayout::MultiVertical`] arranges the all layers on top of each
+    other, starting at the slot bottom.
     ```
-    use slot::coil_layout::CoilLayout;
+    use stem_slot::coil_layout::CoilLayout;
 
     let coil_layout = CoilLayout::MultiVertical(3);
 
@@ -113,19 +209,19 @@ impl CoilLayout {
             CoilLayout::DoubleVertical => return first_layer.cmp(&second_layer),
             CoilLayout::DoubleHorizontal => return Ordering::Equal,
             CoilLayout::Quadruple => {
-                if first_layer == QUADRUPLE_LAYER_LOWER_LEFT
-                    || first_layer == QUADRUPLE_LAYER_LOWER_RIGHT
+                if first_layer == QUADRUPLE_LAYER_BOTTOM_LEFT
+                    || first_layer == QUADRUPLE_LAYER_BOTTOM_RIGHT
                 {
-                    if second_layer == QUADRUPLE_LAYER_LOWER_LEFT
-                        || second_layer == QUADRUPLE_LAYER_LOWER_RIGHT
+                    if second_layer == QUADRUPLE_LAYER_BOTTOM_LEFT
+                        || second_layer == QUADRUPLE_LAYER_BOTTOM_RIGHT
                     {
                         return Ordering::Equal;
                     } else {
                         return Ordering::Less;
                     }
                 } else {
-                    if second_layer == QUADRUPLE_LAYER_LOWER_LEFT
-                        || second_layer == QUADRUPLE_LAYER_LOWER_RIGHT
+                    if second_layer == QUADRUPLE_LAYER_BOTTOM_LEFT
+                        || second_layer == QUADRUPLE_LAYER_BOTTOM_RIGHT
                     {
                         return Ordering::Greater;
                     } else {
@@ -137,10 +233,3 @@ impl CoilLayout {
         }
     }
 }
-
-pub const QUADRUPLE_LAYER_LOWER_LEFT: u16 = 0;
-pub const QUADRUPLE_LAYER_UPPER_LEFT: u16 = 1;
-pub const QUADRUPLE_LAYER_UPPER_RIGHT: u16 = 2;
-pub const QUADRUPLE_LAYER_LOWER_RIGHT: u16 = 3;
-pub const DOUBLE_HORIZONTAL_LAYER_LEFT: u16 = 0;
-pub const DOUBLE_HORIZONTAL_LAYER_RIGHT: u16 = 1;

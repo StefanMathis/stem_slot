@@ -1,10 +1,7 @@
-use stem_slot::{
-    current_displacement::{current_displacement_coefficients_analytic, phase_velocity},
-    prelude::*,
-};
+use stem_slot::{current_displacement::phase_velocity, prelude::*};
 
 #[test]
-fn test_test_phase_velocity() {
+fn test_phase_velocity() {
     let el_conductivity = ElectricalConductivity::new::<siemens_per_meter>(37.0 * 1e6); // electrical conductivity of aluminium is about 37*1e6 S / m
 
     let frequency = Frequency::new::<hertz>(1.0);
@@ -21,26 +18,26 @@ fn test_test_phase_velocity() {
 }
 
 #[test]
-fn test_test_current_displacement_coefficients_analytic_rectangular() {
+fn test_current_displacement_coefficients_analytic_rectangular() {
     let height = Length::new::<millimeter>(20.0); // 20 mm high bar
     let el_conductivity = ElectricalConductivity::new::<siemens_per_meter>(37.0 * 1e6); // electrical conductivity of aluminium is about 37*1e6 S / m
     let rel_permeability = 1.0; // Relative permeability of aluminium is about 1
 
-    let coeffs = current_displacement_coefficients_analytic(
+    let coeffs = CurrentDisplacementCoefficients::from_rectangular_open_slot(
         height,
         Frequency::new::<hertz>(50.0),
         el_conductivity,
         rel_permeability,
     );
-    approx::assert_abs_diff_eq!(coeffs.resistance_coefficient, 1.575749, epsilon = 1e-6);
-    approx::assert_abs_diff_eq!(coeffs.inductance_coefficient, 0.838612, epsilon = 1e-6);
+    approx::assert_abs_diff_eq!(coeffs.resistance, 1.575749, epsilon = 1e-6);
+    approx::assert_abs_diff_eq!(coeffs.inductance, 0.838612, epsilon = 1e-6);
 
-    let coeffs = current_displacement_coefficients_analytic(
+    let coeffs = CurrentDisplacementCoefficients::from_rectangular_open_slot(
         height,
         Frequency::new::<hertz>(100.0),
         el_conductivity,
         rel_permeability,
     );
-    approx::assert_abs_diff_eq!(coeffs.resistance_coefficient, 2.383342, epsilon = 1e-6);
-    approx::assert_abs_diff_eq!(coeffs.inductance_coefficient, 0.631493, epsilon = 1e-6);
+    approx::assert_abs_diff_eq!(coeffs.resistance, 2.383342, epsilon = 1e-6);
+    approx::assert_abs_diff_eq!(coeffs.inductance, 0.631493, epsilon = 1e-6);
 }

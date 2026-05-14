@@ -1,7 +1,16 @@
+/*!
+This module contains the [`Error`] enum, which represents the different ways
+building one of the predefined slots can fail due to invalid input data. The
+[`Error::Other`] variants supports arbitrary errors resulting from user-created
+slot types.
+*/
+
 use compare_variables::Comparison;
 use planar_geo::prelude::*;
 use stem_material::uom::si::f64::Length;
 
+/// An enum representing errors returned by [`Slot`](crate::slot::Slot)
+/// constructors.
 #[derive(Debug)]
 pub enum Error {
     /**
@@ -20,6 +29,9 @@ pub enum Error {
         intersection: Intersection,
         outline: Polysegment,
     },
+    /// Fallback variant for arbitrary other errors (e.g. from custom
+    /// [`Slot`](crate::slot::Slot) implementations).
+    Other(Box<dyn std::error::Error>),
 }
 
 impl std::fmt::Display for Error {
@@ -30,7 +42,7 @@ impl std::fmt::Display for Error {
             Error::GeometryError(error) => error.fmt(f),
             Error::OutlineIntersection {
                 intersection,
-                outline,
+                outline: _,
             } => {
                 write!(
                     f,
@@ -40,6 +52,7 @@ impl std::fmt::Display for Error {
                     intersection.point
                 )
             }
+            Error::Other(err) => err.fmt(f),
         }
     }
 }

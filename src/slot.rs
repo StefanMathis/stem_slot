@@ -1,3 +1,9 @@
+/*!
+This module offers the [`Slot`] trait and a couple of helper functions.
+
+TODO: Overview
+ */
+
 use akima_spline::AkimaSpline;
 use approx::{ulps_eq, ulps_ne};
 use dyn_clone::DynClone;
@@ -17,47 +23,317 @@ use dyn_quantity::{deserialize_angle, deserialize_quantity};
 use serde::Deserialize;
 
 use crate::coil_layout::CoilLayout;
-use crate::current_displacement::CurrentDisplacementCoefficients;
-use crate::current_displacement::current_displacement_coefficients_numeric;
+use crate::current_displacement::CurrentDisplacementCalculator;
 
 /**
-The `Slot` trait is used to implement slot objects. The trait implements a number of default methods
-(e.g. for the calculation of the slot leakage factor), which can be overwritten in a specific implementation.
-Some other methods however need to be implemented by each individual slot (e.q. the function representing the slot contour).
+A trait for defining slots (grooves on the air gap side of magnetic cores).
+
+This trait provides a simple interface for defining a slot: A groove on the air
+gap side of the magnetic core which holds one or multiple coils of a winding.
+The design of a slot typically strives to meet a compromise between maximizing
+the available space for copper (i.e. reducing ohmic losses) and allowing for
+enough space between them to not hinder the magnetic flux.
+
+This trait offers methods for calculating the slot leakage inductance for
+different [`CoilLayout`]s (see e.g.
+[`Slot::mutual_inductance_leakage_coefficient`]) or the current displacement
+coefficients via [`Slot::current_displacement_coefficients`].
+
+# Implementation
+
+Implementing the trait requires the definition of a couple simple methods
+like e.g. [`Slot::outline`] describing the geometry extents of the slot.
+The image below gives an overview over the definitions and conventions which
+need to be followed:
 */
-#[cfg_attr(feature = "serde", typetag::serde)]
-pub trait Slot: Send + Sync + std::fmt::Debug + DynClone + Any + 'static {
-    /// Returns the total slot height.
-    fn height(&self) -> Length;
+#[doc = ""]
+#[cfg_attr(
+    feature = "doc-images",
+    doc = "![Slot geometry definitions][cad_slot_defs]"
+)]
+#[cfg_attr(
+    feature = "doc-images",
+    embed_doc_image::embed_doc_image("cad_slot_defs", "docs/img/cad_slot_defs.svg")
+)]
+#[cfg_attr(
+    not(feature = "doc-images"),
+    doc = "**Doc images not enabled**. Compile docs with
+    `cargo doc --features 'doc-images'` and Rust version >= 1.54."
+)]
+/**
+- The air gap border of the core is on the x-axis. If the slot is "open", the
+start and end points of its [`outline`](Slot::outline) must therefore be on
+the x-axis as well. If the slot is closed, its start and end point must be
+identical and must have a positive y-value. All segments of the outline must
+have positive y-values as well.
+- If the slot is open, the distance between the start and end points of the
+outline is the [`Slot::opening_width`].
+- Slots may have an "opening" space, where no coils are located. This space is
+defined by the [`Slot::opening_height`]. All other space which is enclosed by
+the slot outline (and the x-axis) is the "coil" space.
+- The total y-extent of the slot is the [`Slot::height`].
+- The area close to the air gap is called the "slot top", the area furthest away
+from it is the "slot bottom".
+- If the slot is not symmetrical about the y-axis, [`Slot::slices`] must be
+overwritten. See its docstring for more.
 
-    /// Returns the slot opening width
-    fn opening_width(&self) -> Length;
+# Example
 
-    /// Returns the slot opening width
-    fn opening_height(&self) -> Length;
+The following code snippet shows how a simple rectangular slot like the one used
+in the example image can implement [`Slot`] (this is in fact quite similar to
+how [`RectangularSlot`](crate::rectangular::RectangularSlot) is implemented). In
+the example, the `serde` feature is enabled, necessitating the implementation
+of `Deserialize` and `Serialize`.
 
-    /// Returns the effective magnetic slot opening height.
-    fn magnetic_opening_height(&self) -> Length;
+```
+use std::borrow::Cow;
 
-    /// If true, the tooth tip leakage is considered when calculating the
-    /// leakage coefficent
-    fn consider_tooth_tip_leakage(&self) -> bool;
+use planar_geo::prelude::*;
+use serde::{Deserialize, Serialize};
+use stem_slot::prelude::*;
 
-    /// Returns the polysegment forming the slot contour. If the slot is open,
-    /// the polysegment is open as well.
-    fn polysegment(&self) -> Cow<'_, Polysegment>;
+#[derive(Clone, Debug, Deserialize, Serialize)]
+struct MyRectangularSlot {
+    width: Length,
+    opening_width: Length,
+    height: Length,
+    opening_height: Length,
+}
 
-    // Default implementations
-    // =======================================================================================================================
-
-    /// Returns the slot contour.
-    fn contour(&self) -> Contour {
-        return self.polysegment().into_owned().into();
+#[typetag::serde] // <-- Needed because of the trait definition
+impl Slot for MyRectangularSlot {
+    fn opening_width(&self) -> Length {
+        return self.opening_width;
     }
 
-    /// Returns the segment chain without slot opening
-    fn polysegment_main_body(&self) -> Polysegment {
-        let contour = self.contour();
+    fn opening_height(&self) -> Length {
+        return self.opening_height;
+    }
+
+    fn outline(&self) -> Cow<'_, Polysegment> {
+        // Simple outline definition of a rectangular slot
+        let mut pts = Vec::new();
+        pts.push([
+            -self.opening_width.get::<meter>() / 2.0,
+            0.0,
+        ]);
+        pts.push([
+            -self.opening_width.get::<meter>() / 2.0,
+            self.opening_height.get::<meter>(),
+        ]);
+        pts.push([
+            -self.width.get::<meter>() / 2.0,
+            self.opening_height.get::<meter>(),
+        ]);
+        pts.push([
+            -self.width.get::<meter>() / 2.0,
+            self.height.get::<meter>(),
+        ]);
+        pts.push([
+            self.width.get::<meter>() / 2.0,
+            self.height.get::<meter>(),
+        ]);
+        pts.push([
+            self.width.get::<meter>() / 2.0,
+            self.opening_height.get::<meter>(),
+        ]);
+        pts.push([
+            self.opening_width.get::<meter>() / 2.0,
+            self.opening_height.get::<meter>(),
+        ]);
+        pts.push([
+            self.opening_width.get::<meter>() / 2.0,
+            0.0,
+        ]);
+        return Cow::Owned(Polysegment::from_points(&pts));
+    }
+}
+```
+ */
+#[cfg_attr(feature = "serde", typetag::serde)]
+pub trait Slot: Send + Sync + std::fmt::Debug + DynClone + Any + 'static {
+    /**
+    Returns the slot opening width.
+
+    If the slot opening is parallel-sided, this value simply equals the distance
+    between both sides. If it is not, it should be the mean distance between the
+    sides (see also [`Slot::leakage_coefficient_opening`]). If the slot is
+    closed (i.e. its outline is not connected to the air gap), this value is
+    zero. See the [`Slot`] docstring for more.
+     */
+    fn opening_width(&self) -> Length;
+
+    /**
+    Returns the slot opening height.
+
+    See the [`Slot`] docstring for more.
+     */
+    fn opening_height(&self) -> Length;
+
+    /**
+    Returns the outline of the slot.
+
+    This is the cross-sectional outline of the slot in the x-y plane as
+    defined in the [trait docstring](Slot). The returned [`Polysegment`] must
+    use the coordinate system shown in the trait docstring image. It is
+    assumed that this outline is constant along the entire length of the
+    magnetic core.
+
+    Some implementors of [`Slot`] may construct their outline eagerly during
+    initialization, while others may construct it on demand. Returning [`Cow`]
+    allows implementations to either return a borrowed precomputed outline or an
+    owned value created lazily.
+
+    # Examples
+
+    ```
+    use approx::assert_abs_diff_eq;
+    use stem_slot::prelude::*;
+
+    let slot = RectangularSlot::new(
+        Length::new::<millimeter>(10.0),
+        Length::new::<millimeter>(6.0),
+        Length::new::<millimeter>(20.0),
+        Length::new::<millimeter>(2.0),
+        true,
+    ).expect("valid inputs");
+    let outline = slot.outline();
+    assert_abs_diff_eq!(outline.length(), 0.054);
+    ```
+     */
+    fn outline(&self) -> Cow<'_, Polysegment>;
+
+    // =========================================================================
+
+    /**
+    Returns the total height of the slot.
+
+    The default implementation returns the height of the bounding box of
+    [`Slot::outline`].
+
+    # Examples
+
+    ```
+    use stem_slot::prelude::*;
+
+    let slot = RectangularSlot::new(
+        Length::new::<millimeter>(10.0),
+        Length::new::<millimeter>(6.0),
+        Length::new::<millimeter>(20.0),
+        Length::new::<millimeter>(2.0),
+        true,
+    ).expect("valid inputs");
+    assert_eq!(slot.height().get::<millimeter>(), 20.0);
+    ```
+     */
+    fn height(&self) -> Length {
+        let bb = self.outline().bounding_box();
+        return Length::new::<meter>(bb.height());
+    }
+
+    /**
+    Return if the slot is open (to the air gap).
+
+    The slot is open if [`Slot::opening_width`] and [`Slot::opening_height`]
+    are larger than zero.
+
+    # Examples
+
+    ```
+    use approx::assert_abs_diff_eq;
+    use stem_slot::prelude::*;
+
+    assert!(RectangularSlot::new(
+        Length::new::<millimeter>(10.0),
+        Length::new::<millimeter>(6.0),
+        Length::new::<millimeter>(20.0),
+        Length::new::<millimeter>(2.0),
+        true,
+    ).expect("valid inputs").is_open());
+
+    assert!(!RectangularSlot::new(
+        Length::new::<millimeter>(10.0),
+        Length::new::<millimeter>(6.0),
+        Length::new::<millimeter>(20.0),
+        Length::new::<millimeter>(0.0),
+        true,
+    ).expect("valid inputs").is_open());
+
+    assert!(!RectangularSlot::new(
+        Length::new::<millimeter>(10.0),
+        Length::new::<millimeter>(0.0),
+        Length::new::<millimeter>(20.0),
+        Length::new::<millimeter>(2.0),
+        true,
+    ).expect("valid inputs").is_open());
+    ```
+     */
+    fn is_open(&self) -> bool {
+        return self.opening_width().get::<meter>() > 0.0
+            && self.opening_height().get::<meter>() > 0.0;
+    }
+
+    /**
+    Returns the area covered by the slot.
+
+    # Examples
+
+    ```
+    use approx::assert_abs_diff_eq;
+    use stem_slot::prelude::*;
+
+    let slot = RectangularSlot::new(
+        Length::new::<millimeter>(10.0),
+        Length::new::<millimeter>(6.0),
+        Length::new::<millimeter>(20.0),
+        Length::new::<millimeter>(2.0),
+        true,
+    ).expect("valid inputs");
+
+    assert_abs_diff_eq!(slot.area().get::<square_millimeter>(), 212.0);
+    ```
+     */
+    fn area(&self) -> Area {
+        let contour: Contour = self.outline().into_owned().into();
+        return Area::new::<square_meter>(contour.area());
+    }
+
+    /**
+    Returns [`Slot::outline`] with the slot opening being removed.
+
+    This method "cuts off" the slot opening from [`Slot::outline`] and therefore
+    returns the part of the slot outline which touches the "winding area", i.e.
+    the space where the conductors / coils are located.
+
+    # Examples
+
+    ```
+    use approx::assert_abs_diff_eq;
+    use planar_geo::prelude::ToBoundingBox;
+    use stem_slot::prelude::*;
+
+    let slot = RectangularSlot::new(
+        Length::new::<millimeter>(10.0),
+        Length::new::<millimeter>(6.0),
+        Length::new::<millimeter>(20.0),
+        Length::new::<millimeter>(2.0),
+        true,
+    ).expect("valid inputs");
+
+    let outline = slot.outline();
+    assert_abs_diff_eq!(outline.bounding_box().height(), 0.02);
+
+    let outline_winding_area = slot.outline_winding_area();
+    assert_abs_diff_eq!(outline_winding_area.bounding_box().height(), 0.018);
+    ```
+     */
+    fn outline_winding_area(&self) -> Polysegment {
+        if !self.is_open() {
+            return self.outline().into_owned();
+        }
+
+        let contour: Contour = self.outline().into_owned().into();
+
         let bb = contour.bounding_box();
 
         // Identify the beginning of the slot opening
@@ -84,24 +360,45 @@ pub trait Slot: Send + Sync + std::fmt::Debug + DynClone + Any + 'static {
                 acc.append(&mut e);
                 acc
             })
-            .expect("at least one segment must be higher than the opening height");
+            .unwrap_or(Polysegment::new());
     }
 
-    fn contour_main_body(&self) -> Contour {
-        return self.polysegment_main_body().into();
+    /**
+    Returns the total area available for winding layers (i.e. [`Slot::area`]
+    minus the slot opening area).
+
+    # Examples
+
+    ```
+    use approx::assert_abs_diff_eq;
+    use stem_slot::prelude::*;
+
+    let slot = RectangularSlot::new(
+        Length::new::<millimeter>(10.0),
+        Length::new::<millimeter>(6.0),
+        Length::new::<millimeter>(20.0),
+        Length::new::<millimeter>(2.0),
+        true,
+    ).expect("valid inputs");
+
+    assert_abs_diff_eq!(slot.winding_area().get::<square_millimeter>(), 180.0);
+    ```
+     */
+    fn winding_area(&self) -> Area {
+        return Area::new::<square_meter>(Contour::from(self.outline_winding_area()).area());
     }
 
-    /// Return the slot outline (slot shape line minus the slot opening, if the
-    /// slot is open)
-    fn outline(&self) -> Length {
-        return Length::new::<meter>(self.polysegment().length());
-    }
+    // TODO:
 
     /// Return the part of the slot outline bordering the selected layer
-    fn layer_outline(&self, layer: u16, coil_layout: &CoilLayout) -> Length {
-        let polysegment = self.polysegment_main_body();
+
+    /**
+    Returns the contour of the specified `layer`.
+     */
+    fn layer_contour(&self, layer: u16, coil_layout: &CoilLayout) -> Contour {
+        let polysegment = self.outline_winding_area();
         let centroid = Contour::new(polysegment.clone()).centroid();
-        let layer_bounds = layer_bounds_priv(
+        let layer_bounds = layer_bounds(
             self,
             layer,
             coil_layout,
@@ -112,382 +409,27 @@ pub trait Slot: Send + Sync + std::fmt::Debug + DynClone + Any + 'static {
         );
 
         // Sum up all parts of the segment chain which are within bounds
-        let sum = polysegment
+        return polysegment
             .intersection_cut(
                 &Polysegment::from(&layer_bounds),
                 DEFAULT_EPSILON,
                 DEFAULT_MAX_ULPS,
             )
             .into_iter()
-            .filter_map(|chain| {
-                if layer_bounds.approx_covers(
-                    &chain.bounding_box(),
-                    DEFAULT_EPSILON,
-                    DEFAULT_MAX_ULPS,
-                ) {
-                    Some(chain.length())
-                } else {
-                    None
-                }
+            .find(|ps| {
+                layer_bounds.approx_covers(&ps.bounding_box(), DEFAULT_EPSILON, DEFAULT_MAX_ULPS)
             })
-            .sum();
-
-        return Length::new::<meter>(sum);
+            .unwrap_or(Polysegment::new())
+            .into();
     }
 
-    /// Return true if the slot is open (to the air gap) and false if not.
-    fn is_open(&self) -> bool {
-        return self.opening_width().get::<meter>() > 0.0;
-    }
-
-    /**
-    Calculate the self inductance leakage coefficient of the total winding area (i.e. slot area minus slot opening area) for the given layer.
-    This function dispatches to `mutual_inductance_leakage_coefficient`, please see its documentation for a detailed explanation.
-
-    # Panics
-    Panics if the given layer index is larger than the total number of layers in the coil layout.
-    */
-    fn self_inductance_leakage_coefficient(&self, layer: u16, coil_layout: &CoilLayout) -> f64 {
-        return self.mutual_inductance_leakage_coefficient(layer, layer, coil_layout);
-    }
-
-    /**
-    Calculates the mutual inductance coefficient for `linked_layer` when a field is created by `excitation_layer` as described in section 3.5 of [MVP08] (p. 309 ff).
-
-    The basic algorithm is as follows: The leakage inductance `L` of a coil inside the slot is the quotient of the flux linkage `Psi` and the current `i`.
-    The flux linkage is the product of the leakage flux `Phi` and the number of turns of the coil `z_link`:
-    `Psi = L * i = Phi * z_link`.
-
-    The linkage coefficient is defined as
-    `lambda = L / (mu_0 * z_link * z_exc)`
-    where `mu_0` is the magnetic field constant, `z_link` is the number of turns of the linked layer (coil) and `z_exc` is the number of turns of the excitation coil.
-
-    The linkage flux `Phi` can be calculated as `mu_0 * H * l`, `H` is the magnetic field strength and `l` is the axial length of the slot.
-
-    For the calculation, it is assumed that the magnetic field strength in the iron core surrounding the slot is zero (e.g. the magnetic permeability is infinite).
-    Furthermore, the flux in the slot is assumed to be horizontal from slot side to slot side, see fig. 3.5.2. in [MVP08]. Lastly, it is assumed that the number
-    of conductors in a partial area of the coil equals the ratio of the partial area to the total coil area.
-
-    If the linked layer (coil) and the excitation layer (coil) are on the same vertical height of the slot (case 1 in [MVP08], p. 316),
-    both `H` and `z` are zero below the layers and are a function of the slot width `s` and the vertical coordinate (x) at the layer height in the general case.
-    Above the layer, `H` continues to be a function of `s`, while `z` stays constant.
-    This is especially true for the special case of self induction, where the linked layer and the excitation layer are identical.
-
-    `H = z_exc(x) / z_exc * i_exc / s(x) = Delta_A_exc(x) / A_exc * z_exc * i_exc / s(x)`
-    `z = z_link(x) = Delta_A_link(x) / A_link * z_exc`
-
-    The partial area of the linked / excitation layer `Delta_A_exc/link(x)` is defined by the vertical coordinate and the slot geometry.
-    For the special case of a rectangular slot, the relationships are particular simple:
-
-    For `x` < lower limit of linked layer => `Delta_A_exc/link(x) = 0` and `z_link(x) = 0`
-    => `Psi = 0`
-    For `x` >= lower limit of linked layer and `x` <= upper limit of linked layer => `Delta_A_exc/link(x) ~ x` and `z_link(x) ~ x`
-    => `Psi ~ x^2`
-    For `x` > upper limit of linked layer => `Delta_A_exc/link(x) = A_exc/link` and `z_link(x) ~ z_link`
-    => `Psi = const`
-
-    If the linked layer (coil) is above the excitation layer (coil), case 2 in [MVP08], p. 316 applies:
-    For `x` < lower limit of linked layer => `Delta_A_exc/link(x) ~ x` and `z_link(x) = 0`.
-    => `Psi = 0`
-    For `x` >= lower limit of linked layer and `x` <= upper limit of linked layer => `Delta_A_exc/link(x) = A_exc/link` and `z_link(x) ~ x`
-    => `Psi ~ x`
-    For `x` > upper limit of linked layer => `Delta_A_exc/link(x) = A_exc/link`
-    => `Psi = const`
-
-    If the linked layer (coil) is below the excitation layer (coil), case 2 in [MVP08], p. 316 applies:
-    For `x` < lower limit of excitation layer => `Delta_A_exc/link(x) = 0` and `z_link(x) ~ x`.
-    => `Psi = 0`
-    For `x` >= lower limit of excitation layer and `x` <= upper limit of excitation layer => `Delta_A_exc/link(x) ~ x` and `z_link(x) = z_link`
-    => `Psi ~ x`
-    For `x` > upper limit of excitation layer => `Delta_A_exc/link(x) = A_exc/link`
-    => `Psi = const`
-
-    In the general case of an arbitrary slot shape, the following formulae can be used to calculate the leakage coefficient `lambda`:
-    `lambda = Integral Delta_A_exc(x)/A_exc * Delta_A_link(x)/A_link * 1/s(x) dx`
-
-    # Panics
-    Panics if one of the given layer indices is larger than the total number of layers in the coil layout.
-     */
-    fn mutual_inductance_leakage_coefficient(
-        &self,
-        linked_layer: u16,
-        excitation_layer: u16,
-        coil_layout: &CoilLayout,
-    ) -> f64 {
-        // Check the relationship between the layers and adjust the calculation strategy
-        let slot_contour_no_opening = self.contour_main_body();
-        let slot_bounds_no_opening = slot_contour_no_opening.bounding_box();
-        let slot_body_centroid = slot_contour_no_opening.centroid();
-
-        let ordering = coil_layout.ordering_vertical(linked_layer, excitation_layer);
-        let layer_bounds = match ordering {
-            std::cmp::Ordering::Equal => {
-                /*
-                Both layers are located in the same height. This equals case 1 in [MVP08], p. 316.
-                */
-                layer_bounds_priv(
-                    self,
-                    linked_layer,
-                    coil_layout,
-                    slot_body_centroid,
-                    &slot_bounds_no_opening,
-                    1.0,
-                    0.0,
-                )
-            }
-            std::cmp::Ordering::Greater => {
-                /*
-                The linked layer is above the excitation layer. This equals case 2 in [MVP08], p. 316.
-                */
-                layer_bounds_priv(
-                    self,
-                    linked_layer,
-                    coil_layout,
-                    slot_body_centroid,
-                    &slot_bounds_no_opening,
-                    1.0,
-                    0.0,
-                )
-            }
-            std::cmp::Ordering::Less => {
-                /*
-                The linked layer is above the excitation layer. This equals case 2 in [MVP08], p. 316.
-                */
-                layer_bounds_priv(
-                    self,
-                    excitation_layer,
-                    coil_layout,
-                    slot_body_centroid,
-                    &slot_bounds_no_opening,
-                    1.0,
-                    0.0,
-                )
-            }
-        };
-
-        let layer_contour = apply_bounds(&slot_contour_no_opening, &layer_bounds);
-        let layer_area = layer_contour.area();
-
-        return inductance_leakage_coefficient_priv(
-            self,
-            &slot_contour_no_opening,
-            &slot_bounds_no_opening,
-            &layer_contour,
-            &layer_bounds,
-            layer_area,
-            &ordering,
-        );
-    }
-
-    /**
-    Calculates the leakage coefficient matrix of a slot for the given coil layout. This matrix is square and its
-    numbers of rows / columns equals the number of layers that the given coil layout supports.
-
-    The row contains the layer with the linked coil where the voltage due to the leakage flux is induced,
-    while the column corresponds to the coil carrying the excitation coil ("excitation_layer").
-    This means that the diagonal contains the self-inductance leakage coefficients,
-    while the off-diagonals carry the mutual inductance leakage coefficients.
-
-    The leakage coefficient matrix does not include the slot opening leakage nor the tooth tip leakage.
-    These values can be calculated with the corresponding methods and then added to all elements of the matrix
-    to get the complete leakage coefficient matrix.
-
-    For a detailed explanation of the algorithm this function is based on, plese see the documentation of the `mutual_inductance_leakage_coefficient` method.
-     */
-    fn leakage_coefficient_matrix(&self, coil_layout: &CoilLayout) -> DMatrix<f64> {
-        let layers = coil_layout.layers();
-        let dimension = layers as usize;
-        let mut matrix = DMatrix::repeat(dimension, dimension, 0.0);
-
-        /*
-        Precalculate some shared values
-        */
-        let slot_contour_no_opening = self.contour_main_body();
-        let slot_bounds_no_opening = slot_contour_no_opening.bounding_box();
-        let slot_body_centroid = slot_contour_no_opening.centroid();
-
-        let all_layer_bounds: Vec<BoundingBox> = (0..layers)
-            .into_par_iter()
-            .map(|layer| {
-                return layer_bounds_priv(
-                    self,
-                    layer as u16,
-                    coil_layout,
-                    slot_body_centroid,
-                    &slot_bounds_no_opening,
-                    1.0,
-                    0.0,
-                );
-            })
-            .collect();
-
-        let all_layer_contours: Vec<Contour> = all_layer_bounds
-            .par_iter()
-            .map(|bounds| apply_bounds(&slot_contour_no_opening, &bounds))
-            .collect();
-
-        let all_layer_area: Vec<f64> = all_layer_contours.par_iter().map(Contour::area).collect();
-
-        matrix
-            .as_mut_slice()
-            .par_iter_mut()
-            .enumerate()
-            .for_each(|(lin_idx, coefficient)| {
-                let [excitation_layer, linked_layer] =
-                    cart_lin::lin_to_cart_unchecked(lin_idx, &[dimension, dimension]);
-
-                let ordering =
-                    coil_layout.ordering_vertical(linked_layer as u16, excitation_layer as u16);
-                let layer_index = match ordering {
-                    std::cmp::Ordering::Equal => linked_layer,
-                    std::cmp::Ordering::Less => excitation_layer,
-                    std::cmp::Ordering::Greater => linked_layer,
-                };
-
-                *coefficient = inductance_leakage_coefficient_priv(
-                    self,
-                    &slot_contour_no_opening,
-                    &slot_bounds_no_opening,
-                    &all_layer_contours[layer_index],
-                    &all_layer_bounds[layer_index],
-                    all_layer_area[layer_index],
-                    &ordering,
-                );
-            });
-
-        return matrix;
-    }
-
-    /// Return the leakage coefficient proportion caused by the slot opening
-    fn leakage_coefficient_opening(&self) -> f64 {
-        if self.opening_width().get::<meter>() > 0.0 {
-            return f64::from(self.magnetic_opening_height() / self.opening_width());
-        } else {
-            return 0.0; // TODO: Find better way to calculate this!
-        }
-    }
-
-    /// Return the leakage coefficient proportion caused by the tooth tip
-    /// leakage.
-    fn leakage_coefficient_tooth_tip(&self, magnetic_air_gap: Length) -> f64 {
-        if !self.consider_tooth_tip_leakage() || magnetic_air_gap.get::<meter>() <= 0.0 {
-            return 0.0;
-        } else {
-            // Interpolation from 3.7.2 of [MVP08] (values read out by hand!)
-            let x = vec![
-                0.125, 0.275, 0.5, 0.55, 0.9, 1.0, 1.5, 1.65, 2.0, 2.5, 3.0, 4.0, 6.0, 8.0, 10.0,
-                12.0, 14.0, 16.0,
-            ];
-            let y = vec![
-                1.0, 0.8, 0.65, 0.6, 0.4, 0.39, 0.25, 0.2, 0.14, 0.07, 0.0, -0.03, -0.08, -0.11,
-                -0.13, -0.15, -0.16, -0.17,
-            ];
-            let len = y.len() - 1;
-            let ml = vec![(y[len - 1] - y[len]) / (x[len - 1] - x[len])];
-            let mr = vec![(y[0] - y[1]) / (x[0] - x[1])];
-            let spline = AkimaSpline::new(x, y, Some(ml), Some(mr))
-                .expect("spline can be constructed from given data");
-
-            match spline.eval(f64::from(self.opening_width() / magnetic_air_gap)) {
-                Some(val) => return val,
-                None => 0.0,
-            }
-        }
-    }
-
-    /// Calculates the current displacement coefficients [kr, kx],
-    /// where kr is the resistance increase coefficient and kx is the leakage
-    /// inductance reduction coefficient.
-    ///
-    /// # OptimizationParameters
-    /// - &self: Slot instance
-    /// - frequency: Frequency of the electrical current
-    /// - el_conductivity: Electrical conductivity
-    /// - rel_permeability: Relative material permeability
-    fn current_displacement_coefficients(
-        &self,
-        frequency: Frequency,
-        el_conductivity: ElectricalConductivity,
-        rel_permeability: f64,
-    ) -> CurrentDisplacementCoefficients {
-        let shapes = self.shapes(CoilLayout::Single, true);
-        let [x_ul, y_ul, x_lr, y_lr] = self.slices(50, &shapes[0].contour());
-
-        let mut width: Vec<Length> = Vec::with_capacity(x_ul.len());
-        let mut height: Vec<Length> = Vec::with_capacity(x_ul.len());
-        for ii in 0..x_ul.len() {
-            width.push(Length::new::<meter>(x_lr[ii] - x_ul[ii]));
-            height.push(Length::new::<meter>(y_ul[ii] - y_lr[ii]));
-        }
-        return current_displacement_coefficients_numeric(
-            width.as_slice(),
-            height.as_slice(),
-            frequency,
-            el_conductivity,
-            rel_permeability,
-        );
-    }
-
-    /// Returns the total slot area.
-    fn area(&self) -> Area {
-        return Area::new::<square_meter>(self.contour().area());
-    }
-
-    /// Returns the slot area available for winding (e.g. w/o slot opening
-    /// area).
-    fn winding_area(&self) -> Area {
-        return Area::new::<square_meter>(self.contour_main_body().area());
-    }
-
-    /// Returns the slot width at the given slot height, starting at the air
-    /// gap.
-    fn width(
-        &self,
-        vertical_slot_coord: Length,
-        contour: &Contour,
-        slot_bounds: &BoundingBox,
-    ) -> Length {
-        // Case x = 0: width equals slot opening
-        if vertical_slot_coord == Length::new::<meter>(0.0) {
-            return self.opening_width();
-        }
-
-        let vertices = vec![
-            [2.0 * slot_bounds.xmin(), vertical_slot_coord.get::<meter>()],
-            [2.0 * slot_bounds.xmax(), vertical_slot_coord.get::<meter>()],
-        ];
-        let parallel_line = Polysegment::from_points(&vertices);
-        let intersections =
-            contour.intersections_par(&parallel_line, DEFAULT_EPSILON, DEFAULT_MAX_ULPS);
-
-        // One or no intersection -> Secant length is zero
-        if intersections.len() < 2 {
-            return Length::new::<meter>(0.0);
-        } else {
-            // Identify the intersections with the largest positive or negative x-value
-            let mut inter_pos = intersections[0];
-            let mut inter_neg = intersections[0];
-
-            for intersection in intersections.iter().skip(1) {
-                if intersection.point[0] > inter_pos.point[0] {
-                    inter_pos = *intersection;
-                }
-                if intersection.point[0] < inter_neg.point[0] {
-                    inter_neg = *intersection;
-                }
-            }
-
-            return Length::new::<meter>(inter_pos.point[0] - inter_neg.point[0]);
-        }
-    }
-
-    /// Returns the slot shapes.
+    /// Returns the slot shapes. TODO -> Contour?
     fn shapes(&self, coil_layout: CoilLayout, include_slot_opening: bool) -> Vec<Shape> {
         // Remove the slot opening, if necessary
         let contour = if include_slot_opening {
-            self.contour()
+            self.outline().into_owned().into()
         } else {
-            self.contour_main_body()
+            Contour::from(self.outline_winding_area())
         };
 
         // ==========================================================================
@@ -724,61 +666,675 @@ pub trait Slot: Send + Sync + std::fmt::Debug + DynClone + Any + 'static {
             .collect();
     }
 
-    /// To calculate the current displacement factors, the slot is "sliced" into
-    /// rectangles. This function can be used to visualize those slices.
-    fn slice_shapes(&self, min_number_slices: usize) -> Vec<Shape> {
-        let mut shapes = self.shapes(CoilLayout::Single, true);
-        let [x_ul, y_ul, x_lr, y_lr] = self.slices(min_number_slices, &shapes[0].contour());
+    // =========================================================================
+    // END TODO
 
-        for ii in 1..x_ul.len() {
-            let pts = vec![
-                [x_lr[ii], y_lr[ii]],
-                [x_lr[ii], y_ul[ii]],
-                [x_ul[ii], y_ul[ii]],
-                [x_ul[ii], y_lr[ii]],
-            ];
-            let contour = Polysegment::from_points(&pts).into();
-            if let Ok(s) = Shape::from_outer(contour) {
-                shapes.push(s);
-            }
-        }
-        return shapes;
+    /**
+    Returns the self-inductance leakage coefficient of the `layer`.
+
+    The conductors inside a slot are grouped into "layers", which are positioned
+    according to the given `coil_layout`. When an AC current passes through the
+    conductors of one of these layers, the resulting magnetic field acts as an
+    inductance according to Lenz' rule. This so-called self-inductance can be
+    calculates as:
+
+    ```text
+    Ls = μ0 * l_ax * w_sp² * lambda_s
+    ```
+    according to eq (3.5.13) in [1] with `μ0` being the vacuum permeability,
+    `l_ax` being the axial length of the magnetic core which contains the slot
+    and `w_sp²` being the number of turns in the layer.
+
+    The self-inductance leakage coefficient `lambda_s` is given by eq. (3.5.12)
+    in [1]:
+
+    ```text
+    lambda_s = int_0^h (A(x)/A)² / s(x) dx
+    ```
+
+    with `h` being the slot height, `x` being a vertical coordinate starting at
+    the slot bottom, `A` being the surface area of the layer, `A(x)` being the
+    area below `x` and `s(x)` being the width of the layer at `x`.
+
+    For the full derivation, see section 3.5.2.1 of [1]. Section A.1 of [2]
+    gives an example for a real slot geometry.
+
+    Implementation-wise, this function calls
+    [`Slot::mutual_inductance_leakage_coefficient`] with both `linked_layer` and
+    `excitation_layer` being set to `layer`.
+
+    # Panics
+    Panics if `layer` is not smaller than the [`CoilLayout::layers`] value of
+    the given `coil_layout`.
+
+    # Literature
+
+    >[1] Müller, Germar; Vogt, Karl; Ponick, Bernd: Berechnung elektrischer
+    Maschinen, 6th edition (2008), Wiley-VCH, Weinheim
+    >[2] Mathis, Stefan: Permanentmagneterregte Line-Start-Antriebe in
+    Ferrittechnik, Shaker-Verlag, Düren
+
+    # Examples
+
+    ```
+    use approx::assert_abs_diff_eq;
+    use stem_slot::prelude::*;
+
+    let slot = RectangularSlot::new(
+        Length::new::<millimeter>(5.0),
+        Length::new::<millimeter>(5.0),
+        Length::new::<millimeter>(20.0),
+        Length::new::<millimeter>(0.0),
+        true,
+    )
+    .expect("valid inputs");
+
+    // Single layer winding
+    assert_abs_diff_eq!(slot.self_inductance_leakage_coefficient(0, &CoilLayout::Single), 1.3333, epsilon=1e-3);
+
+    // Double-layer winding. The lower layer has a much higher self-inductance
+    // than the upper, because A(x) is immediately non-zero, whereas it stays 0
+    // for the first half of the layer hight in the upper layer.
+    assert_abs_diff_eq!(slot.self_inductance_leakage_coefficient(0, &CoilLayout::DoubleVertical), 2.6666, epsilon=1e-3);
+    assert_abs_diff_eq!(slot.self_inductance_leakage_coefficient(1, &CoilLayout::DoubleVertical), 0.6666, epsilon=1e-3);
+    ```
+    */
+    fn self_inductance_leakage_coefficient(&self, layer: u16, coil_layout: &CoilLayout) -> f64 {
+        return self.mutual_inductance_leakage_coefficient(layer, layer, coil_layout);
     }
 
-    /*
-    Create a list of horizontal slices from a given slot. The slices are rectangles
-    aligned with the x-y-coordinate system and defined by the x-y-coordinates of their
-    upper left and lower right corner respectively. This function only covers slots
-    w/o holes in them. Additionally, it is assumed that the slot is symmetric along
-    the y-axis
-    */
-    fn slices(&self, min_number_slices: usize, contour: &Contour) -> [Vec<f64>; 4] {
-        let mut poly = contour.polygonize(Polygonizer::PerType {
+    /**
+    Returns the inductance coefficient of `linked_layer` caused by the
+    `excitation_layer`.
+
+    The conductors inside a slot are grouped into "layers", which are positioned
+    according to the given `coil_layout`. When an AC current passes through the
+    conductors of one of these layers, the resulting magnetic field acts as an
+    inductance according to Lenz' rule both for the layer itself as well as for
+    other layers in the slot. This inductance can be calculates as
+
+    ```text
+    Lo = μ0 * l_ax * w_l * w_e * lambda_o
+    ```
+
+    according to eq (3.5.22b) in [1] with `μ0` being the vacuum permeability,
+    `l_ax` being the axial length of the magnetic core which contains the slot,
+    `w_l` being the number of turns of the `linked_layer` and `w_e` being the
+    number of turns of the `excitation_layer`. If
+    `linked_layer == excitation_layer`, this simplifies to the equation shown in
+    the docstring of [`Slot::self_inductance_leakage_coefficient`].
+
+    Likewise, the inductance leakage coefficient `lambda_o` for the general case
+    can be found as
+
+    ```text
+    lambda_s = int_x0^h (A_l(x)/A_l) * (A_e(x)/A_e) / s(x) dx
+    ```
+
+    with `h` being the slot height, `x` being a vertical coordinate starting at
+    the slot bottom, `x0` being the lowest point of the `linked_layer` measured
+    in the `x`-coordinate system, `A_l/e` being the surface area of the linked
+    / excitation layer, `A_l/e(x)` being the respective area below `x` and
+    `s(x)` being the width of the layer at `x`.
+
+    From these equations, it is obvious to see that the vertical positioning of
+    the layers relative to each other plays a huge role, as shown in the
+    examples. See section 3.5.2.2 of [1] for more.
+
+    # Panics
+    Panics if `linked_layer` or `excitation_layer` is not smaller than the
+    [`CoilLayout::layers`] value of the given `coil_layout`.
+
+    # Literature
+
+    >[1] Müller, Germar; Vogt, Karl; Ponick, Bernd: Berechnung elektrischer
+    Maschinen, 6th edition (2008), Wiley-VCH, Weinheim
+
+    # Examples
+
+    ```
+    use approx::assert_abs_diff_eq;
+    use stem_slot::prelude::*;
+
+    let slot = RectangularSlot::new(
+        Length::new::<millimeter>(5.0),
+        Length::new::<millimeter>(5.0),
+        Length::new::<millimeter>(20.0),
+        Length::new::<millimeter>(0.0),
+        true,
+    )
+    .expect("valid inputs");
+
+    // Mutual inductance of layer with itself is equal to its self-inductance
+    assert_abs_diff_eq!(
+        slot.mutual_inductance_leakage_coefficient(0, 0, &CoilLayout::DoubleVertical),
+        slot.self_inductance_leakage_coefficient(0, &CoilLayout::DoubleVertical),
+        epsilon=1e-3
+    );
+
+    // Inductance in bottom layer caused by the top layer
+    assert_abs_diff_eq!(
+        slot.mutual_inductance_leakage_coefficient(0, 1, &CoilLayout::DoubleVertical),
+        1.0,
+        epsilon=1e-3
+    );
+
+    // Inductance in top layer caused by the bottom layer
+    assert_abs_diff_eq!(
+        slot.mutual_inductance_leakage_coefficient(1, 0, &CoilLayout::DoubleVertical),
+        1.0,
+        epsilon=1e-3
+    );
+    ```
+     */
+    fn mutual_inductance_leakage_coefficient(
+        &self,
+        linked_layer: u16,
+        excitation_layer: u16,
+        coil_layout: &CoilLayout,
+    ) -> f64 {
+        // Check the relationship between the layers and adjust the calculation strategy
+        let slot_contour_no_opening = Contour::from(self.outline_winding_area());
+        let slot_bounds_no_opening = slot_contour_no_opening.bounding_box();
+        let slot_body_centroid = slot_contour_no_opening.centroid();
+
+        let ordering = coil_layout.ordering_vertical(linked_layer, excitation_layer);
+        let layer_bounds = match ordering {
+            std::cmp::Ordering::Equal => {
+                /*
+                Both layers are located in the same height. This equals case 1 in [MVP08], p. 316.
+                */
+                layer_bounds(
+                    self,
+                    linked_layer,
+                    coil_layout,
+                    slot_body_centroid,
+                    &slot_bounds_no_opening,
+                    1.0,
+                    0.0,
+                )
+            }
+            std::cmp::Ordering::Greater => {
+                /*
+                The linked layer is above the excitation layer. This equals case 2 in [MVP08], p. 316.
+                */
+                layer_bounds(
+                    self,
+                    linked_layer,
+                    coil_layout,
+                    slot_body_centroid,
+                    &slot_bounds_no_opening,
+                    1.0,
+                    0.0,
+                )
+            }
+            std::cmp::Ordering::Less => {
+                /*
+                The linked layer is above the excitation layer. This equals case 2 in [MVP08], p. 316.
+                */
+                layer_bounds(
+                    self,
+                    excitation_layer,
+                    coil_layout,
+                    slot_body_centroid,
+                    &slot_bounds_no_opening,
+                    1.0,
+                    0.0,
+                )
+            }
+        };
+
+        let layer_contour = apply_bounds(&slot_contour_no_opening, &layer_bounds);
+        let layer_area = layer_contour.area();
+
+        return inductance_leakage_coefficient(
+            self,
+            &slot_contour_no_opening,
+            &slot_bounds_no_opening,
+            &layer_contour,
+            &layer_bounds,
+            layer_area,
+            &ordering,
+        );
+    }
+
+    /**
+    Returns the [`Slot::mutual_inductance_leakage_coefficient`] for all possible
+    layer combinations for the given `coil_layout`.
+
+    The returned matrix is square and its numbers of rows / columns equals
+    [`CoilsLayout::layers`] of `coil_layout`. The row contains the layer with
+    the `linked_layer` where the voltage due to the leakage flux is induced,
+    while the column corresponds to the `excitation_layer` carrying the current
+    creating the magnetic field. This means that the diagonal contains the
+    [`self_inductance_leakage_coefficient`](Slot::self_inductance_leakage_coefficient),
+    while the off-diagonals contain the
+    [`mutual_inductance_leakage_coefficient`](Slot::mutual_inductance_leakage_coefficient).
+
+    This matrix does not consider either the slot opening leakage nor the tooth
+    tip leakage.
+
+    # Examples
+    ```
+    use approx::assert_abs_diff_eq;
+    use stem_slot::prelude::*;
+
+    let slot = RectangularSlot::new(
+        Length::new::<millimeter>(5.0),
+        Length::new::<millimeter>(5.0),
+        Length::new::<millimeter>(20.0),
+        Length::new::<millimeter>(0.0),
+        true,
+    )
+    .expect("valid inputs");
+
+    let coeffs = slot.leakage_coefficient_matrix(&CoilLayout::DoubleVertical);
+
+    // Diagonals are equal to self-inductance leakage coefficient
+    assert_abs_diff_eq!(
+        coeffs[(0, 0)],
+        slot.self_inductance_leakage_coefficient(0, &CoilLayout::DoubleVertical),
+        epsilon=1e-3
+    );
+    assert_abs_diff_eq!(
+        coeffs[(1, 1)],
+        slot.self_inductance_leakage_coefficient(1, &CoilLayout::DoubleVertical),
+        epsilon=1e-3
+    );
+
+    // Off-diagonals are equal to respective mutual inductance leakage coefficient.
+    assert_abs_diff_eq!(
+        coeffs[(0, 1)],
+        slot.mutual_inductance_leakage_coefficient(0, 1, &CoilLayout::DoubleVertical),
+        epsilon=1e-3
+    );
+    assert_abs_diff_eq!(
+        coeffs[(1, 0)],
+        slot.mutual_inductance_leakage_coefficient(1, 0, &CoilLayout::DoubleVertical),
+        epsilon=1e-3
+    );
+    ```
+     */
+    fn leakage_coefficient_matrix(&self, coil_layout: &CoilLayout) -> DMatrix<f64> {
+        let layers = coil_layout.layers();
+        let dimension = layers as usize;
+        let mut matrix = DMatrix::repeat(dimension, dimension, 0.0);
+
+        /*
+        Precalculate some shared values
+        */
+        let slot_contour_no_opening = Contour::from(self.outline_winding_area());
+        let slot_bounds_no_opening = slot_contour_no_opening.bounding_box();
+        let slot_body_centroid = slot_contour_no_opening.centroid();
+
+        let all_layer_bounds: Vec<BoundingBox> = (0..layers)
+            .into_par_iter()
+            .map(|layer| {
+                return layer_bounds(
+                    self,
+                    layer as u16,
+                    coil_layout,
+                    slot_body_centroid,
+                    &slot_bounds_no_opening,
+                    1.0,
+                    0.0,
+                );
+            })
+            .collect();
+
+        let all_layer_contours: Vec<Contour> = all_layer_bounds
+            .par_iter()
+            .map(|bounds| apply_bounds(&slot_contour_no_opening, &bounds))
+            .collect();
+
+        let all_layer_area: Vec<f64> = all_layer_contours.par_iter().map(Contour::area).collect();
+
+        matrix
+            .as_mut_slice()
+            .par_iter_mut()
+            .enumerate()
+            .for_each(|(lin_idx, coefficient)| {
+                let [excitation_layer, linked_layer] =
+                    cart_lin::lin_to_cart_unchecked(lin_idx, &[dimension, dimension]);
+
+                let ordering =
+                    coil_layout.ordering_vertical(linked_layer as u16, excitation_layer as u16);
+                let layer_index = match ordering {
+                    std::cmp::Ordering::Equal => linked_layer,
+                    std::cmp::Ordering::Less => excitation_layer,
+                    std::cmp::Ordering::Greater => linked_layer,
+                };
+
+                *coefficient = inductance_leakage_coefficient(
+                    self,
+                    &slot_contour_no_opening,
+                    &slot_bounds_no_opening,
+                    &all_layer_contours[layer_index],
+                    &all_layer_bounds[layer_index],
+                    all_layer_area[layer_index],
+                    &ordering,
+                );
+            });
+
+        return matrix;
+    }
+
+    /// Returns the tooth tip leakage coefficient as a function of the magnetic
+    /// / effective air gap.
+    ///
+    /// The tooth tip leakage flux is the part of the magnetic flux which exits
+    /// the tooth tip, but does not cross over the air gap and instead takes
+    /// an arc path back to the neighboring tooth tip.
+    #[doc = ""]
+    #[cfg_attr(
+        feature = "doc-images",
+        doc = "![Slot leakage flux overview][slot_leakage_flux_overview]"
+    )]
+    #[cfg_attr(
+        feature = "doc-images",
+        embed_doc_image::embed_doc_image(
+            "slot_leakage_flux_overview",
+            "docs/img/slot_leakage_flux_overview.svg"
+        )
+    )]
+    #[cfg_attr(
+        not(feature = "doc-images"),
+        doc = "**Doc images not enabled**. Compile docs with
+        `cargo doc --features 'doc-images'` and Rust version >= 1.54."
+    )]
+    ///
+    /// This flux is heavily influenced by the [`Slot::opening_width`] in
+    /// between the teeth and the magnetic air gap. Generally speaking, a
+    /// smaller slot opening increases this flux, while a smaller
+    /// `magnetic_air_gap` decreases it. For an in-depth description of the
+    /// phenomen, see e.g.
+    /// > Müller, Germar; Vogt, Karl; Ponick, Bernd: Berechnung elektrischer
+    /// Maschinen, 6th edition (2008), Wiley-VCH, Weinheim (section 3.7.1)
+    ///
+    /// This method returns a dimensionless factor. To obtain the actual leakage
+    /// inductance, multiply that factor with the main inductance of the winding
+    /// in the slot. The leakage flux for a particular current can then be found
+    /// by multiplying the leakage inductance with that current.
+    ///
+    /// The default implementation of this method uses the free function
+    /// [`leakage_coefficient_tooth_tip`], see its docstring for details. This
+    /// separation between interface (this method) and implementation allows
+    /// using the underlying function as part of a custom implementation.
+    /// For an example of this pattern, see the source code of the [`Slot`]
+    /// implementation for
+    /// [`RectangularSlot`](crate::rectangular::RectangularSlot).
+    fn leakage_coefficient_tooth_tip(&self, magnetic_air_gap: Length) -> f64 {
+        leakage_coefficient_tooth_tip(self.opening_width(), magnetic_air_gap)
+    }
+
+    /// Returns the slot opening leakage coefficient.
+    ///
+    /// A part of the magnetic flux created by the coil(s) inside the slot
+    /// closes over the slot opening (see image below). This flux is calculated
+    /// by multiplying the slot opening leakage inductance with the current
+    /// going through the coil(s). The slot opening leakage inductance itself
+    /// is the product of the main winding inductance and the slot opening
+    /// factor which is provided by this method.
+    #[doc = ""]
+    #[cfg_attr(
+        feature = "doc-images",
+        doc = "![Slot leakage flux overview][slot_leakage_flux_overview]"
+    )]
+    #[cfg_attr(
+        feature = "doc-images",
+        embed_doc_image::embed_doc_image(
+            "slot_leakage_flux_overview",
+            "docs/img/slot_leakage_flux_overview.svg"
+        )
+    )]
+    #[cfg_attr(
+        not(feature = "doc-images"),
+        doc = "**Doc images not enabled**. Compile docs with
+        `cargo doc --features 'doc-images'` and Rust version >= 1.54."
+    )]
+    ///
+    /// The default implementation of the method assumes that the slot opening
+    /// is parallel-sided. In that case, the coefficient becomes the quotient
+    /// `opening_height / opening_width`, see eq. (3.7.1f) in [1]. Even if the
+    /// slot opening is not parallel sided, it is usually sufficient to
+    /// approximate it as such by using a mean value for the opening width (see
+    /// [1], p. 325). In case the slot is closed, this method simply returns
+    /// zero.
+    ///
+    /// >[1]: Müller, Germar; Vogt, Karl; Ponick, Bernd: Berechnung elektrischer
+    /// Maschinen, 6th edition (2008), Wiley-VCH, Weinheim
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use stem_slot::prelude::*;
+    ///
+    /// let slot = RectangularSlot::new(
+    ///     Length::new::<millimeter>(10.0),
+    ///     Length::new::<millimeter>(2.0),
+    ///     Length::new::<millimeter>(20.0),
+    ///     Length::new::<millimeter>(1.0),
+    ///     true,
+    /// ).expect("valid inputs");
+    /// assert_eq!(slot.leakage_coefficient_opening(), 0.5); // height (1) / width (2)
+    /// ```
+    fn leakage_coefficient_opening(&self) -> f64 {
+        if self.opening_width().get::<meter>() > 0.0 {
+            return f64::from(self.opening_height() / self.opening_width());
+        } else {
+            return 0.0;
+        }
+    }
+
+    /// Returns a [`CurrentDisplacementCalculator`] which can be used to
+    /// calculate the
+    /// [`CurrentDisplacementCoefficients`](crate::current_displacement::CurrentDisplacementCoefficients).
+    ///
+    /// In massive conductors, an alternating current is not evenly spread
+    /// across the cross-section, but instead is "displaced" by its own magnetic
+    /// field. This displacement reduces the effective cross section of the
+    /// conductor, resulting in an increased resistance and reduced inductance.
+    /// The effect depends on the slot / conductor geometry as well as on
+    /// external factors like the frequency of the alternating current, the
+    /// electric conductivity and the relative permeability of the conductor.
+    ///
+    /// This method returns a [`CurrentDisplacementCalculator`] which allows the
+    /// efficient calculation of the
+    /// [`CurrentDisplacementCoefficients`](crate::current_displacement::CurrentDisplacementCoefficients)
+    /// for the slot geometry of `self`. The slot surface is separated into
+    /// multiple/ rectangular [`slices`](Slot::slices) and the coefficients are
+    /// calculated piece-wise. For more information, see
+    /// >Müller, Germar; Vogt, Karl; Ponick, Bernd: Berechnung elektrischer
+    /// Maschinen, 6th edition (2008), Wiley-VCH, Weinheim (section 5.3)
+    ///
+    /// The minimum number of slices is specified by `min_num_slices`, see the
+    /// docstring of [`Slot::slices`]. Generally speaking, the higher this
+    /// number, the more precise and expensive the calculation. In practice, a
+    /// value of 50 delivers sufficient results even for complex geometries.
+    ///
+    /// The following graph shows a comparison for the special case of an open
+    /// rectangular open slot, where an analytic solution exists (see
+    /// [`CurrentDisplacementCoefficients::from_rectangular_open_slot`](crate::current_displacement::CurrentDisplacementCoefficients::from_rectangular_open_slot)).
+    #[doc = ""]
+    #[cfg_attr(
+        feature = "doc-images",
+        doc = "![Comparison analytic and numeric current displacement coefficients][current_displacement_coeffs_comp]"
+    )]
+    #[cfg_attr(
+        feature = "doc-images",
+        embed_doc_image::embed_doc_image(
+            "current_displacement_coeffs_comp",
+            "docs/img/current_displacement_coeffs_comp.svg"
+        )
+    )]
+    #[cfg_attr(
+        not(feature = "doc-images"),
+        doc = "**Doc images not enabled**. Compile docs with
+        `cargo doc --features 'doc-images'` and Rust version >= 1.54."
+    )]
+    ///
+    /// # Examples
+    /// ```
+    /// use approx::assert_abs_diff_eq;
+    /// use stem_slot::prelude::*;
+    ///
+    /// let slot = RectangularSlot::new(
+    ///     Length::new::<millimeter>(10.0),
+    ///     Length::new::<millimeter>(5.0),
+    ///     Length::new::<millimeter>(20.0),
+    ///     Length::new::<millimeter>(0.0),
+    ///     true,
+    /// ).expect("valid inputs");
+    ///
+    /// let el_conductivity = ElectricalConductivity::new::<siemens_per_meter>(37.0 * 1e6);
+    /// let rel_permeability = 1.0;
+    ///
+    /// // Reuse of calculator for different frequencies
+    /// let mut calc = slot.current_displacement_coefficients(50);
+    /// assert_abs_diff_eq!(
+    ///     calc.eval(Frequency::new::<hertz>(50.0), el_conductivity, rel_permeability).resistance,
+    ///     1.5757,
+    ///     epsilon = 1e-3
+    /// );
+    /// assert_abs_diff_eq!(
+    ///     calc.eval(Frequency::new::<hertz>(100.0), el_conductivity, rel_permeability).resistance,
+    ///     2.381,
+    ///     epsilon = 1e-3
+    /// );
+    ///
+    /// // Higher number of slices
+    /// let calc_hi_prec = slot.current_displacement_coefficients(100);
+    /// assert_abs_diff_eq!(
+    ///     calc.eval(Frequency::new::<hertz>(50.0), el_conductivity, rel_permeability).resistance,
+    ///     1.5757,
+    ///     epsilon = 1e-3
+    /// );
+    ///
+    /// // Comparison with analytical solution
+    /// assert_abs_diff_eq!(
+    ///     CurrentDisplacementCoefficients::from_rectangular_open_slot(
+    ///         slot.height(),
+    ///         Frequency::new::<hertz>(50.0),
+    ///         el_conductivity,
+    ///         rel_permeability
+    ///     ).resistance,
+    ///     1.5757,
+    ///     epsilon = 1e-3
+    /// );
+    /// ```
+    fn current_displacement_coefficients(
+        &self,
+        min_num_slices: usize,
+    ) -> CurrentDisplacementCalculator {
+        return CurrentDisplacementCalculator::new(self, min_num_slices);
+    }
+
+    /// Separates the slot in horizontal slices and returns their bounding
+    /// boxes, starting at the slot bottom.
+    ///
+    /// This method is used by [`Slot::current_displacement_coefficients`] to
+    /// approximate the slot area by multiple stacked rectangles. The
+    /// `min_num_slices` defines the maximum height of a single rectangle as
+    /// `self.height() / min_num_slices`. As the name suggests, the actual
+    /// number of generated slices can be (much) higher, because e.g. arc
+    /// segments are again split into partial arcs covering at most 10 degree.
+    /// Therefore, this value is a lower limit on the desired precision.
+    #[doc = ""]
+    #[cfg_attr(feature = "doc-images", doc = "![Slices comparison][slices_comp]")]
+    #[cfg_attr(
+        feature = "doc-images",
+        embed_doc_image::embed_doc_image("slices_comp", "docs/img/slices_comp.svg")
+    )]
+    #[cfg_attr(
+        not(feature = "doc-images"),
+        doc = "**Doc images not enabled**. Compile docs with
+        `cargo doc --features 'doc-images'` and Rust version >= 1.54."
+    )]
+    ///
+    /// As described in the docstring of [`CurrentDisplacementCalculator`], the
+    /// [`CurrentDisplacementCoefficients`](crate::current_displacement::CurrentDisplacementCoefficients)
+    /// of a conductor filling an arbitrary slot geometry can be found by
+    /// separating the slot area in multiple parallel conductors and calculating
+    /// the currents through each one. This method delivers the dimensions of
+    /// each rectangular conductor.
+    ///
+    /// The default implementation makes the following assumptions:
+    /// - The slot outline is symmetrical about the y-axis. This implies that
+    /// the slot outline crosses the y-axis exactly once at the slot bottom.
+    /// - Drawing a horizontal line anywhere through the slot does not result
+    /// in more than two intersections
+    ///
+    /// The image below shows two examples where these assumptions are not
+    /// fulfilled. In such a case, this method must be overwritten. The order
+    /// of the returned [`BoundingBox`]es must be slot-bottom-to-opening.
+    #[doc = ""]
+    #[cfg_attr(
+        feature = "doc-images",
+        doc = "![Assumptions are not fulfilled][non_conform_slices]"
+    )]
+    #[cfg_attr(
+        feature = "doc-images",
+        embed_doc_image::embed_doc_image("non_conform_slices", "docs/img/non_conform_slices.svg")
+    )]
+    #[cfg_attr(
+        not(feature = "doc-images"),
+        doc = "**Doc images not enabled**. Compile docs with
+        `cargo doc --features 'doc-images'` and Rust version >= 1.54."
+    )]
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use approx::assert_abs_diff_eq;
+    /// use stem_slot::prelude::*;
+    ///
+    /// let slot = RectangularSlot::new(
+    ///     Length::new::<millimeter>(10.0),
+    ///     Length::new::<millimeter>(5.0),
+    ///     Length::new::<millimeter>(20.0),
+    ///     Length::new::<millimeter>(2.0),
+    ///     true,
+    /// ).expect("valid inputs");
+    ///
+    /// let slices = slot.slices(10);
+    /// assert_eq!(slices.len(), 10);
+    ///
+    /// // Assert that the area covered by all slices is equivalent to that of the slot
+    /// let area: f64 = slices.iter().map(|b|b.height() * b.width()).sum();
+    /// assert_abs_diff_eq!(area, slot.area().get::<square_meter>(), epsilon=1e-6);
+    /// ```
+    fn slices(&self, min_num_slices: usize) -> Vec<BoundingBox> {
+        let binding = self.outline();
+        let mut point_iter = binding.polygonize(Polygonizer::PerType {
             arc: SegmentPolygonizer::MaximumAngle(TAU / 36.0),
             straight: SegmentPolygonizer::InnerSegments(1),
         });
-        let max_slice_height = self.height().get::<meter>() / (min_number_slices as f64);
+
+        let max_slice_height = self.height().get::<meter>() / (min_num_slices as f64);
 
         // Middle of the vertical right side
-        let mut x_cr: Vec<f64> = Vec::new();
-        let mut y_cr: Vec<f64> = Vec::new();
-        let mut h_slices: Vec<f64> = Vec::new();
+        let mut bbs: Vec<BoundingBox> = Vec::with_capacity(min_num_slices);
 
         /*
-        Loop over all polygon sections except the one connecting the last to the first
-        vertex. All sections which are connected to a vertex with negative x-coordinate
-        are ignored (assumption of a symmetric slot)
+        Iterate through the polygon points until the sign changes. This
+        indicates that the slot bottom has been reached (even if it is an arc,
+        because that one has been polygonized as well). After that, start
+        building the vector of bounding boxes from the slot bottom up to the
+        air gap
         */
-        if let Some(mut pt1) = poly.next() {
-            for pt2 in poly {
-                // Stop loop once the "negative" half of the slot vertices (x < 0) is reached
-                if pt1[0] < 0.0 || pt2[0] < 0.0 {
-                    break;
+        if let Some(mut pt1) = point_iter.next() {
+            let initial_sign = pt1[0].signum();
+            for pt2 in point_iter {
+                // Skip all points with the same x-sign as the initial point
+                // (slot bottom hasn't been reached yet)
+                if pt1[0].signum() == initial_sign {
+                    pt1 = pt2;
+                    continue;
                 }
 
                 // Skip sections which have a very small incline
                 let delta_x = pt2[0] - pt1[0];
-                let delta_y = pt2[1] - pt1[1];
+                let delta_y = (pt2[1] - pt1[1]).abs();
                 if ulps_eq!(
                     delta_y,
                     0.0,
@@ -797,9 +1353,15 @@ pub trait Slot: Send + Sync + std::fmt::Debug + DynClone + Any + 'static {
                 let slice_height = delta_y / n_slices_section;
 
                 for ii in 0..(n_slices_section as usize) {
-                    x_cr.push(pt1[0] + (ii as f64 + 0.5) * delta_x / n_slices_section);
-                    y_cr.push(pt1[1] + (ii as f64 + 0.5) * slice_height);
-                    h_slices.push(slice_height);
+                    let d = (n_slices_section - ii as f64) - 0.5;
+                    let x = pt2[0].abs() + d * delta_x / n_slices_section;
+                    let y_middle = pt2[1] + d * slice_height;
+                    bbs.push(BoundingBox::new(
+                        -x,
+                        x,
+                        y_middle - 0.5 * slice_height,
+                        y_middle + 0.5 * slice_height,
+                    ));
                 }
 
                 // Prepare the next iteration
@@ -807,33 +1369,137 @@ pub trait Slot: Send + Sync + std::fmt::Debug + DynClone + Any + 'static {
             }
         }
 
-        // Create the upper left and lower right corner vertices
-        let number_slices = h_slices.len();
-        let mut x_ul: Vec<f64> = Vec::with_capacity(number_slices);
-        let mut y_ul: Vec<f64> = Vec::with_capacity(number_slices);
-        let mut x_lr: Vec<f64> = Vec::with_capacity(number_slices);
-        let mut y_lr: Vec<f64> = Vec::with_capacity(number_slices);
-
-        for ii in 0..number_slices - 1 {
-            x_ul.push(-x_cr[ii]);
-            x_lr.push(x_cr[ii]);
-            y_ul.push(y_cr[ii] + 0.5 * h_slices[ii]);
-            y_lr.push(y_cr[ii] - 0.5 * h_slices[ii]);
-        }
-
-        // Reverse the order of the vectors so they start at the slot bottom
-        x_ul.reverse();
-        y_ul.reverse();
-        x_lr.reverse();
-        y_lr.reverse();
-
-        return [x_ul, y_ul, x_lr, y_lr];
+        return bbs;
     }
 }
 
 dyn_clone::clone_trait_object!(Slot);
 
-fn layer_bounds_priv<S: Slot + ?Sized>(
+lazy_static::lazy_static! {
+    static ref LEAKAGE_COEFFICIENT_TOOTH_TIP: AkimaSpline = {
+         // Interpolation from 3.7.2 of [MVP08] (values read out by hand!)
+        let x = vec![
+            0.125, 0.275, 0.5, 0.9, 1.0, 1.5, 2.0, 2.5, 3.0, 4.0, 6.0, 8.0, 10.0, 12.0, 14.0, 16.0,
+        ];
+        let y = vec![
+            1.0, 0.82, 0.62, 0.42, 0.38, 0.24, 0.13, 0.05, 0.0, -0.05, -0.085, -0.11, -0.13, -0.148,
+            -0.159, -0.17,
+        ];
+        let len = y.len() - 1;
+        let ml = vec![(y[0] - y[1]) / (x[0] - x[1])];
+        let mr = vec![(y[len - 1] - y[len]) / (x[len - 1] - x[len])];
+        AkimaSpline::new(x, y, Some(ml), Some(mr))
+            .expect("spline can be constructed from given data")
+    };
+}
+
+/// Returns the tooth tip leakage coefficient as a function of the magnetic
+/// / effective air gap.
+///
+/// For a general introduction to the tooth tip leakage coefficient, see the
+/// docstring of [`Slot::leakage_coefficient_tooth_tip`]. This function serves
+/// as the default implementation of the method and uses the heuristic graph
+/// 3.7.2 of
+/// > Müller, Germar; Vogt, Karl; Ponick, Bernd: Berechnung elektrischer
+/// Maschinen, 6th edition (2008), Wiley-VCH, Weinheim (section 3.7.1)
+///
+/// The image below shows the resulting coefficient as a function of the
+/// ratio `opening_width / magnetic_air_gap`.
+#[doc = ""]
+#[cfg_attr(
+    feature = "doc-images",
+    doc = "![Tooth tip leakage flux graph][leakage_coefficient_tooth_tip]"
+)]
+#[cfg_attr(
+    feature = "doc-images",
+    embed_doc_image::embed_doc_image(
+        "leakage_coefficient_tooth_tip",
+        "docs/img/leakage_coefficient_tooth_tip.svg"
+    )
+)]
+#[cfg_attr(
+    not(feature = "doc-images"),
+    doc = "**Doc images not enabled**. Compile docs with
+    `cargo doc --features 'doc-images'` and Rust version >= 1.54."
+)]
+/// In this approximation, the coefficient becomes negative for large ratios
+/// `opening_width / magnetic_air_gap`as some of the slot opening leakage flux
+/// gets "pulled out" of the opening and instead crosses
+/// the air gap, leading to a net reduction of the overall leakage flux. This is
+/// due to the fact that the path crossing the air gap (twice) starts to have a
+/// lower magnetic resistance than the path accross the slot opening. Since
+/// the analytic slot opening flux calculation does not factor this in, the
+/// negative tooth tip leakage flux is used as a "compensation".
+///
+/// # Examples
+///
+/// ```
+/// use approx::assert_abs_diff_eq;
+/// use stem_slot::prelude::*;
+/// use stem_slot::slot::leakage_coefficient_tooth_tip;
+///
+/// let ow = Length::new::<millimeter>(2.0);
+///
+/// // Magnetic path for crossing the air gap twice roughly equivalent to slot opening width
+/// let ag_a = Length::new::<millimeter>(1.0);
+/// assert_abs_diff_eq!(leakage_coefficient_tooth_tip(ow, ag_a), 0.13, epsilon=1e-3);
+///
+/// // Magnetic path for crossing the air gap twice much smaller than slot opening width
+/// let ag_b = Length::new::<millimeter>(0.5);
+/// assert_abs_diff_eq!(leakage_coefficient_tooth_tip(ow, ag_b), -0.05, epsilon=1e-3);
+/// ```
+pub fn leakage_coefficient_tooth_tip(opening_width: Length, magnetic_air_gap: Length) -> f64 {
+    LEAKAGE_COEFFICIENT_TOOTH_TIP
+        .eval(f64::from(opening_width / magnetic_air_gap))
+        .unwrap_or(0.0)
+}
+
+/// Returns the slot width at the given slot height.
+///
+/// This is `s(x)` in the formulae given in
+/// [`Slot::self_inductance_leakage_coefficient`] and
+/// [`Slot::mutual_inductance_leakage_coefficient`]
+fn width<S: Slot + ?Sized>(
+    slot: &S,
+    vertical_slot_coord: Length,
+    contour: &Contour,
+    slot_bounds: &BoundingBox,
+) -> Length {
+    // Case x = 0: width equals slot opening
+    if vertical_slot_coord == Length::new::<meter>(0.0) {
+        return slot.opening_width();
+    }
+
+    let vertices = vec![
+        [2.0 * slot_bounds.xmin(), vertical_slot_coord.get::<meter>()],
+        [2.0 * slot_bounds.xmax(), vertical_slot_coord.get::<meter>()],
+    ];
+    let parallel_line = Polysegment::from_points(&vertices);
+    let intersections =
+        contour.intersections_par(&parallel_line, DEFAULT_EPSILON, DEFAULT_MAX_ULPS);
+
+    // One or no intersection -> Secant length is zero
+    if intersections.len() < 2 {
+        return Length::new::<meter>(0.0);
+    } else {
+        // Identify the intersections with the largest positive or negative x-value
+        let mut inter_pos = intersections[0];
+        let mut inter_neg = intersections[0];
+
+        for intersection in intersections.iter().skip(1) {
+            if intersection.point[0] > inter_pos.point[0] {
+                inter_pos = *intersection;
+            }
+            if intersection.point[0] < inter_neg.point[0] {
+                inter_neg = *intersection;
+            }
+        }
+
+        return Length::new::<meter>(inter_pos.point[0] - inter_neg.point[0]);
+    }
+}
+
+fn layer_bounds<S: Slot + ?Sized>(
     slot: &S,
     layer: u16,
     coil_layout: &CoilLayout,
@@ -871,7 +1537,7 @@ fn layer_bounds_priv<S: Slot + ?Sized>(
             }
         }
         CoilLayout::DoubleHorizontal => {
-            // Tooth coil arangement => Two coils aranged horizontally next to each other
+            // Tooth coil arrangement => Two coils aranged horizontally next to each other
             if layer == 0 {
                 return BoundingBox::new(
                     slot_bounds_no_opening.xmin() - x_offset,
@@ -952,8 +1618,8 @@ fn layer_bounds_priv<S: Slot + ?Sized>(
     }
 }
 
-/// Internal function which is not meant to be called directly
-fn inductance_leakage_coefficient_priv<S: Slot + ?Sized>(
+/// Internal function which is not meant to be called directly.
+fn inductance_leakage_coefficient<S: Slot + ?Sized>(
     slot: &S,
     slot_contour: &Contour,
     slot_bounds: &BoundingBox,
@@ -965,7 +1631,8 @@ fn inductance_leakage_coefficient_priv<S: Slot + ?Sized>(
     // Theta(x) is a squared function of the area ratio (we are located on the
     // height of both linked and excitation layer)
     let integrand_exc_squared = |vertical_coord: f64| {
-        let width = slot.width(
+        let width = width(
+            slot,
             Length::new::<meter>(vertical_coord),
             slot_contour,
             slot_bounds,
@@ -990,7 +1657,8 @@ fn inductance_leakage_coefficient_priv<S: Slot + ?Sized>(
     // Theta(x) is linear rising (we are located in the excitation layer, the linked
     // layer is above or below)
     let integrand_exc_lin = |vertical_coord: f64| {
-        let width = slot.width(
+        let width = width(
+            slot,
             Length::new::<meter>(vertical_coord),
             slot_contour,
             slot_bounds,
@@ -1006,7 +1674,8 @@ fn inductance_leakage_coefficient_priv<S: Slot + ?Sized>(
 
     // Theta(x) is constant (we are located above the excitation layer)
     let integrand_exc_const = |vertical_coord: f64| {
-        let width = slot.width(
+        let width = width(
+            slot,
             Length::new::<meter>(vertical_coord),
             slot_contour,
             slot_bounds,
@@ -1147,21 +1816,6 @@ pub(crate) fn slot_side_bottom_and_top_width_from_rot_core(
     return [b_bottom, b_top];
 }
 
-pub fn angle_bottom_from_width_height(
-    bottom_width: Length,
-    side_bottom_width: Length,
-    bottom_height: Length,
-    angle_slot: f64,
-) -> f64 {
-    let struct_angle = AngleBottomFromWidthHeight {
-        bottom_width,
-        side_bottom_width,
-        bottom_height,
-        angle_slot,
-    };
-    return struct_angle.get();
-}
-
 /**
 Helper struct to derive the bottom angle from the bottom width, side bottom width, bottom height and the slot angle
  */
@@ -1193,27 +1847,12 @@ impl AngleBottomFromWidthHeight {
     }
 }
 
-pub fn angle_top_from_width_height(
-    top_width: Length,
-    side_top_width: Length,
-    top_height: Length,
-    angle_slot: f64,
-) -> f64 {
-    let struct_angle = AngleTopFromWidthHeight {
-        top_width,
-        side_top_width,
-        top_height,
-        angle_slot,
-    };
-    return struct_angle.get();
-}
-
 /**
 Helper struct to derive the top angle from the top width, side top width, top height and the slot angle
  */
 #[derive(Debug, Clone)]
 #[cfg_attr(feature = "serde", derive(Deserialize))]
-struct AngleTopFromWidthHeight {
+pub struct AngleTopFromWidthHeight {
     #[cfg_attr(feature = "serde", serde(deserialize_with = "deserialize_quantity"))]
     pub top_width: Length,
     #[cfg_attr(feature = "serde", serde(deserialize_with = "deserialize_quantity"))]
@@ -1604,440 +2243,415 @@ fn apply_bounds(contour: &Contour, bounding_box: &BoundingBox) -> Contour {
     return Polysegment::from_iter(bound_primitives.into_iter()).into();
 }
 
-// #[cfg(test)]
-// mod tests {
-//     use std::f64::consts::PI;
+#[cfg(test)]
+mod tests {
+    use indoc::indoc;
+    use std::f64::consts::PI;
 
-//     use crate::{RectangularSlot, SlotTrapezoidSemi};
+    use super::*;
+    use crate::rectangular::RectangularSlot;
+    use crate::semi_trapezoid::{SemiTrapezoidSlot, SemiTrapezoidWithoutSlopesBuilder};
+    use approx;
+    use serde_impl::{
+        deserialize_angle_bottom_from_width_height, deserialize_angle_top_from_width_height,
+    };
 
-//     use super::serde_impl::{
-//         deserialize_angle_bottom_from_width_height,
-// deserialize_angle_top_from_width_height,     };
-//     use super::*;
-//     use approx;
-//     use indoc::indoc;
-//     use uom::si::{area::square_meter, length::millimeter};
+    #[test]
+    fn test_layer_bounds_rectangular() {
+        let opening_height = Length::new::<millimeter>(1.0);
+        let opening_width = Length::new::<millimeter>(3.0);
+        let width = Length::new::<millimeter>(3.0);
+        let height = Length::new::<millimeter>(20.0);
+        let slot =
+            RectangularSlot::new(width, opening_width, height, opening_height, true).unwrap();
 
-//     #[test]
-//     fn test_semi_regular_polygon_side_length() {
-//         // This is actually a regular polygon with 12 sides in total.
-//         let first_side = 1.0;
-//         let second_side = semi_regular_polygon_side_length(
-//             first_side,
-//             first_side * (2.0f64 + 3.0f64.sqrt()).sqrt(),
-//             12,
-//         )
-//         .unwrap();
-//         approx::assert_abs_diff_eq!(first_side, second_side);
+        let slot_contour = Contour::new(slot.outline_winding_area());
 
-//         // Now for an irregular polygon
-//         let first_side = 1.0;
-//         let second_side = semi_regular_polygon_side_length(first_side, 2.0,
-// 12).unwrap();         approx::assert_abs_diff_eq!(1.070466, second_side,
-// epsilon = 1e-6);
+        // Single layer
+        let bounds = layer_bounds(
+            &slot,
+            0,
+            &CoilLayout::Single,
+            slot_contour.centroid(),
+            &slot_contour.bounding_box(),
+            1.0,
+            0.0,
+        );
 
-//         // And now some failed attempts
-//         assert!(semi_regular_polygon_side_length(-1.0, 2.0, 12).is_none());
-//         assert!(semi_regular_polygon_side_length(1.0, -2.0, 12).is_none());
-//         assert!(semi_regular_polygon_side_length(1.0, 2.0, 11).is_none());
-//     }
+        approx::assert_abs_diff_eq!(
+            lower_part_of_layer_area(0.0, &slot_contour, &bounds),
+            ((height - opening_height) * width).get::<square_meter>(),
+            epsilon = 1e-6
+        );
+        approx::assert_abs_diff_eq!(
+            lower_part_of_layer_area(10e-3, &slot_contour, &bounds),
+            10e-3 * width.get::<meter>(),
+            epsilon = 1e-6
+        );
+        approx::assert_abs_diff_eq!(
+            lower_part_of_layer_area(5e-3, &slot_contour, &bounds),
+            15e-3 * width.get::<meter>(),
+            epsilon = 1e-6
+        );
+        approx::assert_abs_diff_eq!(
+            lower_part_of_layer_area(20e-3, &slot_contour, &bounds),
+            0.0,
+            epsilon = 1e-6
+        );
 
-//     #[test]
-//     fn test_area_calculation_trapezoid_slot() {
-//         let slot = SlotTrapezoidSemi::new_without_slopes(
-//             Length::new::<millimeter>(10.0),
-//             Length::new::<millimeter>(2.0),
-//             Length::new::<millimeter>(20.0),
-//             Length::new::<millimeter>(2.0),
-//             10.0 * PI / 180.0,
-//             Length::new::<millimeter>(2.0),
-//             Length::new::<millimeter>(1.0),
-//             Length::new::<millimeter>(0.0),
-//             true,
-//         )
-//         .unwrap();
+        // Double layer horizontal
+        let bounds = layer_bounds(
+            &slot,
+            0,
+            &CoilLayout::DoubleHorizontal,
+            slot_contour.centroid(),
+            &slot_contour.bounding_box(),
+            1.0,
+            0.0,
+        );
 
-//         let slot_contour_no_opening = slot.contour_main_body();
+        approx::assert_abs_diff_eq!(
+            lower_part_of_layer_area(10e-3, &slot_contour, &bounds),
+            10e-3 * 0.5 * width.get::<meter>(),
+            epsilon = 1e-6
+        );
 
-//         let slot_contour = slot.contour_main_body();
+        approx::assert_abs_diff_eq!(
+            lower_part_of_layer_area(12e-3, &slot_contour, &bounds),
+            8e-3 * 0.5 * width.get::<meter>(),
+            epsilon = 1e-6
+        );
 
-//         // Single layer
-//         let layer_bounds = layer_bounds_priv(
-//             &slot,
-//             0,
-//             &CoilLayout::Single,
-//             slot_contour.centroid(),
-//             &slot_contour.bounding_box(),
-//             1.0,
-//             0.0,
-//         );
+        // Double layer vertical
+        let bounds = layer_bounds(
+            &slot,
+            0,
+            &CoilLayout::DoubleVertical,
+            slot_contour.centroid(),
+            &slot_contour.bounding_box(),
+            1.0,
+            0.0,
+        );
 
-//         let layer_contour = slot_contour_no_opening
-//             .apply_bounds(&layer_bounds, DEFAULT_EPSILON, DEFAULT_MAX_ULPS)
-//             .unwrap();
+        approx::assert_abs_diff_eq!(
+            lower_part_of_layer_area(10e-3, &slot_contour, &bounds),
+            9.5e-3 * width.get::<meter>(),
+            epsilon = 1e-6
+        );
+        approx::assert_abs_diff_eq!(
+            lower_part_of_layer_area(15e-3, &slot_contour, &bounds),
+            5e-3 * width.get::<meter>(),
+            epsilon = 1e-6
+        );
+        approx::assert_abs_diff_eq!(
+            lower_part_of_layer_area(5e-3, &slot_contour, &bounds),
+            9.5e-3 * width.get::<meter>(),
+            epsilon = 1e-6
+        );
 
-//         let delta_area = lower_part_of_layer_area(10e-3, &layer_contour,
-// &layer_bounds);         approx::assert_abs_diff_eq!(89.1529e-6, delta_area,
-// epsilon = 1e-10);
+        let bounds = layer_bounds(
+            &slot,
+            1,
+            &CoilLayout::DoubleVertical,
+            slot_contour.centroid(),
+            &slot_contour.bounding_box(),
+            1.0,
+            0.0,
+        );
 
-//         let delta_area = lower_part_of_layer_area(5e-3, &layer_contour,
-// &layer_bounds);         approx::assert_abs_diff_eq!(128.2168e-6, delta_area,
-// epsilon = 1e-10);
+        approx::assert_abs_diff_eq!(
+            lower_part_of_layer_area(9e-3, &slot_contour, &bounds),
+            1.5e-3 * width.get::<meter>(),
+            epsilon = 1e-6
+        );
+        approx::assert_abs_diff_eq!(
+            lower_part_of_layer_area(3e-3, &slot_contour, &bounds),
+            (9.5e-3 - 2e-3) * width.get::<meter>(),
+            epsilon = 1e-6
+        );
+        approx::assert_abs_diff_eq!(
+            lower_part_of_layer_area(10.5e-3, &slot_contour, &bounds),
+            0.0,
+            epsilon = 1e-6
+        );
+    }
 
-//         let delta_area = lower_part_of_layer_area(3e-3, &layer_contour,
-// &layer_bounds);         approx::assert_abs_diff_eq!(142.6175e-6, delta_area,
-// epsilon = 1e-10);
+    #[test]
+    fn test_layer_bounds_semi_trapezoid() {
+        let slot: SemiTrapezoidSlot = SemiTrapezoidWithoutSlopesBuilder {
+            bottom_width: Length::new::<millimeter>(10.0),
+            opening_width: Length::new::<millimeter>(2.0),
+            height: Length::new::<millimeter>(20.0),
+            opening_height: Length::new::<millimeter>(2.0),
+            angle_slot: 10.0 * PI / 180.0,
+            bottom_radius: Length::new::<millimeter>(2.0),
+            top_radius: Length::new::<millimeter>(1.0),
+            opening_radius: Length::new::<millimeter>(0.0),
+            consider_tooth_tip_leakage: true,
+        }
+        .try_into()
+        .unwrap();
 
-//         let delta_area = lower_part_of_layer_area(2e-3, &layer_contour,
-// &layer_bounds);         approx::assert_abs_diff_eq!(149.2063e-6, delta_area,
-// epsilon = 0.001);     }
+        let slot_contour_no_opening = Contour::new(slot.outline_winding_area());
 
-//     #[test]
-//     fn test_area_calculation_rectangular_slot() {
-//         let opening_height = Length::new::<millimeter>(1.0);
-//         let opening_width = Length::new::<millimeter>(3.0);
-//         let width = Length::new::<millimeter>(3.0);
-//         let height = Length::new::<millimeter>(20.0);
-//         let slot = RectangularSlot::new(width, opening_width, height,
-// opening_height, true, false)             .unwrap();
+        // Single layer
+        let layer_bounds = layer_bounds(
+            &slot,
+            0,
+            &CoilLayout::Single,
+            slot_contour_no_opening.centroid(),
+            &slot_contour_no_opening.bounding_box(),
+            1.0,
+            0.0,
+        );
 
-//         let slot_contour = slot.contour_main_body();
+        let layer_contour = apply_bounds(&slot_contour_no_opening, &layer_bounds);
 
-//         // Single layer
-//         let layer_bounds = layer_bounds_priv(
-//             &slot,
-//             0,
-//             &CoilLayout::Single,
-//             slot_contour.centroid(),
-//             &slot_contour.bounding_box(),
-//             1.0,
-//             0.0,
-//         );
+        let delta_area = lower_part_of_layer_area(10e-3, &layer_contour, &layer_bounds);
+        approx::assert_abs_diff_eq!(89.1529e-6, delta_area, epsilon = 1e-10);
 
-//         approx::assert_abs_diff_eq!(
-//             lower_part_of_layer_area(0.0, &slot_contour, &layer_bounds),
-//             ((height - opening_height) * width).get::<square_meter>(),
-//             epsilon = 1e-6
-//         );
-//         approx::assert_abs_diff_eq!(
-//             lower_part_of_layer_area(10e-3, &slot_contour, &layer_bounds),
-//             10e-3 * width.get::<meter>(),
-//             epsilon = 1e-6
-//         );
-//         approx::assert_abs_diff_eq!(
-//             lower_part_of_layer_area(5e-3, &slot_contour, &layer_bounds),
-//             15e-3 * width.get::<meter>(),
-//             epsilon = 1e-6
-//         );
-//         approx::assert_abs_diff_eq!(
-//             lower_part_of_layer_area(20e-3, &slot_contour, &layer_bounds),
-//             0.0,
-//             epsilon = 1e-6
-//         );
+        let delta_area = lower_part_of_layer_area(5e-3, &layer_contour, &layer_bounds);
+        approx::assert_abs_diff_eq!(128.2168e-6, delta_area, epsilon = 1e-10);
 
-//         // Double layer horizontal
-//         let layer_bounds = layer_bounds_priv(
-//             &slot,
-//             0,
-//             &CoilLayout::DoubleHorizontal,
-//             slot_contour.centroid(),
-//             &slot_contour.bounding_box(),
-//             1.0,
-//             0.0,
-//         );
+        let delta_area = lower_part_of_layer_area(3e-3, &layer_contour, &layer_bounds);
+        approx::assert_abs_diff_eq!(142.6175e-6, delta_area, epsilon = 1e-10);
 
-//         approx::assert_abs_diff_eq!(
-//             lower_part_of_layer_area(10e-3, &slot_contour, &layer_bounds),
-//             10e-3 * 0.5 * width.get::<meter>(),
-//             epsilon = 1e-6
-//         );
+        let delta_area = lower_part_of_layer_area(2e-3, &layer_contour, &layer_bounds);
+        approx::assert_abs_diff_eq!(149.2063e-6, delta_area, epsilon = 0.001);
+    }
 
-//         approx::assert_abs_diff_eq!(
-//             lower_part_of_layer_area(12e-3, &slot_contour, &layer_bounds),
-//             8e-3 * 0.5 * width.get::<meter>(),
-//             epsilon = 1e-6
-//         );
+    #[test]
+    fn test_slot_side_bottom_and_top_width_from_rot_core() {
+        // Values from [Mat19] slot
+        let tooth_width = Length::new::<millimeter>(3.415);
+        let air_gap_radius = Length::new::<millimeter>(55.0);
+        let yoke_radius = Length::new::<millimeter>(85.0);
+        let slots = 36;
+        let side_height = Length::new::<millimeter>(17.0);
+        let opening_height = Length::new::<millimeter>(0.75);
+        let opening_width = Length::new::<millimeter>(2.0);
 
-//         // Double layer vertical
-//         let layer_bounds = layer_bounds_priv(
-//             &slot,
-//             0,
-//             &CoilLayout::DoubleVertical,
-//             slot_contour.centroid(),
-//             &slot_contour.bounding_box(),
-//             1.0,
-//             0.0,
-//         );
+        let [b_bottom, b_top] = slot_side_bottom_and_top_width_from_rot_core(
+            tooth_width,
+            air_gap_radius,
+            yoke_radius,
+            slots,
+            side_height,
+            opening_width,
+            opening_height,
+        );
 
-//         approx::assert_abs_diff_eq!(
-//             lower_part_of_layer_area(10e-3, &slot_contour, &layer_bounds),
-//             9.5e-3 * width.get::<meter>(),
-//             epsilon = 1e-6
-//         );
-//         approx::assert_abs_diff_eq!(
-//             lower_part_of_layer_area(15e-3, &slot_contour, &layer_bounds),
-//             5e-3 * width.get::<meter>(),
-//             epsilon = 1e-6
-//         );
-//         approx::assert_abs_diff_eq!(
-//             lower_part_of_layer_area(5e-3, &slot_contour, &layer_bounds),
-//             9.5e-3 * width.get::<meter>(),
-//             epsilon = 1e-6
-//         );
+        approx::assert_abs_diff_eq!(b_bottom.get::<millimeter>(), 9.29996, epsilon = 1e-3);
+        approx::assert_abs_diff_eq!(b_top.get::<millimeter>(), 6.32535, epsilon = 1e-3);
+    }
 
-//         let layer_bounds = layer_bounds_priv(
-//             &slot,
-//             1,
-//             &CoilLayout::DoubleVertical,
-//             slot_contour.centroid(),
-//             &slot_contour.bounding_box(),
-//             1.0,
-//             0.0,
-//         );
+    #[derive(Deserialize)]
+    struct AngleBottomWrapper {
+        #[serde(deserialize_with = "deserialize_angle_bottom_from_width_height")]
+        angle: f64,
+    }
 
-//         approx::assert_abs_diff_eq!(
-//             lower_part_of_layer_area(9e-3, &slot_contour, &layer_bounds),
-//             1.5e-3 * width.get::<meter>(),
-//             epsilon = 1e-6
-//         );
-//         approx::assert_abs_diff_eq!(
-//             lower_part_of_layer_area(3e-3, &slot_contour, &layer_bounds),
-//             (9.5e-3 - 2e-3) * width.get::<meter>(),
-//             epsilon = 1e-6
-//         );
-//         approx::assert_abs_diff_eq!(
-//             lower_part_of_layer_area(10.5e-3, &slot_contour, &layer_bounds),
-//             0.0,
-//             epsilon = 1e-6
-//         );
-//     }
+    #[test]
+    fn test_deserialize_bottom_with_width_and_height() {
+        let data = indoc! {"
+        ---
+        angle:
+            bottom_width: 1.0 m
+            side_bottom_width: 3.0 m
+            bottom_height: 1.0 m
+            angle_slot: 10.0 deg
+        "};
+        let wrapper: AngleBottomWrapper = serde_yaml::from_str(data).unwrap();
+        let angle_slot = TAU / 36.0;
+        approx::assert_abs_diff_eq!(wrapper.angle, 0.75 * PI - 0.5 * angle_slot, epsilon = 1e-15);
 
-//     #[derive(Deserialize)]
-//     struct AngleBottomWrapper {
-//         #[serde(deserialize_with =
-// "deserialize_angle_bottom_from_width_height")]         angle: f64,
-//     }
+        let data = indoc! {"
+        ---
+        angle: 10.0 deg
+        "};
+        let wrapper: AngleBottomWrapper = serde_yaml::from_str(data).unwrap();
+        approx::assert_abs_diff_eq!(wrapper.angle, TAU / 36.0, epsilon = 1e-15);
 
-//     #[test]
-//     fn test_deserialize_bottom_with_width_and_height() {
-//         let data = indoc! {"
-//         ---
-//         angle:
-//             bottom_width: 1.0 m
-//             side_bottom_width: 3.0 m
-//             bottom_height: 1.0 m
-//             angle_slot: 10.0 deg
-//         "};
-//         let wrapper: AngleBottomWrapper =
-// serde_yaml::from_str(data).unwrap();         let angle_slot = TAU / 36.0; //
-// 10°         approx::assert_abs_diff_eq!(wrapper.angle, 0.75 * PI - 0.5 *
-// angle_slot, epsilon = 1e-15);
+        let data = indoc! {"
+        ---
+        angle: 1.0
+        "};
+        let wrapper: AngleBottomWrapper = serde_yaml::from_str(data).unwrap();
+        approx::assert_abs_diff_eq!(wrapper.angle, 1.0, epsilon = 1e-15);
+    }
 
-//         let data = indoc! {"
-//         ---
-//         angle: 10.0 deg
-//         "};
-//         let wrapper: AngleBottomWrapper =
-// serde_yaml::from_str(data).unwrap();         approx::assert_abs_diff_eq!
-// (wrapper.angle, TAU / 36.0, epsilon = 1e-15);
+    #[cfg_attr(feature = "serde", derive(Deserialize))]
+    struct AngleTopWrapper {
+        #[serde(deserialize_with = "deserialize_angle_top_from_width_height")]
+        angle: f64,
+    }
 
-//         let data = indoc! {"
-//         ---
-//         angle: 1.0
-//         "};
-//         let wrapper: AngleBottomWrapper =
-// serde_yaml::from_str(data).unwrap();         approx::assert_abs_diff_eq!
-// (wrapper.angle, 1.0, epsilon = 1e-15);     }
+    #[test]
+    fn test_deserialize_top_with_width_and_height() {
+        let data = indoc! {"
+        ---
+        angle:
+            top_width: 1.0
+            side_top_width: 3.0
+            top_height: 1.0
+            angle_slot: 10.0 deg
+        "};
+        let wrapper: AngleTopWrapper = serde_yaml::from_str(data).unwrap();
+        let angle_slot = TAU / 36.0; // 10°
+        approx::assert_abs_diff_eq!(wrapper.angle, 0.75 * PI + 0.5 * angle_slot, epsilon = 1e-15);
 
-//     #[cfg_attr(feature = "serde", derive(Deserialize))]
-//     struct AngleTopWrapper {
-//         #[serde(deserialize_with =
-// "deserialize_angle_top_from_width_height")]         angle: f64,
-//     }
+        let data = indoc! {"
+        ---
+        angle: 10.0 deg
+        "};
+        let wrapper: AngleTopWrapper = serde_yaml::from_str(data).unwrap();
+        approx::assert_abs_diff_eq!(wrapper.angle, TAU / 36.0, epsilon = 1e-15);
 
-//     #[test]
-//     fn test_deserialize_top_with_width_and_height() {
-//         let data = indoc! {"
-//         ---
-//         angle:
-//             top_width: 1.0
-//             side_top_width: 3.0
-//             top_height: 1.0
-//             angle_slot: 10.0 deg
-//         "};
-//         let wrapper: AngleTopWrapper = serde_yaml::from_str(data).unwrap();
-//         let angle_slot = TAU / 36.0; // 10°
-//         approx::assert_abs_diff_eq!(wrapper.angle, 0.75 * PI + 0.5 *
-// angle_slot, epsilon = 1e-15);
+        let data = indoc! {"
+        ---
+        angle: 1.0
+        "};
+        let wrapper: AngleTopWrapper = serde_yaml::from_str(data).unwrap();
+        approx::assert_abs_diff_eq!(wrapper.angle, 1.0, epsilon = 1e-15);
+    }
 
-//         let data = indoc! {"
-//         ---
-//         angle: 10.0 deg
-//         "};
-//         let wrapper: AngleTopWrapper = serde_yaml::from_str(data).unwrap();
-//         approx::assert_abs_diff_eq!(wrapper.angle, TAU / 36.0, epsilon =
-// 1e-15);
+    #[test]
+    fn test_test_angle_bottom_from_width_height() {
+        let angle_slot = TAU / 36.0; // 10°
 
-//         let data = indoc! {"
-//         ---
-//         angle: 1.0
-//         "};
-//         let wrapper: AngleTopWrapper = serde_yaml::from_str(data).unwrap();
-//         approx::assert_abs_diff_eq!(wrapper.angle, 1.0, epsilon = 1e-15);
-//     }
+        // Case: No slope (bottom_width = side_bottom_width)
+        approx::assert_abs_diff_eq!(
+            PI - 0.5 * angle_slot,
+            AngleBottomFromWidthHeight {
+                bottom_width: Length::new::<millimeter>(1.0),
+                side_bottom_width: Length::new::<millimeter>(1.0),
+                bottom_height: Length::new::<millimeter>(1.0),
+                angle_slot
+            }
+            .get(),
+            epsilon = 1e-6
+        );
 
-//     #[test]
-//     fn test_test_angle_bottom_from_width_height() {
-//         let angle_slot = TAU / 36.0; // 10°
+        // Case: Almost no slope
+        approx::assert_abs_diff_eq!(
+            PI - 0.5 * angle_slot,
+            AngleBottomFromWidthHeight {
+                bottom_width: Length::new::<millimeter>(1.0),
+                side_bottom_width: Length::new::<millimeter>(1.0),
+                bottom_height: Length::new::<millimeter>(0.01),
+                angle_slot
+            }
+            .get(),
+            epsilon = 1e-6
+        );
 
-//         // Case: No slope (bottom_width = side_bottom_width)
-//         approx::assert_abs_diff_eq!(
-//             PI - 0.5 * angle_slot,
-//             angle_bottom_from_width_height(
-//                 Length::new::<millimeter>(1.0),
-//                 Length::new::<millimeter>(1.0),
-//                 Length::new::<millimeter>(1.0),
-//                 angle_slot
-//             ),
-//             epsilon = 1e-6
-//         );
+        // Case: slope with 60°
+        approx::assert_abs_diff_eq!(
+            1.9471774,
+            AngleBottomFromWidthHeight {
+                bottom_width: Length::new::<millimeter>(1.0),
+                side_bottom_width: Length::new::<millimeter>(3.0),
+                bottom_height: Length::new::<millimeter>(0.5),
+                angle_slot
+            }
+            .get(),
+            epsilon = 1e-6
+        );
 
-//         // Case: Almost no slope
-//         approx::assert_abs_diff_eq!(
-//             PI - 0.5 * angle_slot,
-//             angle_bottom_from_width_height(
-//                 Length::new::<millimeter>(1.0),
-//                 Length::new::<millimeter>(1.0),
-//                 Length::new::<millimeter>(0.01),
-//                 angle_slot
-//             ),
-//             epsilon = 1e-6
-//         );
+        // Case: slope with 45°
+        approx::assert_abs_diff_eq!(
+            0.75 * PI - 0.5 * angle_slot,
+            AngleBottomFromWidthHeight {
+                bottom_width: Length::new::<millimeter>(1.0),
+                side_bottom_width: Length::new::<millimeter>(3.0),
+                bottom_height: Length::new::<millimeter>(1.0),
+                angle_slot
+            }
+            .get(),
+            epsilon = 1e-6
+        );
 
-//         // Case: slope with 60°
-//         approx::assert_abs_diff_eq!(
-//             1.9471774,
-//             angle_bottom_from_width_height(
-//                 Length::new::<millimeter>(1.0),
-//                 Length::new::<millimeter>(3.0),
-//                 Length::new::<millimeter>(0.5),
-//                 angle_slot
-//             ),
-//             epsilon = 1e-6
-//         );
+        // Case: slope with 60°
+        approx::assert_abs_diff_eq!(
+            2.59067858,
+            AngleBottomFromWidthHeight {
+                bottom_width: Length::new::<millimeter>(1.0),
+                side_bottom_width: Length::new::<millimeter>(2.0),
+                bottom_height: Length::new::<millimeter>(1.0),
+                angle_slot
+            }
+            .get(),
+            epsilon = 1e-6
+        );
+    }
 
-//         // Case: slope with 45°
-//         approx::assert_abs_diff_eq!(
-//             0.75 * PI - 0.5 * angle_slot,
-//             angle_bottom_from_width_height(
-//                 Length::new::<millimeter>(1.0),
-//                 Length::new::<millimeter>(3.0),
-//                 Length::new::<millimeter>(1.0),
-//                 angle_slot
-//             ),
-//             epsilon = 1e-6
-//         );
+    #[test]
+    fn test_test_angle_top_from_width_height() {
+        let angle_slot = TAU / 36.0; // 10°
 
-//         // Case: slope with 60°
-//         approx::assert_abs_diff_eq!(
-//             2.59067858,
-//             angle_bottom_from_width_height(
-//                 Length::new::<millimeter>(1.0),
-//                 Length::new::<millimeter>(2.0),
-//                 Length::new::<millimeter>(1.0),
-//                 angle_slot
-//             ),
-//             epsilon = 1e-6
-//         );
-//     }
+        // Case: No slope (bottom_width = side_bottom_width)
+        approx::assert_abs_diff_eq!(
+            PI + 0.5 * angle_slot,
+            AngleTopFromWidthHeight {
+                top_width: Length::new::<millimeter>(1.0),
+                side_top_width: Length::new::<millimeter>(1.0),
+                top_height: Length::new::<millimeter>(1.0),
+                angle_slot
+            }
+            .get(),
+            epsilon = 1e-6
+        );
 
-//     #[test]
-//     fn test_test_angle_top_from_width_height() {
-//         let angle_slot = TAU / 36.0; // 10°
+        // Case: Almost no slope
+        approx::assert_abs_diff_eq!(
+            PI + 0.5 * angle_slot,
+            AngleTopFromWidthHeight {
+                top_width: Length::new::<millimeter>(1.0),
+                side_top_width: Length::new::<millimeter>(1.0),
+                top_height: Length::new::<millimeter>(0.01),
+                angle_slot
+            }
+            .get(),
+            epsilon = 1e-6
+        );
 
-//         // Case: No slope (bottom_width = side_bottom_width)
-//         approx::assert_abs_diff_eq!(
-//             PI + 0.5 * angle_slot,
-//             angle_top_from_width_height(
-//                 Length::new::<millimeter>(1.0),
-//                 Length::new::<millimeter>(1.0),
-//                 Length::new::<millimeter>(1.0),
-//                 angle_slot
-//             ),
-//             epsilon = 1e-6
-//         );
+        // Case: slope with 60°
+        approx::assert_abs_diff_eq!(
+            1.94717747 + angle_slot,
+            AngleTopFromWidthHeight {
+                top_width: Length::new::<millimeter>(1.0),
+                side_top_width: Length::new::<millimeter>(3.0),
+                top_height: Length::new::<millimeter>(0.5),
+                angle_slot
+            }
+            .get(),
+            epsilon = 1e-6
+        );
 
-//         // Case: Almost no slope
-//         approx::assert_abs_diff_eq!(
-//             PI + 0.5 * angle_slot,
-//             angle_top_from_width_height(
-//                 Length::new::<millimeter>(1.0),
-//                 Length::new::<millimeter>(1.0),
-//                 Length::new::<millimeter>(0.01),
-//                 angle_slot
-//             ),
-//             epsilon = 1e-6
-//         );
+        // Case: slope with 45°
+        approx::assert_abs_diff_eq!(
+            0.75 * PI + 0.5 * angle_slot,
+            AngleTopFromWidthHeight {
+                top_width: Length::new::<millimeter>(1.0),
+                side_top_width: Length::new::<millimeter>(3.0),
+                top_height: Length::new::<millimeter>(1.0),
+                angle_slot
+            }
+            .get(),
+            epsilon = 1e-6
+        );
 
-//         // Case: slope with 60°
-//         approx::assert_abs_diff_eq!(
-//             1.94717747 + angle_slot,
-//             angle_top_from_width_height(
-//                 Length::new::<millimeter>(1.0),
-//                 Length::new::<millimeter>(3.0),
-//                 Length::new::<millimeter>(0.5),
-//                 angle_slot
-//             ),
-//             epsilon = 1e-6
-//         );
-
-//         // Case: slope with 45°
-//         approx::assert_abs_diff_eq!(
-//             0.75 * PI + 0.5 * angle_slot,
-//             angle_top_from_width_height(
-//                 Length::new::<millimeter>(1.0),
-//                 Length::new::<millimeter>(3.0),
-//                 Length::new::<millimeter>(1.0),
-//                 angle_slot
-//             ),
-//             epsilon = 1e-6
-//         );
-
-//         // Case: slope with 60°
-//         approx::assert_abs_diff_eq!(
-//             2.5906785 + angle_slot,
-//             angle_top_from_width_height(
-//                 Length::new::<millimeter>(1.0),
-//                 Length::new::<millimeter>(2.0),
-//                 Length::new::<millimeter>(1.0),
-//                 angle_slot
-//             ),
-//             epsilon = 1e-6
-//         );
-//     }
-
-//     #[test]
-//     fn test_test_slot_side_bottom_and_top_width_from_rot_core() {
-//         // Values from [Mat19] slot
-//         let tooth_width = Length::new::<millimeter>(3.415);
-//         let air_gap_radius = Length::new::<millimeter>(55.0);
-//         let yoke_radius = Length::new::<millimeter>(85.0);
-//         let slots = 36;
-//         let side_height = Length::new::<millimeter>(17.0);
-//         let opening_height = Length::new::<millimeter>(0.75);
-//         let opening_width = Length::new::<millimeter>(2.0);
-
-//         let [b_bottom, b_top] = slot_side_bottom_and_top_width_from_rot_core(
-//             tooth_width,
-//             air_gap_radius,
-//             yoke_radius,
-//             slots,
-//             side_height,
-//             opening_width,
-//             opening_height,
-//         );
-
-//         approx::assert_abs_diff_eq!(b_bottom.get::<millimeter>(), 9.29996,
-// epsilon = 1e-3);         approx::assert_abs_diff_eq!(b_top.
-// get::<millimeter>(), 6.32535, epsilon = 1e-3);     }
-// }
+        // Case: slope with 60°
+        approx::assert_abs_diff_eq!(
+            2.5906785 + angle_slot,
+            AngleTopFromWidthHeight {
+                top_width: Length::new::<millimeter>(1.0),
+                side_top_width: Length::new::<millimeter>(2.0),
+                top_height: Length::new::<millimeter>(1.0),
+                angle_slot
+            }
+            .get(),
+            epsilon = 1e-6
+        );
+    }
+}

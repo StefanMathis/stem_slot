@@ -16,20 +16,26 @@ cart_lin = "0.2.1"
 nalgebra = "0.32"
 num = "0.4.0"
 rayon = "1.5"
+lazy_static = "1"
 deserialize_untagged_verbose_error = { version = "0.1.5", optional = true }
 serde = { version = "1", features = ["derive", "rc"], optional = true }
-cairo_viewport = { version = "0.2.5", optional = true}
 dyn-clone = "1"
 typetag = { version = "^0.2", optional = true }
+embed-doc-image = { version = "0.1.4", optional = true }
 
 [features]
 default = []
 serde = ["dep:deserialize_untagged_verbose_error", "dep:serde", "dep:typetag",
          "stem_material/serde"]
-cairo = ["dep:cairo_viewport"]
+cairo = ["planar_geo/cairo"]
+doc-images = ["dep:embed-doc-image"]
 
 [dev-dependencies]
 indoc = "1.0"
 serde_yaml = "0.8"
 cairo_viewport = { version = "0.2.5", features = ["image-compare"]}
 stem_slot = { path = ".", features = ["serde", "cairo"] } # Solution from https://stackoverflow.com/questions/68618789/is-it-possible-to-enable-a-rust-feature-only-in-test to enable feature during integration test
+
+[package.metadata.docs.rs]
+features = ["serde", "cairo", "doc-images"]
+rustdoc-args = ["--cfg", "docsrs"]
