@@ -83,7 +83,7 @@ fn test_angle_bottom() {
     );
 
     compare_to_reference(
-        slot.drawables(CoilLayout::Single, true).as_slice(),
+        slot.drawables(&CoilLayout::Single, true).as_slice(),
         "tests/img/open_trapezoid_slot_angle_bottom.png",
         None,
     );
@@ -106,7 +106,7 @@ fn test_different_layers() {
 
     {
         // Horizontal
-        let drawables = slot.drawables(CoilLayout::DoubleVertical, true);
+        let drawables = slot.drawables(&CoilLayout::DoubleVertical, true);
         compare_to_reference(
             drawables.as_slice(),
             "tests/img/open_trapezoid_slot_hori.png",
@@ -125,7 +125,7 @@ fn test_different_layers() {
     }
     {
         // Vertical
-        let drawables = slot.drawables(CoilLayout::DoubleHorizontal, true);
+        let drawables = slot.drawables(&CoilLayout::DoubleHorizontal, true);
         compare_to_reference(
             drawables.as_slice(),
             "tests/img/open_trapezoid_slot_vert.png",
@@ -173,7 +173,7 @@ fn test_open_slot_bottom_height() {
     );
 
     // Image comparison
-    let drawables = slot.drawables(CoilLayout::DoubleHorizontal, true);
+    let drawables = slot.drawables(&CoilLayout::DoubleHorizontal, true);
     compare_to_reference(
         drawables.as_slice(),
         "tests/img/open_trapezoid_slot_vert.png",
@@ -205,7 +205,7 @@ fn test_open_slot_bottom_slope_width() {
     );
 
     // Image comparison
-    let drawables = slot.drawables(CoilLayout::DoubleVertical, true);
+    let drawables = slot.drawables(&CoilLayout::DoubleVertical, true);
     compare_to_reference(
         drawables.as_slice(),
         "tests/img/open_trapezoid_slot_hori.png",
@@ -234,7 +234,7 @@ fn test_open_slot_side_height_bugfix() {
     .unwrap();
 
     // Image comparison
-    let drawables = slot.drawables(CoilLayout::DoubleVertical, true);
+    let drawables = slot.drawables(&CoilLayout::DoubleVertical, true);
     compare_to_reference(
         drawables.as_slice(),
         "tests/img/open_trapezoid_slot_bugfix.png",
@@ -261,7 +261,7 @@ fn test_test_from_rotary_core() {
     .unwrap();
 
     // Image comparison
-    let drawables = slot.drawables(CoilLayout::Single, true);
+    let drawables = slot.drawables(&CoilLayout::Single, true);
     compare_to_reference(
         drawables.as_slice(),
         "tests/img/open_trapezoid_slot_from_rotative_core.png",
@@ -285,21 +285,21 @@ fn test_multilayer_vertical() {
     .try_into()
     .unwrap();
 
-    let drawables = slot.drawables(CoilLayout::MultiVertical(1), true);
+    let drawables = slot.drawables(&CoilLayout::MultiVertical(1), true);
     compare_to_reference(
         drawables.as_slice(),
         "tests/img/open_trapezoid_slot_1_vertical.png",
         None,
     );
 
-    let drawables = slot.drawables(CoilLayout::MultiVertical(2), true);
+    let drawables = slot.drawables(&CoilLayout::MultiVertical(2), true);
     compare_to_reference(
         drawables.as_slice(),
         "tests/img/open_trapezoid_slot_2_vertical.png",
         None,
     );
 
-    let drawables = slot.drawables(CoilLayout::MultiVertical(3), true);
+    let drawables = slot.drawables(&CoilLayout::MultiVertical(3), true);
     let view = Viewport::from_bounded_entities(drawables.iter(), SideLength::Long(500)).unwrap();
     compare_to_reference(
         drawables.as_slice(),
@@ -325,7 +325,7 @@ fn test_multilayer_vertical() {
         Some(view),
     );
 
-    let drawables = slot.drawables(CoilLayout::MultiVertical(4), true);
+    let drawables = slot.drawables(&CoilLayout::MultiVertical(4), true);
     compare_to_reference(
         drawables.as_slice(),
         "tests/img/open_trapezoid_slot_4_vertical.png",
@@ -347,7 +347,7 @@ fn test_deserialize() {
                 "};
         let slot: OpenTrapezoidSlot = serde_yaml::from_str(yaml).unwrap();
 
-        let drawables = slot.drawables(CoilLayout::DoubleHorizontal, false);
+        let drawables = slot.drawables(&CoilLayout::DoubleHorizontal, false);
         compare_to_reference(
             drawables.as_slice(),
             "tests/img/open_trapezoid_slot_MEAS-Servo.png",
@@ -366,7 +366,7 @@ fn test_deserialize() {
                         "};
         let slot: OpenTrapezoidSlot = serde_yaml::from_str(yaml).unwrap();
 
-        let drawables = slot.drawables(CoilLayout::DoubleHorizontal, false);
+        let drawables = slot.drawables(&CoilLayout::DoubleHorizontal, false);
         compare_to_reference(
             drawables.as_slice(),
             "tests/img/open_trapezoid_opening_height_1mm.png",
@@ -385,7 +385,7 @@ fn test_deserialize() {
                         "};
         let slot: OpenTrapezoidSlot = serde_yaml::from_str(yaml).unwrap();
 
-        let drawables = slot.drawables(CoilLayout::DoubleHorizontal, false);
+        let drawables = slot.drawables(&CoilLayout::DoubleHorizontal, false);
         compare_to_reference(
             drawables.as_slice(),
             "tests/img/open_trapezoid_opening_height_5mm.png",

@@ -4,11 +4,7 @@ use planar_geo::{
     prelude::*,
 };
 use std::{f64::consts::PI, path::PathBuf};
-use stem_slot::{
-    prelude::*,
-    semi_trapezoid::SemiTrapezoidBuilder,
-    slot::{angle_bottom_no_slope, angle_top_no_slope},
-};
+use stem_slot::{prelude::*, semi_trapezoid::*};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     slices_comp()?;
@@ -119,7 +115,7 @@ fn slices_comp() -> Result<(), Box<dyn std::error::Error>> {
     style.background_color = stem_slot::ORANGE;
 
     // Drawables of the regular slot
-    let mut drawables = slot.drawables(CoilLayout::Single, true);
+    let mut drawables = slot.drawables(&CoilLayout::Single, true);
 
     // Slices a
     let offset = 0.015;

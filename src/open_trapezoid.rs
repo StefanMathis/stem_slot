@@ -17,7 +17,7 @@ use serde::{Deserialize, Serialize};
 use crate::slot::Slot;
 
 #[cfg(feature = "serde")]
-use crate::slot::serde_impl::deserialize_angle_bottom_from_width_height;
+use crate::semi_trapezoid::serde_impl::deserialize_angle_bottom_from_width_height;
 
 /**
 TODO
@@ -494,7 +494,8 @@ impl TryFrom<OpenTrapezoidWithAngleBottomBuilder> for OpenTrapezoidSlot {
     type Error = crate::error::Error;
 
     fn try_from(value: OpenTrapezoidWithAngleBottomBuilder) -> Result<Self, Self::Error> {
-        let alpha = -crate::slot::angle_bottom_slope(value.angle_bottom, value.angle_slot);
+        let alpha =
+            -crate::semi_trapezoid::angle_bottom_slope(value.angle_bottom, value.angle_slot);
         let beta = FRAC_PI_2 - 0.5 * value.angle_slot;
 
         let l1 = Line::from_point_angle(

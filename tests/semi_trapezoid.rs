@@ -2,11 +2,7 @@ use cairo_viewport::*;
 use indoc::indoc;
 use planar_geo::prelude::*;
 use std::f64::consts::{PI, TAU};
-use stem_slot::{
-    prelude::*,
-    semi_trapezoid::*,
-    slot::{AngleTopFromWidthHeight, angle_bottom_no_slope, angle_top_no_slope},
-};
+use stem_slot::{prelude::*, semi_trapezoid::*};
 
 fn compare_to_reference<P: AsRef<std::path::Path>>(
     drawables: &[DrawableCow<'_>],
@@ -59,38 +55,62 @@ fn test_properties() {
 
         // Sum up the partial slot outlines
         approx::assert_abs_diff_eq!(
-            slot.layer_contour(0, &CoilLayout::Single).length(),
+            slot.layer_outlines(0, &CoilLayout::Single)
+                .length()
+                .get::<meter>(),
             outline,
             epsilon = 1e-6
         );
 
         let pt1 = slot
-            .layer_contour(0, &CoilLayout::DoubleHorizontal)
-            .length();
+            .layer_outlines(0, &CoilLayout::DoubleHorizontal)
+            .length()
+            .get::<meter>();
         let pt2 = slot
-            .layer_contour(1, &CoilLayout::DoubleHorizontal)
-            .length();
+            .layer_outlines(1, &CoilLayout::DoubleHorizontal)
+            .length()
+            .get::<meter>();
         approx::assert_abs_diff_eq!(pt1, pt2, epsilon = 1e-6); // Both outlines cover one half of the slot
         approx::assert_abs_diff_eq!(pt1 + pt2, outline, epsilon = 1e-6);
 
-        let pt1 = slot.layer_contour(0, &CoilLayout::DoubleVertical).length();
-        let pt2 = slot.layer_contour(1, &CoilLayout::DoubleVertical).length();
+        let pt1 = slot
+            .layer_outlines(0, &CoilLayout::DoubleVertical)
+            .length()
+            .get::<meter>();
+        let pt2 = slot
+            .layer_outlines(1, &CoilLayout::DoubleVertical)
+            .length()
+            .get::<meter>();
         assert!(pt1 > pt2); // pt1 is much larger since it includes the slot bottom
         approx::assert_abs_diff_eq!(pt1 + pt2, outline, epsilon = 1e-6);
 
         let pt1 = slot
-            .layer_contour(0, &CoilLayout::MultiVertical(2))
-            .length();
+            .layer_outlines(0, &CoilLayout::MultiVertical(2))
+            .length()
+            .get::<meter>();
         let pt2 = slot
-            .layer_contour(1, &CoilLayout::MultiVertical(2))
-            .length();
+            .layer_outlines(1, &CoilLayout::MultiVertical(2))
+            .length()
+            .get::<meter>();
         assert!(pt1 > pt2); // pt1 is much larger since it includes the slot bottom
         approx::assert_abs_diff_eq!(pt1 + pt2, outline, epsilon = 1e-6);
 
-        let pt1 = slot.layer_contour(0, &CoilLayout::Quadruple).length();
-        let pt2 = slot.layer_contour(1, &CoilLayout::Quadruple).length();
-        let pt3 = slot.layer_contour(2, &CoilLayout::Quadruple).length();
-        let pt4 = slot.layer_contour(3, &CoilLayout::Quadruple).length();
+        let pt1 = slot
+            .layer_outlines(0, &CoilLayout::Quadruple)
+            .length()
+            .get::<meter>();
+        let pt2 = slot
+            .layer_outlines(1, &CoilLayout::Quadruple)
+            .length()
+            .get::<meter>();
+        let pt3 = slot
+            .layer_outlines(2, &CoilLayout::Quadruple)
+            .length()
+            .get::<meter>();
+        let pt4 = slot
+            .layer_outlines(3, &CoilLayout::Quadruple)
+            .length()
+            .get::<meter>();
         approx::assert_abs_diff_eq!(pt1 + pt2 + pt3 + pt4, outline, epsilon = 1e-6);
     }
 
@@ -251,7 +271,7 @@ fn test_semi_trapezoid_side_height() {
     );
 
     compare_to_reference(
-        slot.drawables(CoilLayout::Single, true).as_slice(),
+        slot.drawables(&CoilLayout::Single, true).as_slice(),
         "tests/img/semi_trapezoid_single_layer.png",
         None,
     );
@@ -345,7 +365,7 @@ fn test_plot_with_and_without_slot_opening() {
     .try_into()
     .unwrap();
 
-    let mut drawables = slot.drawables(CoilLayout::Single, true);
+    let mut drawables = slot.drawables(&CoilLayout::Single, true);
 
     let slot: SemiTrapezoidSlot = SemiTrapezoidWithoutSlopesBuilder {
         bottom_width,
@@ -361,7 +381,7 @@ fn test_plot_with_and_without_slot_opening() {
     .try_into()
     .unwrap();
 
-    drawables.extend(slot.drawables(CoilLayout::Single, true));
+    drawables.extend(slot.drawables(&CoilLayout::Single, true));
 
     compare_to_reference(
         drawables.as_slice(),
@@ -396,7 +416,7 @@ fn test_tooth_width_deserialize() {
     );
 
     compare_to_reference(
-        slot.drawables(CoilLayout::DoubleHorizontal, true)
+        slot.drawables(&CoilLayout::DoubleHorizontal, true)
             .as_slice(),
         "tests/img/semi_trapezoid_parallel_teeth_dl.png",
         None,
@@ -427,7 +447,7 @@ fn test_semi_trapezoid_no_slopes_deserialize() {
     );
 
     compare_to_reference(
-        slot.drawables(CoilLayout::DoubleVertical, true).as_slice(),
+        slot.drawables(&CoilLayout::DoubleVertical, true).as_slice(),
         "tests/img/semi_trapezoid_hori_dl.png",
         None,
     );
@@ -466,7 +486,7 @@ fn test_semi_trapezoid_side_top_width_deserialize() {
     let slot: SemiTrapezoidSlot = serde_yaml::from_str(yaml).unwrap();
 
     compare_to_reference(
-        slot.drawables(CoilLayout::Single, true).as_slice(),
+        slot.drawables(&CoilLayout::Single, true).as_slice(),
         "tests/img/semi_trapezoid_inner.png",
         None,
     );
@@ -556,7 +576,7 @@ fn test_inner_slot() {
     .unwrap();
 
     compare_to_reference(
-        slot.drawables(CoilLayout::Single, true).as_slice(),
+        slot.drawables(&CoilLayout::Single, true).as_slice(),
         "tests/img/semi_trapezoid_inner.png",
         None,
     );
@@ -581,7 +601,7 @@ fn test_from_rotary_core() {
     .unwrap();
 
     compare_to_reference(
-        slot.drawables(CoilLayout::Single, true).as_slice(),
+        slot.drawables(&CoilLayout::Single, true).as_slice(),
         "tests/img/semi_trapezoid_from_rotative_core_outer.png",
         None,
     );
@@ -632,20 +652,20 @@ fn test_semi_trapezoid_inner_stator() {
     );
 
     compare_to_reference(
-        slot.drawables(CoilLayout::DoubleVertical, true).as_slice(),
+        slot.drawables(&CoilLayout::DoubleVertical, true).as_slice(),
         "tests/img/semi_trapezoid_inner_stator_double_layer_hori.png",
         None,
     );
 
     compare_to_reference(
-        slot.drawables(CoilLayout::DoubleHorizontal, true)
+        slot.drawables(&CoilLayout::DoubleHorizontal, true)
             .as_slice(),
         "tests/img/semi_trapezoid_inner_stator_double_layer_vert.png",
         None,
     );
 
     compare_to_reference(
-        slot.drawables(CoilLayout::Single, true).as_slice(),
+        slot.drawables(&CoilLayout::Single, true).as_slice(),
         "tests/img/semi_trapezoid_inner_stator.png",
         None,
     );
@@ -706,32 +726,32 @@ fn test_semi_trapezoid_creation_no_slopes() {
     );
 
     compare_to_reference(
-        slot.drawables(CoilLayout::DoubleVertical, true).as_slice(),
+        slot.drawables(&CoilLayout::DoubleVertical, true).as_slice(),
         "tests/img/semi_trapezoid_hori_dl.png",
         None,
     );
 
     compare_to_reference(
-        slot.drawables(CoilLayout::DoubleHorizontal, true)
+        slot.drawables(&CoilLayout::DoubleHorizontal, true)
             .as_slice(),
         "tests/img/semi_trapezoid_vert_dl.png",
         None,
     );
 
     compare_to_reference(
-        slot.drawables(CoilLayout::DoubleHorizontal, false)
+        slot.drawables(&CoilLayout::DoubleHorizontal, false)
             .as_slice(),
         "tests/img/semi_trapezoid_vert_no_opening_dl.png",
         None,
     );
 
     compare_to_reference(
-        slot.drawables(CoilLayout::Single, false).as_slice(),
+        slot.drawables(&CoilLayout::Single, false).as_slice(),
         "tests/img/semi_trapezoid_vert_no_opening_sl.png",
         None,
     );
 
-    let drawables = slot.drawables(CoilLayout::Quadruple, true);
+    let drawables = slot.drawables(&CoilLayout::Quadruple, true);
     let view = Viewport::from_bounded_entities(drawables.iter(), SideLength::Long(500)).unwrap();
     compare_to_reference(
         drawables.as_slice(),

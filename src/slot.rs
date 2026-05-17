@@ -1,8 +1,16 @@
 /*!
 This module offers the [`Slot`] trait and a couple of helper functions.
 
-TODO: Overview
+The most important item in this module is the [`Slot`] trait, around which the
+entire crate is centered. The [`LayerOutlines`] struct is an iterator which is
+returned by [`Slot::layer_outlines`]. The free function
+[`leakage_coefficient_tooth_tip`] contains the default implementation of
+[`Slot::leakage_coefficient_tooth_tip`] and is made available so it can be used
+as part of custom implementations for the trait method.
+[`semi_regular_polygon_side_length`] is a helper method for defining a
+semi-regular polygon.
  */
+#![deny(missing_docs)]
 
 use akima_spline::AkimaSpline;
 use approx::{ulps_eq, ulps_ne};
@@ -13,14 +21,8 @@ use planar_geo::prelude::*;
 use rayon::prelude::*;
 use std::any::Any;
 use std::borrow::Cow;
-use std::f64::consts::{FRAC_PI_2, TAU};
+use std::f64::consts::TAU;
 use stem_material::prelude::*;
-
-#[cfg(feature = "serde")]
-use dyn_quantity::{deserialize_angle, deserialize_quantity};
-
-#[cfg(feature = "serde")]
-use serde::Deserialize;
 
 use crate::coil_layout::CoilLayout;
 use crate::current_displacement::CurrentDisplacementCalculator;
@@ -290,7 +292,7 @@ pub trait Slot: Send + Sync + std::fmt::Debug + DynClone + Any + 'static {
         true,
     ).expect("valid inputs");
 
-    assert_abs_diff_eq!(slot.area().get::<square_millimeter>(), 212.0);
+    assert_abs_diff_eq!(slot.area().get::<square_millimeter>(), 192.0);
     ```
      */
     fn area(&self) -> Area {
@@ -388,14 +390,54 @@ pub trait Slot: Send + Sync + std::fmt::Debug + DynClone + Any + 'static {
         return Area::new::<square_meter>(Contour::from(self.outline_winding_area()).area());
     }
 
-    // TODO:
-
-    /// Return the part of the slot outline bordering the selected layer
-
-    /**
-    Returns the contour of the specified `layer`.
-     */
-    fn layer_contour(&self, layer: u16, coil_layout: &CoilLayout) -> Contour {
+    /// Returns all parts of [`Slot::outline_winding_area`] which borders the
+    /// specified `layer`.
+    ///
+    /// Depending on the `coil_layout` a `layer` might either border a single,
+    /// continuous section of [`Slot::outline_winding_area`] or multiple parts
+    /// of it (see image below). The returned [`LayerOutlines`] struct is an
+    /// iterator over all parts of the outline which border `layer`.
+    #[doc = ""]
+    #[cfg_attr(feature = "doc-images", doc = "![Layer outlines][layer_outlines]")]
+    #[cfg_attr(
+        feature = "doc-images",
+        embed_doc_image::embed_doc_image("layer_outlines", "docs/img/layer_outlines.svg")
+    )]
+    #[cfg_attr(
+        not(feature = "doc-images"),
+        doc = "**Doc images not enabled**. Compile docs with
+        `cargo doc --features 'doc-images'` and Rust version >= 1.54."
+    )]
+    ///
+    /// # Panics
+    /// Panics if `layer` is not smaller than the [`CoilLayout::layers`] value
+    /// of the given `coil_layout`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use approx::assert_abs_diff_eq;
+    /// use stem_slot::prelude::*;
+    ///
+    /// // Open slot
+    /// let slot = RectangularSlot::new(
+    ///     Length::new::<millimeter>(10.0),
+    ///     Length::new::<millimeter>(10.0),
+    ///     Length::new::<millimeter>(20.0),
+    ///     Length::new::<millimeter>(1.0),
+    ///     true,
+    /// ).expect("valid inputs");
+    ///
+    /// // Two outlines as shown in the drawing above
+    /// assert_eq!(slot.layer_outlines(1, &CoilLayout::DoubleVertical).count(), 2);
+    ///
+    /// // Sum up length of all outlines
+    /// assert_abs_diff_eq!(
+    ///     slot.layer_outlines(1, &CoilLayout::DoubleVertical).length().get::<millimeter>(),
+    ///     19.0, epsilon = 1e-6
+    /// ); // Winding area height = 19 mm, divided by two because double layer, times two because two sides
+    /// ```
+    fn layer_outlines(&self, layer: u16, coil_layout: &CoilLayout) -> LayerOutlines {
         let polysegment = self.outline_winding_area();
         let centroid = Contour::new(polysegment.clone()).centroid();
         let layer_bounds = layer_bounds(
@@ -409,43 +451,88 @@ pub trait Slot: Send + Sync + std::fmt::Debug + DynClone + Any + 'static {
         );
 
         // Sum up all parts of the segment chain which are within bounds
-        return polysegment
-            .intersection_cut(
-                &Polysegment::from(&layer_bounds),
-                DEFAULT_EPSILON,
-                DEFAULT_MAX_ULPS,
-            )
-            .into_iter()
-            .find(|ps| {
-                layer_bounds.approx_covers(&ps.bounding_box(), DEFAULT_EPSILON, DEFAULT_MAX_ULPS)
-            })
-            .unwrap_or(Polysegment::new())
-            .into();
+        return LayerOutlines {
+            inner: polysegment
+                .intersection_cut(
+                    &Polysegment::from(&layer_bounds),
+                    DEFAULT_EPSILON,
+                    DEFAULT_MAX_ULPS,
+                )
+                .into_iter(),
+            layer_bounds,
+        };
     }
 
-    /// Returns the slot shapes. TODO -> Contour?
-    fn shapes(&self, coil_layout: CoilLayout, include_slot_opening: bool) -> Vec<Shape> {
-        // Remove the slot opening, if necessary
+    /// Returns the contours for all layers defined by the `coil_layout`.
+    ///
+    /// This method derives the contour of the entire slot from
+    /// [`Slot::outline`] if `include_slot_opening` is true, otherwise from
+    /// [`Slot::outline_winding_area`]. This contour is then separated into
+    /// multiple sections (one per layer), which are returned in the order of
+    /// the layers: `slot.layer_contours(...)[0]` corresponds to layer 0,
+    /// `slot.layer_contours(...)[1]` corresponds to layer 1 and so on. The
+    /// following image shows this separation using a [`CoilLayout::Quadruple`]
+    /// with `include_slot_opening = true`:
+    #[doc = ""]
+    #[cfg_attr(feature = "doc-images", doc = "![Layer contours][layer_contours]")]
+    #[cfg_attr(
+        feature = "doc-images",
+        embed_doc_image::embed_doc_image("layer_contours", "docs/img/layer_contours.svg")
+    )]
+    #[cfg_attr(
+        not(feature = "doc-images"),
+        doc = "**Doc images not enabled**. Compile docs with
+        `cargo doc --features 'doc-images'` and Rust version >= 1.54."
+    )]
+    ///
+    /// For convenience, [`Slot::drawables`] wraps this method and adds a
+    /// [`Style`] so the contours can be drawn directly.
+    ///
+    /// In case of [`CoilLayout::Single`], this method basically just converts
+    /// the [`Polysegment`] from [`Slot::outline`] or
+    /// [`Slot::outline_winding_area`] to a [`Contour`] and wraps it in a
+    /// [`Vec`].
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::f64::consts::PI;
+    /// use approx::assert_abs_diff_eq;
+    /// use stem_slot::prelude::*;
+    /// use stem_slot::semi_trapezoid::SemiTrapezoidWithoutSlopesBuilder;
+    ///
+    /// let slot: SemiTrapezoidSlot = SemiTrapezoidWithoutSlopesBuilder {
+    ///     bottom_width: Length::new::<millimeter>(10.0),
+    ///     opening_width: Length::new::<millimeter>(2.0),
+    ///     height: Length::new::<millimeter>(20.0),
+    ///     opening_height: Length::new::<millimeter>(2.0),
+    ///     angle_slot: 10.0 * PI / 180.0,
+    ///     bottom_radius: Length::new::<millimeter>(2.0),
+    ///     top_radius: Length::new::<millimeter>(1.0),
+    ///     opening_radius: Length::new::<millimeter>(0.0),
+    ///     consider_tooth_tip_leakage: true,
+    /// }
+    /// .try_into()
+    /// .unwrap();
+    ///
+    /// let contours = slot.layer_contours(&CoilLayout::Quadruple, true);
+    /// assert_eq!(contours.len(), 4);
+    /// assert_abs_diff_eq!(&contours[0].area(), &contours[3].area());
+    /// assert_abs_diff_eq!(&contours[1].area(), &contours[2].area());
+    /// ```
+    fn layer_contours(&self, coil_layout: &CoilLayout, include_slot_opening: bool) -> Vec<Contour> {
         let contour = if include_slot_opening {
             self.outline().into_owned().into()
         } else {
-            Contour::from(self.outline_winding_area())
+            self.outline_winding_area().into()
         };
-
-        // ==========================================================================
-        // Return the path in case of a single-layer winding
 
         match coil_layout {
             CoilLayout::Single => {
-                if let Ok(s) = Shape::from_outer(contour) {
-                    return vec![s];
-                }
-                return Vec::new();
+                return vec![contour];
             }
             CoilLayout::DoubleHorizontal => {
                 let bb = contour.bounding_box();
-                let contour_u: Polysegment; // Contour of the upper layer
-                let contour_l: Polysegment; // Contour of the lower layer
 
                 let verts_par = [[0.0, bb.ymin() - 1.0], [0.0, bb.ymax() + 1.0]];
                 let vertical_line = Polysegment::from_points(verts_par.as_slice());
@@ -454,6 +541,9 @@ pub trait Slot: Send + Sync + std::fmt::Debug + DynClone + Any + 'static {
 
                 // Check which half has positive x-values
                 let bb_first = separated_lines[0].bounding_box();
+
+                let contour_u: Polysegment; // Contour of the upper layer
+                let contour_l: Polysegment; // Contour of the lower layer
                 if bb_first.xmin() >= 0.0 {
                     contour_l = separated_lines.pop().unwrap();
                     contour_u = separated_lines.pop().unwrap();
@@ -461,15 +551,7 @@ pub trait Slot: Send + Sync + std::fmt::Debug + DynClone + Any + 'static {
                     contour_u = separated_lines.pop().unwrap();
                     contour_l = separated_lines.pop().unwrap();
                 }
-
-                let mut shapes = Vec::new();
-                if let Ok(s) = Shape::from_outer(contour_l.into()) {
-                    shapes.push(s);
-                }
-                if let Ok(s) = Shape::from_outer(contour_u.into()) {
-                    shapes.push(s);
-                }
-                return shapes;
+                return vec![Contour::new(contour_l), Contour::new(contour_u)];
             }
 
             CoilLayout::DoubleVertical => {
@@ -485,24 +567,17 @@ pub trait Slot: Send + Sync + std::fmt::Debug + DynClone + Any + 'static {
 
                 // Check which half is the upper one
                 let bb_first = separated_lines[0].bounding_box();
-                let [contour_u, contour_l] = if bb_first.center()[1] >= center[1] {
-                    let contour_l = separated_lines.pop().unwrap();
-                    let contour_u = separated_lines.pop().unwrap();
-                    [contour_u, contour_l]
-                } else {
-                    let contour_u = separated_lines.pop().unwrap();
-                    let contour_l = separated_lines.pop().unwrap();
-                    [contour_u, contour_l]
-                };
 
-                let mut shapes = Vec::new();
-                if let Ok(s) = Shape::from_outer(contour_u.into()) {
-                    shapes.push(s);
-                }
-                if let Ok(s) = Shape::from_outer(contour_l.into()) {
-                    shapes.push(s);
-                }
-                return shapes;
+                let contour_u: Polysegment; // Contour of the upper layer
+                let contour_l: Polysegment; // Contour of the lower layer
+                if bb_first.center()[1] >= center[1] {
+                    contour_l = separated_lines.pop().unwrap();
+                    contour_u = separated_lines.pop().unwrap();
+                } else {
+                    contour_u = separated_lines.pop().unwrap();
+                    contour_l = separated_lines.pop().unwrap();
+                };
+                return vec![Contour::new(contour_u), Contour::new(contour_l)];
             }
             CoilLayout::Quadruple => {
                 // ==========================================================================
@@ -572,26 +647,24 @@ pub trait Slot: Send + Sync + std::fmt::Debug + DynClone + Any + 'static {
                     }
                 }
 
-                // Create shapes
-                let mut shapes: Vec<Shape> = Vec::with_capacity(4);
+                // Create contours
+                let mut contours: Vec<Contour> = Vec::with_capacity(4);
                 for contour in [contour_ll, contour_ul, contour_ur, contour_lr].into_iter() {
-                    let mut contour = contour.expect("could not build slot shapes");
+                    let mut ps = contour.expect("could not build slot shapes");
 
-                    // Create full shape
-                    let start = contour.segments().last().unwrap().stop();
+                    // Create full contour
+                    let start = ps.segments().last().unwrap().stop();
                     match LineSegment::new(start, center, DEFAULT_EPSILON, DEFAULT_MAX_ULPS) {
-                        Ok(ls) => contour.push_back(ls.into()),
+                        Ok(ls) => ps.push_back(ls.into()),
                         Err(_) => (),
                     }
-
-                    if let Ok(s) = Shape::from_outer(contour.into()) {
-                        shapes.push(s);
-                    }
+                    contours.push(ps.into());
                 }
-                return shapes;
+                return contours;
             }
             CoilLayout::MultiVertical(layers) => {
-                let mut shapes: Vec<Shape> = Vec::with_capacity(layers as usize);
+                let layers = layers.clone();
+                let mut contours: Vec<Contour> = Vec::with_capacity(layers as usize);
                 let mut shape_contour = contour;
 
                 if layers > 1 {
@@ -630,44 +703,41 @@ pub trait Slot: Send + Sync + std::fmt::Debug + DynClone + Any + 'static {
                         };
 
                         // The upper contour is transformed into a shape and stored. The lower
-                        // contour is then set as the new shap contour
-                        if let Ok(shape) = Shape::from_outer(contour_u.into()) {
-                            shapes.push(shape);
-                        }
+                        // contour is then set as the new shape contour
+                        contours.push(contour_u.into());
                         shape_contour = contour_l.into();
                     }
                 }
 
                 // Last shape
-                if let Ok(shape) = Shape::from_outer(shape_contour) {
-                    shapes.push(shape);
-                }
-                shapes
+                contours.push(shape_contour);
+                contours
             }
         }
     }
 
     /**
-    Return drawable shapes for the slot`.
+    Returns the contours of the winding layers as drawable objects.
+
+    This is a wrapper around [`Slot::layer_contours`] which adds a default
+    [`Style`] (with an [orange background](crate::ORANGE)) to the [`Contour`]s.
+    See its docstring for an example image.
      */
     #[cfg(feature = "cairo")]
     fn drawables(
         &self,
-        coil_layout: CoilLayout,
+        coil_layout: &CoilLayout,
         include_slot_opening: bool,
     ) -> Vec<DrawableCow<'_>> {
-        let mut shape_style = Style::default();
-        shape_style.background_color = crate::ORANGE;
+        let mut style = Style::default();
+        style.background_color = crate::ORANGE;
 
         return self
-            .shapes(coil_layout, include_slot_opening)
+            .layer_contours(coil_layout, include_slot_opening)
             .into_iter()
-            .map(|shape| DrawableCow::new(shape, shape_style.clone()))
+            .map(|c| DrawableCow::new(c, style.clone()))
             .collect();
     }
-
-    // =========================================================================
-    // END TODO
 
     /**
     Returns the self-inductance leakage coefficient of the `layer`.
@@ -884,6 +954,9 @@ pub trait Slot: Send + Sync + std::fmt::Debug + DynClone + Any + 'static {
             }
         };
 
+        // TODO: Why does this fail?
+        // let layer_contour = &self.layer_contours(&coil_layout,
+        // false)[excitation_layer as usize];
         let layer_contour = apply_bounds(&slot_contour_no_opening, &layer_bounds);
         let layer_area = layer_contour.area();
 
@@ -903,7 +976,7 @@ pub trait Slot: Send + Sync + std::fmt::Debug + DynClone + Any + 'static {
     layer combinations for the given `coil_layout`.
 
     The returned matrix is square and its numbers of rows / columns equals
-    [`CoilsLayout::layers`] of `coil_layout`. The row contains the layer with
+    [`CoilLayout::layers`] of `coil_layout`. The row contains the layer with
     the `linked_layer` where the voltage due to the leakage flux is induced,
     while the column corresponds to the `excitation_layer` carrying the current
     creating the magnetic field. This means that the diagonal contains the
@@ -1375,6 +1448,39 @@ pub trait Slot: Send + Sync + std::fmt::Debug + DynClone + Any + 'static {
 
 dyn_clone::clone_trait_object!(Slot);
 
+/**
+An iterator returning all parts of an outline bordering a layer
+
+This struct is created by [`Slot::layer_outlines`].
+ */
+#[derive(Clone, Debug)]
+pub struct LayerOutlines {
+    inner: std::vec::IntoIter<Polysegment>,
+    layer_bounds: BoundingBox,
+}
+
+impl LayerOutlines {
+    /// Returns the total length of all outlines.
+    pub fn length(self) -> Length {
+        Length::new::<meter>(self.into_iter().map(|ps| ps.length()).sum::<f64>())
+    }
+}
+
+impl Iterator for LayerOutlines {
+    type Item = Polysegment;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let ps = self.inner.next()?;
+        if self
+            .layer_bounds
+            .approx_covers(&ps.bounding_box(), DEFAULT_EPSILON, DEFAULT_MAX_ULPS)
+        {
+            return Some(ps);
+        }
+        return self.next();
+    }
+}
+
 lazy_static::lazy_static! {
     static ref LEAKAGE_COEFFICIENT_TOOTH_TIP: AkimaSpline = {
          // Interpolation from 3.7.2 of [MVP08] (values read out by hand!)
@@ -1452,6 +1558,64 @@ pub fn leakage_coefficient_tooth_tip(opening_width: Length, magnetic_air_gap: Le
     LEAKAGE_COEFFICIENT_TOOTH_TIP
         .eval(f64::from(opening_width / magnetic_air_gap))
         .unwrap_or(0.0)
+}
+
+/// Calculates the second side length of a semi-regular polygon from a
+/// `given_side_length`, the `radius` of the smallest circle containing the
+/// polygon and the `number_of_sides`.
+///
+/// A semi-regular polygon is a polygon which has `number_of_sides` sides,
+/// where `number_of_sides/2` sides have the `given_side_length` and
+/// `number_of_sides/2` have the length returned by this function. The two side
+/// lengths are alternating along the polygon surface. The following image shows
+/// an example together with the formulae used to calculate the return value
+/// (which are derived from the commonly known circular segment relations, see
+/// e.g. here: <https://en.wikipedia.org/wiki/Circular_segment>):
+#[doc = ""]
+#[cfg_attr(
+    feature = "doc-images",
+    doc = "![Semi-regular polygon][semi_regular_polygon]"
+)]
+#[cfg_attr(
+    feature = "doc-images",
+    embed_doc_image::embed_doc_image("semi_regular_polygon", "docs/img/semi_regular_polygon.svg")
+)]
+#[cfg_attr(
+    not(feature = "doc-images"),
+    doc = "**Doc images not enabled**. Compile docs with
+    `cargo doc --features 'doc-images'` and Rust version >= 1.54."
+)]
+///
+/// This method returns `None` if `number_of_sides` is odd or `first_side` /
+/// `outer_radius` are not positive.
+///
+/// The main purpose of this method is to derive the slot widths for a rotary
+/// core where the tooth width is fixed. In this case, `given_side_length` is
+/// the tooth width, `radius` is the air gap radius and `number_of_sides` is two
+/// times the number of teeth.
+///
+/// Examples
+///
+/// ```
+/// use approx::assert_abs_diff_eq;
+/// use stem_slot::slot::semi_regular_polygon_side_length;
+///
+/// let second_side = semi_regular_polygon_side_length(1.0, 2.0, 12).unwrap();
+/// assert_abs_diff_eq!(1.070466, second_side, epsilon = 1e-6);
+/// ```
+pub fn semi_regular_polygon_side_length(
+    given_side_length: f64,
+    radius: f64,
+    number_of_sides: usize,
+) -> Option<f64> {
+    use num::Integer;
+    if number_of_sides.is_odd() || given_side_length < 0.0 || radius < 0.0 {
+        return None;
+    }
+
+    let angle_given_side = 2.0 * (given_side_length / (2.0 * radius)).asin();
+    let angle_searched_side = TAU / (number_of_sides as f64 / 2.0) - angle_given_side;
+    return Some(2.0 * radius * (angle_searched_side / 2.0).sin());
 }
 
 /// Returns the slot width at the given slot height.
@@ -1725,10 +1889,12 @@ fn inductance_leakage_coefficient<S: Slot + ?Sized>(
 }
 
 /**
-Returns the area of the selected layer as a function of the vertical slot coordinate, which starts at the slot bottom.
+Returns the area of the selected layer as a function of the vertical slot
+coordinate, which starts at the slot bottom.
 
 # Panics
-Panics if the given coil index is larger than the total number of coils in the coil layout.
+Panics if the given coil index is larger than the total number of coils in the
+coil layout.
 */
 fn lower_part_of_layer_area(
     vertical_slot_coord: f64,
@@ -1752,20 +1918,6 @@ fn lower_part_of_layer_area(
     };
 
     return apply_bounds(&layer_contour, &layer_bounds).area();
-}
-
-pub fn angle_bottom_no_slope(angle_slot: f64) -> f64 {
-    return FRAC_PI_2 - angle_slot / 2.0;
-}
-pub fn angle_top_no_slope(angle_slot: f64) -> f64 {
-    return FRAC_PI_2 + angle_slot / 2.0;
-}
-
-pub fn angle_top_slope(angle_top: f64, angle_slot: f64) -> f64 {
-    return angle_top - angle_slot / 2.0 - FRAC_PI_2;
-}
-pub fn angle_bottom_slope(angle_bottom: f64, angle_slot: f64) -> f64 {
-    return angle_bottom + angle_slot / 2.0 - FRAC_PI_2;
 }
 
 pub(crate) fn rotating_core_slot_y_offset(
@@ -1814,145 +1966,6 @@ pub(crate) fn slot_side_bottom_and_top_width_from_rot_core(
     let b_bottom = b_top + 2.0 * side_height * (0.5 * angle_slot).tan();
 
     return [b_bottom, b_top];
-}
-
-/**
-Helper struct to derive the bottom angle from the bottom width, side bottom width, bottom height and the slot angle
- */
-#[derive(Debug, Clone)]
-#[cfg_attr(feature = "serde", derive(Deserialize))]
-pub struct AngleBottomFromWidthHeight {
-    #[cfg_attr(feature = "serde", serde(deserialize_with = "deserialize_quantity"))]
-    pub bottom_width: Length,
-    #[cfg_attr(feature = "serde", serde(deserialize_with = "deserialize_quantity"))]
-    pub side_bottom_width: Length,
-    #[cfg_attr(feature = "serde", serde(deserialize_with = "deserialize_quantity"))]
-    pub bottom_height: Length,
-    #[cfg_attr(feature = "serde", serde(deserialize_with = "deserialize_angle"))]
-    pub angle_slot: f64,
-}
-
-impl AngleBottomFromWidthHeight {
-    /**
-    Get the bottom angle in rad
-     */
-    pub fn get(&self) -> f64 {
-        let delta = 0.5 * (self.side_bottom_width - self.bottom_width);
-        return self
-            .bottom_height
-            .get::<meter>()
-            .atan2(delta.get::<meter>())
-            + FRAC_PI_2
-            - 0.5 * self.angle_slot;
-    }
-}
-
-/**
-Helper struct to derive the top angle from the top width, side top width, top height and the slot angle
- */
-#[derive(Debug, Clone)]
-#[cfg_attr(feature = "serde", derive(Deserialize))]
-pub struct AngleTopFromWidthHeight {
-    #[cfg_attr(feature = "serde", serde(deserialize_with = "deserialize_quantity"))]
-    pub top_width: Length,
-    #[cfg_attr(feature = "serde", serde(deserialize_with = "deserialize_quantity"))]
-    pub side_top_width: Length,
-    #[cfg_attr(feature = "serde", serde(deserialize_with = "deserialize_quantity"))]
-    pub top_height: Length,
-    #[cfg_attr(feature = "serde", serde(deserialize_with = "deserialize_angle"))]
-    pub angle_slot: f64,
-}
-
-impl AngleTopFromWidthHeight {
-    /**
-    Get the bottom angle in rad
-     */
-    pub fn get(&self) -> f64 {
-        let delta = 0.5 * (self.side_top_width - self.top_width);
-        return self.top_height.get::<meter>().atan2(delta.get::<meter>())
-            + FRAC_PI_2
-            + 0.5 * self.angle_slot;
-    }
-}
-
-#[cfg(feature = "serde")]
-pub(crate) mod serde_impl {
-    use super::*;
-    use deserialize_untagged_verbose_error::DeserializeUntaggedVerboseError;
-    struct Angle(f64);
-
-    impl<'de> Deserialize<'de> for Angle {
-        fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-        where
-            D: serde::Deserializer<'de>,
-        {
-            let value = deserialize_angle(deserializer)?;
-            return Ok(Self(value));
-        }
-    }
-
-    pub(crate) fn deserialize_angle_bottom_from_width_height<'de, D>(
-        deserializer: D,
-    ) -> Result<f64, D::Error>
-    where
-        D: serde::de::Deserializer<'de>,
-    {
-        #[derive(DeserializeUntaggedVerboseError)]
-        enum AngleBottomFromWidthHeightDeserializer {
-            AngleBottomFromWidthHeight(AngleBottomFromWidthHeight),
-            Angle(Angle),
-        }
-
-        let _enum = AngleBottomFromWidthHeightDeserializer::deserialize(deserializer)?;
-        match _enum {
-            AngleBottomFromWidthHeightDeserializer::AngleBottomFromWidthHeight(
-                deserializer_struct,
-            ) => return Ok(deserializer_struct.get()),
-            AngleBottomFromWidthHeightDeserializer::Angle(angle) => return Ok(angle.0),
-        }
-    }
-
-    pub(crate) fn deserialize_angle_top_from_width_height<'de, D>(
-        deserializer: D,
-    ) -> Result<f64, D::Error>
-    where
-        D: serde::de::Deserializer<'de>,
-    {
-        #[derive(DeserializeUntaggedVerboseError)]
-        enum AngleTopFromWidthHeightDeserializer {
-            AngleTopFromWidthHeight(AngleTopFromWidthHeight),
-            Angle(Angle),
-        }
-
-        let _enum = AngleTopFromWidthHeightDeserializer::deserialize(deserializer)?;
-        match _enum {
-            AngleTopFromWidthHeightDeserializer::AngleTopFromWidthHeight(deserializer_struct) => {
-                return Ok(deserializer_struct.get());
-            }
-            AngleTopFromWidthHeightDeserializer::Angle(angle) => return Ok(angle.0),
-        }
-    }
-}
-
-/**
-This function calculates one side length of a semi-regular polygon. A semi-regular
-polygon is a polygon which has 2*n sides, where n sides are of length a and n
-sides are of length b. The sides a and b are alternating along the polygon surface.
-The geometric dependencies are explained in detail in [Mat20b].
-*/
-pub fn semi_regular_polygon_side_length(
-    first_side: f64,
-    outer_radius: f64,
-    number_of_sides: usize,
-) -> Option<f64> {
-    use num::Integer;
-    if number_of_sides.is_odd() || first_side < 0.0 || outer_radius < 0.0 {
-        return None;
-    }
-
-    let angle_first_side = 2.0 * (first_side / (2.0 * outer_radius)).asin();
-    let angle_second_side = TAU / (number_of_sides as f64 / 2.0) - angle_first_side;
-    return Some(2.0 * outer_radius * (angle_second_side / 2.0).sin());
 }
 
 /**
@@ -2245,16 +2258,12 @@ fn apply_bounds(contour: &Contour, bounding_box: &BoundingBox) -> Contour {
 
 #[cfg(test)]
 mod tests {
-    use indoc::indoc;
     use std::f64::consts::PI;
 
     use super::*;
     use crate::rectangular::RectangularSlot;
     use crate::semi_trapezoid::{SemiTrapezoidSlot, SemiTrapezoidWithoutSlopesBuilder};
     use approx;
-    use serde_impl::{
-        deserialize_angle_bottom_from_width_height, deserialize_angle_top_from_width_height,
-    };
 
     #[test]
     fn test_layer_bounds_rectangular() {
@@ -2443,215 +2452,5 @@ mod tests {
 
         approx::assert_abs_diff_eq!(b_bottom.get::<millimeter>(), 9.29996, epsilon = 1e-3);
         approx::assert_abs_diff_eq!(b_top.get::<millimeter>(), 6.32535, epsilon = 1e-3);
-    }
-
-    #[derive(Deserialize)]
-    struct AngleBottomWrapper {
-        #[serde(deserialize_with = "deserialize_angle_bottom_from_width_height")]
-        angle: f64,
-    }
-
-    #[test]
-    fn test_deserialize_bottom_with_width_and_height() {
-        let data = indoc! {"
-        ---
-        angle:
-            bottom_width: 1.0 m
-            side_bottom_width: 3.0 m
-            bottom_height: 1.0 m
-            angle_slot: 10.0 deg
-        "};
-        let wrapper: AngleBottomWrapper = serde_yaml::from_str(data).unwrap();
-        let angle_slot = TAU / 36.0;
-        approx::assert_abs_diff_eq!(wrapper.angle, 0.75 * PI - 0.5 * angle_slot, epsilon = 1e-15);
-
-        let data = indoc! {"
-        ---
-        angle: 10.0 deg
-        "};
-        let wrapper: AngleBottomWrapper = serde_yaml::from_str(data).unwrap();
-        approx::assert_abs_diff_eq!(wrapper.angle, TAU / 36.0, epsilon = 1e-15);
-
-        let data = indoc! {"
-        ---
-        angle: 1.0
-        "};
-        let wrapper: AngleBottomWrapper = serde_yaml::from_str(data).unwrap();
-        approx::assert_abs_diff_eq!(wrapper.angle, 1.0, epsilon = 1e-15);
-    }
-
-    #[cfg_attr(feature = "serde", derive(Deserialize))]
-    struct AngleTopWrapper {
-        #[serde(deserialize_with = "deserialize_angle_top_from_width_height")]
-        angle: f64,
-    }
-
-    #[test]
-    fn test_deserialize_top_with_width_and_height() {
-        let data = indoc! {"
-        ---
-        angle:
-            top_width: 1.0
-            side_top_width: 3.0
-            top_height: 1.0
-            angle_slot: 10.0 deg
-        "};
-        let wrapper: AngleTopWrapper = serde_yaml::from_str(data).unwrap();
-        let angle_slot = TAU / 36.0; // 10°
-        approx::assert_abs_diff_eq!(wrapper.angle, 0.75 * PI + 0.5 * angle_slot, epsilon = 1e-15);
-
-        let data = indoc! {"
-        ---
-        angle: 10.0 deg
-        "};
-        let wrapper: AngleTopWrapper = serde_yaml::from_str(data).unwrap();
-        approx::assert_abs_diff_eq!(wrapper.angle, TAU / 36.0, epsilon = 1e-15);
-
-        let data = indoc! {"
-        ---
-        angle: 1.0
-        "};
-        let wrapper: AngleTopWrapper = serde_yaml::from_str(data).unwrap();
-        approx::assert_abs_diff_eq!(wrapper.angle, 1.0, epsilon = 1e-15);
-    }
-
-    #[test]
-    fn test_test_angle_bottom_from_width_height() {
-        let angle_slot = TAU / 36.0; // 10°
-
-        // Case: No slope (bottom_width = side_bottom_width)
-        approx::assert_abs_diff_eq!(
-            PI - 0.5 * angle_slot,
-            AngleBottomFromWidthHeight {
-                bottom_width: Length::new::<millimeter>(1.0),
-                side_bottom_width: Length::new::<millimeter>(1.0),
-                bottom_height: Length::new::<millimeter>(1.0),
-                angle_slot
-            }
-            .get(),
-            epsilon = 1e-6
-        );
-
-        // Case: Almost no slope
-        approx::assert_abs_diff_eq!(
-            PI - 0.5 * angle_slot,
-            AngleBottomFromWidthHeight {
-                bottom_width: Length::new::<millimeter>(1.0),
-                side_bottom_width: Length::new::<millimeter>(1.0),
-                bottom_height: Length::new::<millimeter>(0.01),
-                angle_slot
-            }
-            .get(),
-            epsilon = 1e-6
-        );
-
-        // Case: slope with 60°
-        approx::assert_abs_diff_eq!(
-            1.9471774,
-            AngleBottomFromWidthHeight {
-                bottom_width: Length::new::<millimeter>(1.0),
-                side_bottom_width: Length::new::<millimeter>(3.0),
-                bottom_height: Length::new::<millimeter>(0.5),
-                angle_slot
-            }
-            .get(),
-            epsilon = 1e-6
-        );
-
-        // Case: slope with 45°
-        approx::assert_abs_diff_eq!(
-            0.75 * PI - 0.5 * angle_slot,
-            AngleBottomFromWidthHeight {
-                bottom_width: Length::new::<millimeter>(1.0),
-                side_bottom_width: Length::new::<millimeter>(3.0),
-                bottom_height: Length::new::<millimeter>(1.0),
-                angle_slot
-            }
-            .get(),
-            epsilon = 1e-6
-        );
-
-        // Case: slope with 60°
-        approx::assert_abs_diff_eq!(
-            2.59067858,
-            AngleBottomFromWidthHeight {
-                bottom_width: Length::new::<millimeter>(1.0),
-                side_bottom_width: Length::new::<millimeter>(2.0),
-                bottom_height: Length::new::<millimeter>(1.0),
-                angle_slot
-            }
-            .get(),
-            epsilon = 1e-6
-        );
-    }
-
-    #[test]
-    fn test_test_angle_top_from_width_height() {
-        let angle_slot = TAU / 36.0; // 10°
-
-        // Case: No slope (bottom_width = side_bottom_width)
-        approx::assert_abs_diff_eq!(
-            PI + 0.5 * angle_slot,
-            AngleTopFromWidthHeight {
-                top_width: Length::new::<millimeter>(1.0),
-                side_top_width: Length::new::<millimeter>(1.0),
-                top_height: Length::new::<millimeter>(1.0),
-                angle_slot
-            }
-            .get(),
-            epsilon = 1e-6
-        );
-
-        // Case: Almost no slope
-        approx::assert_abs_diff_eq!(
-            PI + 0.5 * angle_slot,
-            AngleTopFromWidthHeight {
-                top_width: Length::new::<millimeter>(1.0),
-                side_top_width: Length::new::<millimeter>(1.0),
-                top_height: Length::new::<millimeter>(0.01),
-                angle_slot
-            }
-            .get(),
-            epsilon = 1e-6
-        );
-
-        // Case: slope with 60°
-        approx::assert_abs_diff_eq!(
-            1.94717747 + angle_slot,
-            AngleTopFromWidthHeight {
-                top_width: Length::new::<millimeter>(1.0),
-                side_top_width: Length::new::<millimeter>(3.0),
-                top_height: Length::new::<millimeter>(0.5),
-                angle_slot
-            }
-            .get(),
-            epsilon = 1e-6
-        );
-
-        // Case: slope with 45°
-        approx::assert_abs_diff_eq!(
-            0.75 * PI + 0.5 * angle_slot,
-            AngleTopFromWidthHeight {
-                top_width: Length::new::<millimeter>(1.0),
-                side_top_width: Length::new::<millimeter>(3.0),
-                top_height: Length::new::<millimeter>(1.0),
-                angle_slot
-            }
-            .get(),
-            epsilon = 1e-6
-        );
-
-        // Case: slope with 60°
-        approx::assert_abs_diff_eq!(
-            2.5906785 + angle_slot,
-            AngleTopFromWidthHeight {
-                top_width: Length::new::<millimeter>(1.0),
-                side_top_width: Length::new::<millimeter>(2.0),
-                top_height: Length::new::<millimeter>(1.0),
-                angle_slot
-            }
-            .get(),
-            epsilon = 1e-6
-        );
     }
 }

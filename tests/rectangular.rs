@@ -66,13 +66,13 @@ fn test_plot() {
             RectangularSlot::new(width, opening_width, height, opening_height, true).unwrap();
 
         compare_to_reference(
-            slot.drawables(CoilLayout::Single, true).as_slice(),
+            slot.drawables(&CoilLayout::Single, true).as_slice(),
             "tests/img/rectangular_w_opening.png",
             None,
         );
 
         compare_to_reference(
-            slot.drawables(CoilLayout::Single, false).as_slice(),
+            slot.drawables(&CoilLayout::Single, false).as_slice(),
             "tests/img/rectangular_wo_opening.png",
             None,
         );
@@ -86,13 +86,13 @@ fn test_plot() {
             RectangularSlot::new(width, opening_width, height, opening_height, true).unwrap();
 
         compare_to_reference(
-            slot.drawables(CoilLayout::Single, true).as_slice(),
+            slot.drawables(&CoilLayout::Single, true).as_slice(),
             "tests/img/rectangular_wo_opening.png",
             None,
         );
 
         compare_to_reference(
-            slot.drawables(CoilLayout::Single, false).as_slice(),
+            slot.drawables(&CoilLayout::Single, false).as_slice(),
             "tests/img/rectangular_wo_opening.png",
             None,
         );
@@ -154,7 +154,7 @@ fn test_slices() {
 }
 
 #[test]
-fn test_slot_layer_contour() {
+fn test_slot_layer_outline() {
     let opening_height = Length::new::<millimeter>(1.0);
     let opening_width = Length::new::<millimeter>(1.0);
     let width = Length::new::<millimeter>(3.0);
@@ -172,43 +172,69 @@ fn test_slot_layer_contour() {
 
     // Sum up the partial slot outlines
     approx::assert_abs_diff_eq!(
-        slot.layer_contour(0, &CoilLayout::Single).length(),
+        slot.layer_outlines(0, &CoilLayout::Single)
+            .length()
+            .get::<meter>(),
         outline,
         epsilon = 1e-6
     );
 
     let pt1 = slot
-        .layer_contour(0, &CoilLayout::DoubleHorizontal)
-        .length();
+        .layer_outlines(0, &CoilLayout::DoubleHorizontal)
+        .length()
+        .get::<meter>();
     let pt2 = slot
-        .layer_contour(1, &CoilLayout::DoubleHorizontal)
-        .length();
+        .layer_outlines(1, &CoilLayout::DoubleHorizontal)
+        .length()
+        .get::<meter>();
     assert!(pt1 == pt2); // Both outlines cover one half of the slot
     approx::assert_abs_diff_eq!(pt1 + pt2, outline, epsilon = 1e-6);
 
-    let pt1 = slot.layer_contour(0, &CoilLayout::DoubleVertical).length();
-    let pt2 = slot.layer_contour(1, &CoilLayout::DoubleVertical).length();
+    let pt1 = slot
+        .layer_outlines(0, &CoilLayout::DoubleVertical)
+        .length()
+        .get::<meter>();
+    let pt2 = slot
+        .layer_outlines(1, &CoilLayout::DoubleVertical)
+        .length()
+        .get::<meter>();
     assert!(pt1 > pt2); // pt1 is much larger since it includes the slot bottom
     approx::assert_abs_diff_eq!((pt1 + pt2), outline, epsilon = 1e-6);
 
-    let pt1 = slot.layer_contour(0, &CoilLayout::Quadruple).length();
-    let pt2 = slot.layer_contour(1, &CoilLayout::Quadruple).length();
-    let pt3 = slot.layer_contour(2, &CoilLayout::Quadruple).length();
-    let pt4 = slot.layer_contour(3, &CoilLayout::Quadruple).length();
+    let pt1 = slot
+        .layer_outlines(0, &CoilLayout::Quadruple)
+        .length()
+        .get::<meter>();
+    let pt2 = slot
+        .layer_outlines(1, &CoilLayout::Quadruple)
+        .length()
+        .get::<meter>();
+    let pt3 = slot
+        .layer_outlines(2, &CoilLayout::Quadruple)
+        .length()
+        .get::<meter>();
+    let pt4 = slot
+        .layer_outlines(3, &CoilLayout::Quadruple)
+        .length()
+        .get::<meter>();
     approx::assert_abs_diff_eq!(pt1 + pt2 + pt3 + pt4, outline, epsilon = 1e-6);
 
     let pt1 = slot
-        .layer_contour(0, &CoilLayout::MultiVertical(4))
-        .length();
+        .layer_outlines(0, &CoilLayout::MultiVertical(4))
+        .length()
+        .get::<meter>();
     let pt2 = slot
-        .layer_contour(1, &CoilLayout::MultiVertical(4))
-        .length();
+        .layer_outlines(1, &CoilLayout::MultiVertical(4))
+        .length()
+        .get::<meter>();
     let pt3 = slot
-        .layer_contour(2, &CoilLayout::MultiVertical(4))
-        .length();
+        .layer_outlines(2, &CoilLayout::MultiVertical(4))
+        .length()
+        .get::<meter>();
     let pt4 = slot
-        .layer_contour(3, &CoilLayout::MultiVertical(4))
-        .length();
+        .layer_outlines(3, &CoilLayout::MultiVertical(4))
+        .length()
+        .get::<meter>();
     approx::assert_abs_diff_eq!(pt1 + pt2 + pt3 + pt4, outline, epsilon = 1e-6);
 }
 
