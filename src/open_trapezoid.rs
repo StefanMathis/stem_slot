@@ -14,10 +14,7 @@ use stem_material::prelude::*;
 #[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
 
-use crate::slot::Slot;
-
-#[cfg(feature = "serde")]
-use crate::semi_trapezoid::serde_impl::deserialize_angle_bottom_from_width_height;
+use crate::{semi_trapezoid::AngleBottomFromWidthHeight, slot::Slot};
 
 /**
 TODO
@@ -476,11 +473,7 @@ pub struct OpenTrapezoidWithAngleBottomBuilder {
     pub opening_height: Length,
     #[cfg_attr(feature = "serde", serde(deserialize_with = "deserialize_quantity"))]
     pub bottom_width: Length,
-    #[cfg_attr(
-        feature = "serde",
-        serde(deserialize_with = "deserialize_angle_bottom_from_width_height")
-    )]
-    pub angle_bottom: f64,
+    pub angle_bottom: AngleBottomFromWidthHeight,
     #[cfg_attr(feature = "serde", serde(deserialize_with = "deserialize_angle"))]
     pub angle_slot: f64,
     #[cfg_attr(feature = "serde", serde(deserialize_with = "deserialize_quantity"))]
@@ -494,8 +487,10 @@ impl TryFrom<OpenTrapezoidWithAngleBottomBuilder> for OpenTrapezoidSlot {
     type Error = crate::error::Error;
 
     fn try_from(value: OpenTrapezoidWithAngleBottomBuilder) -> Result<Self, Self::Error> {
-        let alpha =
-            -crate::semi_trapezoid::angle_bottom_slope(value.angle_bottom, value.angle_slot);
+        let alpha = -crate::semi_trapezoid::angle_bottom_slope(
+            value.angle_bottom.value(),
+            value.angle_slot,
+        );
         let beta = FRAC_PI_2 - 0.5 * value.angle_slot;
 
         let l1 = Line::from_point_angle(

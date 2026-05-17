@@ -26,6 +26,209 @@ fn compare_to_reference<P: AsRef<std::path::Path>>(
 }
 
 #[test]
+fn test_deserialize_bottom_with_width_and_height() {
+    let data = indoc! {"
+        ---
+        bottom_width: 1.0 m
+        side_bottom_width: 3.0 m
+        bottom_height: 1.0 m
+        angle_slot: 10.0 deg
+        "};
+    let angle_bottom: AngleBottomFromWidthHeight = serde_yaml::from_str(data).unwrap();
+    approx::assert_abs_diff_eq!(
+        angle_bottom.value(),
+        0.75 * PI - 0.5 * TAU / 36.0,
+        epsilon = 1e-15
+    );
+
+    let data = indoc! {"
+        ---
+        10.0 deg
+        "};
+    let angle_bottom: AngleBottomFromWidthHeight = serde_yaml::from_str(data).unwrap();
+    approx::assert_abs_diff_eq!(angle_bottom.value(), TAU / 36.0, epsilon = 1e-15);
+
+    let data = indoc! {"
+        ---
+        1.0
+        "};
+    let angle_bottom: AngleBottomFromWidthHeight = serde_yaml::from_str(data).unwrap();
+    approx::assert_abs_diff_eq!(angle_bottom.value(), 1.0, epsilon = 1e-15);
+}
+
+#[test]
+fn test_deserialize_top_with_width_and_height() {
+    let data = indoc! {"
+        ---
+        top_width: 1.0
+        side_top_width: 3.0
+        top_height: 1.0
+        angle_slot: 10.0 deg
+        "};
+    let angle_top: AngleTopFromWidthHeight = serde_yaml::from_str(data).unwrap();
+    let angle_slot = TAU / 36.0; // 10°
+    approx::assert_abs_diff_eq!(
+        angle_top.value(),
+        0.75 * PI + 0.5 * angle_slot,
+        epsilon = 1e-15
+    );
+
+    let data = indoc! {"
+        ---
+        10.0 deg
+        "};
+    let angle_top: AngleTopFromWidthHeight = serde_yaml::from_str(data).unwrap();
+    approx::assert_abs_diff_eq!(angle_top.value(), TAU / 36.0, epsilon = 1e-15);
+
+    let data = indoc! {"
+        ---
+        1.0
+        "};
+    let angle_top: AngleTopFromWidthHeight = serde_yaml::from_str(data).unwrap();
+    approx::assert_abs_diff_eq!(angle_top.value(), 1.0, epsilon = 1e-15);
+}
+
+#[test]
+fn test_test_angle_bottom_from_width_height() {
+    let angle_slot = TAU / 36.0; // 10°
+
+    // Case: No slope (bottom_width = side_bottom_width)
+    approx::assert_abs_diff_eq!(
+        PI - 0.5 * angle_slot,
+        AngleBottomFromWidthHeight::Calculate {
+            bottom_width: Length::new::<millimeter>(1.0),
+            side_bottom_width: Length::new::<millimeter>(1.0),
+            bottom_height: Length::new::<millimeter>(1.0),
+            angle_slot
+        }
+        .value(),
+        epsilon = 1e-6
+    );
+
+    // Case: Almost no slope
+    approx::assert_abs_diff_eq!(
+        PI - 0.5 * angle_slot,
+        AngleBottomFromWidthHeight::Calculate {
+            bottom_width: Length::new::<millimeter>(1.0),
+            side_bottom_width: Length::new::<millimeter>(1.0),
+            bottom_height: Length::new::<millimeter>(0.01),
+            angle_slot
+        }
+        .value(),
+        epsilon = 1e-6
+    );
+
+    // Case: slope with 60°
+    approx::assert_abs_diff_eq!(
+        1.9471774,
+        AngleBottomFromWidthHeight::Calculate {
+            bottom_width: Length::new::<millimeter>(1.0),
+            side_bottom_width: Length::new::<millimeter>(3.0),
+            bottom_height: Length::new::<millimeter>(0.5),
+            angle_slot
+        }
+        .value(),
+        epsilon = 1e-6
+    );
+
+    // Case: slope with 45°
+    approx::assert_abs_diff_eq!(
+        0.75 * PI - 0.5 * angle_slot,
+        AngleBottomFromWidthHeight::Calculate {
+            bottom_width: Length::new::<millimeter>(1.0),
+            side_bottom_width: Length::new::<millimeter>(3.0),
+            bottom_height: Length::new::<millimeter>(1.0),
+            angle_slot
+        }
+        .value(),
+        epsilon = 1e-6
+    );
+
+    // Case: slope with 60°
+    approx::assert_abs_diff_eq!(
+        2.59067858,
+        AngleBottomFromWidthHeight::Calculate {
+            bottom_width: Length::new::<millimeter>(1.0),
+            side_bottom_width: Length::new::<millimeter>(2.0),
+            bottom_height: Length::new::<millimeter>(1.0),
+            angle_slot
+        }
+        .value(),
+        epsilon = 1e-6
+    );
+}
+
+#[test]
+fn test_test_angle_top_from_width_height() {
+    let angle_slot = TAU / 36.0; // 10°
+
+    // Case: No slope (bottom_width = side_bottom_width)
+    approx::assert_abs_diff_eq!(
+        PI + 0.5 * angle_slot,
+        AngleTopFromWidthHeight::Calculate {
+            top_width: Length::new::<millimeter>(1.0),
+            side_top_width: Length::new::<millimeter>(1.0),
+            top_height: Length::new::<millimeter>(1.0),
+            angle_slot
+        }
+        .value(),
+        epsilon = 1e-6
+    );
+
+    // Case: Almost no slope
+    approx::assert_abs_diff_eq!(
+        PI + 0.5 * angle_slot,
+        AngleTopFromWidthHeight::Calculate {
+            top_width: Length::new::<millimeter>(1.0),
+            side_top_width: Length::new::<millimeter>(1.0),
+            top_height: Length::new::<millimeter>(0.01),
+            angle_slot
+        }
+        .value(),
+        epsilon = 1e-6
+    );
+
+    // Case: slope with 60°
+    approx::assert_abs_diff_eq!(
+        1.94717747 + angle_slot,
+        AngleTopFromWidthHeight::Calculate {
+            top_width: Length::new::<millimeter>(1.0),
+            side_top_width: Length::new::<millimeter>(3.0),
+            top_height: Length::new::<millimeter>(0.5),
+            angle_slot
+        }
+        .value(),
+        epsilon = 1e-6
+    );
+
+    // Case: slope with 45°
+    approx::assert_abs_diff_eq!(
+        0.75 * PI + 0.5 * angle_slot,
+        AngleTopFromWidthHeight::Calculate {
+            top_width: Length::new::<millimeter>(1.0),
+            side_top_width: Length::new::<millimeter>(3.0),
+            top_height: Length::new::<millimeter>(1.0),
+            angle_slot
+        }
+        .value(),
+        epsilon = 1e-6
+    );
+
+    // Case: slope with 60°
+    approx::assert_abs_diff_eq!(
+        2.5906785 + angle_slot,
+        AngleTopFromWidthHeight::Calculate {
+            top_width: Length::new::<millimeter>(1.0),
+            side_top_width: Length::new::<millimeter>(2.0),
+            top_height: Length::new::<millimeter>(1.0),
+            angle_slot
+        }
+        .value(),
+        epsilon = 1e-6
+    );
+}
+
+#[test]
 fn test_properties() {
     let area = 155.65367; // mm²
     let outline = 0.0509879; // m
@@ -161,8 +364,8 @@ fn test_current_displacement_coefficients() {
         side_height: Length::new::<millimeter>(17.0),
         opening_height: Length::new::<millimeter>(0.75),
         angle_slot,
-        angle_bottom: angle_bottom_no_slope(angle_slot),
-        angle_top: angle_top_no_slope(angle_slot),
+        angle_bottom: AngleBottomFromWidthHeight::new_no_slope(angle_slot),
+        angle_top: AngleTopFromWidthHeight::new_no_slope(angle_slot),
         bottom_radius,
         slope_bottom_radius: Length::new::<millimeter>(0.0),
         top_radius: Length::new::<millimeter>(1.0),
@@ -201,8 +404,8 @@ fn test_slices() {
         side_height: Length::new::<millimeter>(17.0),
         opening_height: Length::new::<millimeter>(0.75),
         angle_slot,
-        angle_bottom: angle_bottom_no_slope(angle_slot),
-        angle_top: angle_top_no_slope(angle_slot),
+        angle_bottom: AngleBottomFromWidthHeight::new_no_slope(angle_slot),
+        angle_top: AngleTopFromWidthHeight::new_no_slope(angle_slot),
         bottom_radius,
         slope_bottom_radius: Length::new::<millimeter>(0.0),
         top_radius: Length::new::<millimeter>(1.0),
@@ -232,8 +435,8 @@ fn test_semi_trapezoid_side_height() {
         Length::new::<millimeter>(17.0),
         Length::new::<millimeter>(0.75),
         angle_slot,
-        angle_bottom_no_slope(angle_slot),
-        angle_top_no_slope(angle_slot),
+        AngleBottomFromWidthHeight::new_no_slope(angle_slot).value(),
+        AngleTopFromWidthHeight::new_no_slope(angle_slot).value(),
         bottom_radius,
         Length::new::<millimeter>(0.0),
         Length::new::<millimeter>(1.0),
@@ -557,14 +760,13 @@ fn test_inner_slot() {
         side_top_width: Length::new::<millimeter>(8.0),
         opening_height: Length::new::<millimeter>(0.75),
         angle_slot: PI / 14.0,
-        angle_bottom: angle_bottom_no_slope(PI / 14.0),
-        angle_top: AngleTopFromWidthHeight {
+        angle_bottom: AngleBottomFromWidthHeight::new_no_slope(PI / 14.0),
+        angle_top: AngleTopFromWidthHeight::Calculate {
             top_width: Length::new::<millimeter>(1.5),
             side_top_width: Length::new::<millimeter>(8.0),
             top_height: Length::new::<millimeter>(0.5),
             angle_slot: PI / 14.0,
-        }
-        .get(),
+        },
         bottom_radius: Length::new::<millimeter>(0.0),
         slope_bottom_radius: Length::new::<millimeter>(0.0),
         top_radius: Length::new::<millimeter>(0.0),
@@ -622,8 +824,8 @@ fn test_semi_trapezoid_inner_stator() {
         side_height: Length::new::<millimeter>(17.0),
         opening_height: Length::new::<millimeter>(0.75),
         angle_slot,
-        angle_bottom: angle_bottom_no_slope(angle_slot),
-        angle_top: angle_top_no_slope(angle_slot),
+        angle_bottom: AngleBottomFromWidthHeight::new_no_slope(angle_slot),
+        angle_top: AngleTopFromWidthHeight::new_no_slope(angle_slot),
         bottom_radius,
         slope_bottom_radius: Length::new::<millimeter>(0.0),
         top_radius: Length::new::<millimeter>(1.0),
