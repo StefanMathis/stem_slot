@@ -904,10 +904,6 @@ pub trait Slot: Send + Sync + std::fmt::Debug + DynClone + Any + 'static {
         coil_layout: &CoilLayout,
     ) -> f64 {
         // Check the relationship between the layers and adjust the calculation strategy
-        let slot_contour_no_opening = Contour::from(self.outline_winding_area());
-        let slot_bounds_no_opening = slot_contour_no_opening.bounding_box();
-        let slot_body_centroid = slot_contour_no_opening.centroid();
-
         let ordering = coil_layout.ordering_vertical(linked_layer, excitation_layer);
         let layer = match ordering {
             std::cmp::Ordering::Equal => {
@@ -928,7 +924,8 @@ pub trait Slot: Send + Sync + std::fmt::Debug + DynClone + Any + 'static {
         };
 
         let layer_contour = &self.layer_contours(&coil_layout, false)[layer as usize];
-        let layer_area = layer_contour.area();
+        let slot_contour_no_opening = Contour::from(self.outline_winding_area());
+        let slot_bounds_no_opening = slot_contour_no_opening.bounding_box();
 
         return inductance_leakage_coefficient(
             self,
@@ -939,12 +936,12 @@ pub trait Slot: Send + Sync + std::fmt::Debug + DynClone + Any + 'static {
                 self,
                 layer,
                 coil_layout,
-                slot_body_centroid,
+                slot_contour_no_opening.centroid(),
                 &slot_bounds_no_opening,
                 1.0,
                 0.0,
             ),
-            layer_area,
+            layer_contour.area(),
             &ordering,
         );
     }
@@ -1787,6 +1784,7 @@ fn inductance_leakage_coefficient<S: Slot + ?Sized>(
                 vertical_coord,
                 &linked_layer_contour,
                 &linked_layer_bounds,
+                linked_layer_area,
             );
             return (f64::from(delta_area / linked_layer_area)).powi(2) / width.get::<meter>();
         }
@@ -1805,8 +1803,12 @@ fn inductance_leakage_coefficient<S: Slot + ?Sized>(
             return 0.0;
         }
         // Delta A / A /s => area in the layer ==> eq. 3.5.25 in [MVP08]
-        let delta_area =
-            lower_part_of_layer_area(vertical_coord, &linked_layer_contour, &linked_layer_bounds);
+        let delta_area = lower_part_of_layer_area(
+            vertical_coord,
+            &linked_layer_contour,
+            &linked_layer_bounds,
+            linked_layer_area,
+        );
         return f64::from(delta_area / linked_layer_area) / width.get::<meter>();
     };
 
@@ -1836,7 +1838,7 @@ fn inductance_leakage_coefficient<S: Slot + ?Sized>(
     */
     match ordering_linked_to_excitation_layer {
         std::cmp::Ordering::Equal => {
-            // Case 1 in [MVP08], p. 316
+            // Case 1 in [1], p. 316
             return quad.integrate(
                 linked_layer_bounds.ymin(),
                 linked_layer_bounds.ymax(),
@@ -1848,7 +1850,7 @@ fn inductance_leakage_coefficient<S: Slot + ?Sized>(
             );
         }
         _ => {
-            // Case 2 in [MVP08], p. 316
+            // Case 2 in [1], p. 316
             return quad.integrate(
                 linked_layer_bounds.ymin(),
                 linked_layer_bounds.ymax(),
@@ -1874,23 +1876,33 @@ fn lower_part_of_layer_area(
     vertical_slot_coord: f64,
     layer_contour: &Contour,
     layer_bounds: &BoundingBox,
+    contour_area: f64,
 ) -> f64 {
     if vertical_slot_coord >= layer_bounds.ymax() {
+        // Vertical coordinate is below the contour layer => area is zero
         return 0.0;
     }
+    if vertical_slot_coord <= layer_bounds.ymin() {
+        // Vertical coordinate is above the contour layer => area is that of the contour
+        return contour_area;
+    }
 
-    let lb_adjusted = if vertical_slot_coord > layer_bounds.ymin() {
-        BoundingBox::new(
-            layer_bounds.xmin(),
-            layer_bounds.xmax(),
-            vertical_slot_coord,
-            layer_bounds.ymax(),
-        )
-    } else {
-        return layer_contour.area();
-    };
+    // The lower coordinate of the bounding box to must be vertical_slot_coord
+    let lb_adjusted = BoundingBox::new(
+        layer_bounds.xmin(),
+        layer_bounds.xmax(),
+        vertical_slot_coord,
+        layer_bounds.ymax(),
+    );
     let clb = Contour::from(lb_adjusted.clone());
 
+    /*
+    Cut the layer contour into individual polysegments using the adjusted bounding box.
+    Then, throw away all polysegments which are not covered by the adjusted bounding box.
+    Lastly, connect the remaining polysegments into a single one, convert it
+    into a contour and return the area.
+    This contour is guaranteed to be covered by lb_adjusted.
+     */
     return layer_contour
         .intersection_cut(clb.polysegment(), DEFAULT_EPSILON, DEFAULT_MAX_ULPS)
         .into_iter()
@@ -1982,22 +1994,22 @@ mod tests {
         );
 
         approx::assert_abs_diff_eq!(
-            lower_part_of_layer_area(0.0, &slot_contour, &bounds),
+            lower_part_of_layer_area(0.0, &slot_contour, &bounds, slot_contour.area()),
             ((height - opening_height) * width).get::<square_meter>(),
             epsilon = 1e-6
         );
         approx::assert_abs_diff_eq!(
-            lower_part_of_layer_area(10e-3, &slot_contour, &bounds),
+            lower_part_of_layer_area(10e-3, &slot_contour, &bounds, slot_contour.area()),
             10e-3 * width.get::<meter>(),
             epsilon = 1e-6
         );
         approx::assert_abs_diff_eq!(
-            lower_part_of_layer_area(5e-3, &slot_contour, &bounds),
+            lower_part_of_layer_area(5e-3, &slot_contour, &bounds, slot_contour.area()),
             15e-3 * width.get::<meter>(),
             epsilon = 1e-6
         );
         approx::assert_abs_diff_eq!(
-            lower_part_of_layer_area(20e-3, &slot_contour, &bounds),
+            lower_part_of_layer_area(20e-3, &slot_contour, &bounds, slot_contour.area()),
             0.0,
             epsilon = 1e-6
         );
@@ -2014,13 +2026,13 @@ mod tests {
         );
 
         approx::assert_abs_diff_eq!(
-            lower_part_of_layer_area(10e-3, &slot_contour, &bounds),
+            lower_part_of_layer_area(10e-3, &slot_contour, &bounds, slot_contour.area()),
             7.5e-6,
             epsilon = 1e-6
         );
 
         approx::assert_abs_diff_eq!(
-            lower_part_of_layer_area(12e-3, &slot_contour, &bounds),
+            lower_part_of_layer_area(12e-3, &slot_contour, &bounds, slot_contour.area()),
             6e-6,
             epsilon = 1e-6
         );
@@ -2037,17 +2049,17 @@ mod tests {
         );
 
         approx::assert_abs_diff_eq!(
-            lower_part_of_layer_area(15e-3, &slot_contour, &bounds),
+            lower_part_of_layer_area(15e-3, &slot_contour, &bounds, slot_contour.area()),
             5e-3 * width.get::<meter>(),
             epsilon = 1e-8
         );
         approx::assert_abs_diff_eq!(
-            lower_part_of_layer_area(10e-3, &slot_contour, &bounds),
+            lower_part_of_layer_area(10e-3, &slot_contour, &bounds, slot_contour.area()),
             5.7e-5,
             epsilon = 1e-8
         );
         approx::assert_abs_diff_eq!(
-            lower_part_of_layer_area(5e-3, &slot_contour, &bounds),
+            lower_part_of_layer_area(5e-3, &slot_contour, &bounds, slot_contour.area()),
             5.7e-5,
             epsilon = 1e-8
         );
@@ -2063,17 +2075,17 @@ mod tests {
         );
 
         approx::assert_abs_diff_eq!(
-            lower_part_of_layer_area(9e-3, &slot_contour, &bounds),
+            lower_part_of_layer_area(9e-3, &slot_contour, &bounds, slot_contour.area()),
             1.5e-3 * width.get::<meter>(),
             epsilon = 1e-6
         );
         approx::assert_abs_diff_eq!(
-            lower_part_of_layer_area(3e-3, &slot_contour, &bounds),
+            lower_part_of_layer_area(3e-3, &slot_contour, &bounds, slot_contour.area()),
             (9.5e-3 - 2e-3) * width.get::<meter>(),
             epsilon = 1e-6
         );
         approx::assert_abs_diff_eq!(
-            lower_part_of_layer_area(10.5e-3, &slot_contour, &bounds),
+            lower_part_of_layer_area(10.5e-3, &slot_contour, &bounds, slot_contour.area()),
             0.0,
             epsilon = 1e-6
         );
