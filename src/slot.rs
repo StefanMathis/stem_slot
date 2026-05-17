@@ -13,7 +13,7 @@ semi-regular polygon.
 #![deny(missing_docs)]
 
 use akima_spline::AkimaSpline;
-use approx::{ulps_eq, ulps_ne};
+use approx::ulps_eq;
 use dyn_clone::DynClone;
 use gauss_quad;
 use nalgebra::DMatrix;
@@ -909,63 +909,41 @@ pub trait Slot: Send + Sync + std::fmt::Debug + DynClone + Any + 'static {
         let slot_body_centroid = slot_contour_no_opening.centroid();
 
         let ordering = coil_layout.ordering_vertical(linked_layer, excitation_layer);
-        let layer_bounds = match ordering {
+        let layer = match ordering {
             std::cmp::Ordering::Equal => {
-                /*
-                Both layers are located in the same height. This equals case 1 in [MVP08], p. 316.
-                */
-                layer_bounds(
-                    self,
-                    linked_layer,
-                    coil_layout,
-                    slot_body_centroid,
-                    &slot_bounds_no_opening,
-                    1.0,
-                    0.0,
-                )
+                // Both layers are located in the same height. This equals case 1 in [1], p.
+                // 316.
+                linked_layer
             }
             std::cmp::Ordering::Greater => {
-                /*
-                The linked layer is above the excitation layer. This equals case 2 in [MVP08], p. 316.
-                */
-                layer_bounds(
-                    self,
-                    linked_layer,
-                    coil_layout,
-                    slot_body_centroid,
-                    &slot_bounds_no_opening,
-                    1.0,
-                    0.0,
-                )
+                // The linked layer is above the excitation layer. This equals case 2 in [1], p.
+                // 316.
+                linked_layer
             }
             std::cmp::Ordering::Less => {
-                /*
-                The linked layer is above the excitation layer. This equals case 2 in [MVP08], p. 316.
-                */
-                layer_bounds(
-                    self,
-                    excitation_layer,
-                    coil_layout,
-                    slot_body_centroid,
-                    &slot_bounds_no_opening,
-                    1.0,
-                    0.0,
-                )
+                // The linked layer is above the excitation layer. This equals case 2 in [1], p.
+                // 316.
+                excitation_layer
             }
         };
 
-        // TODO: Why does this fail?
-        // let layer_contour = &self.layer_contours(&coil_layout,
-        // false)[excitation_layer as usize];
-        let layer_contour = apply_bounds(&slot_contour_no_opening, &layer_bounds);
+        let layer_contour = &self.layer_contours(&coil_layout, false)[layer as usize];
         let layer_area = layer_contour.area();
 
         return inductance_leakage_coefficient(
             self,
             &slot_contour_no_opening,
             &slot_bounds_no_opening,
-            &layer_contour,
-            &layer_bounds,
+            layer_contour,
+            &layer_bounds(
+                self,
+                layer,
+                coil_layout,
+                slot_body_centroid,
+                &slot_bounds_no_opening,
+                1.0,
+                0.0,
+            ),
             layer_area,
             &ordering,
         );
@@ -1055,11 +1033,7 @@ pub trait Slot: Send + Sync + std::fmt::Debug + DynClone + Any + 'static {
             })
             .collect();
 
-        let all_layer_contours: Vec<Contour> = all_layer_bounds
-            .par_iter()
-            .map(|bounds| apply_bounds(&slot_contour_no_opening, &bounds))
-            .collect();
-
+        let all_layer_contours = self.layer_contours(coil_layout, false);
         let all_layer_area: Vec<f64> = all_layer_contours.par_iter().map(Contour::area).collect();
 
         matrix
@@ -1905,8 +1879,7 @@ fn lower_part_of_layer_area(
         return 0.0;
     }
 
-    // Adjust the bounds if vertical_slot_coord is between ymin and ymax
-    let layer_bounds = if vertical_slot_coord > layer_bounds.ymin() {
+    let lb_adjusted = if vertical_slot_coord > layer_bounds.ymin() {
         BoundingBox::new(
             layer_bounds.xmin(),
             layer_bounds.xmax(),
@@ -1914,10 +1887,22 @@ fn lower_part_of_layer_area(
             layer_bounds.ymax(),
         )
     } else {
-        layer_bounds.clone()
+        return layer_contour.area();
     };
+    let clb = Contour::from(lb_adjusted.clone());
 
-    return apply_bounds(&layer_contour, &layer_bounds).area();
+    return layer_contour
+        .intersection_cut(clb.polysegment(), DEFAULT_EPSILON, DEFAULT_MAX_ULPS)
+        .into_iter()
+        .filter(|ps| {
+            lb_adjusted.approx_covers(&ps.bounding_box(), DEFAULT_EPSILON, DEFAULT_MAX_ULPS)
+        })
+        .reduce(|mut ps1, mut ps2| {
+            ps1.append(&mut ps2);
+            ps1
+        })
+        .map(|c| Contour::from(c).area())
+        .unwrap_or(0.0);
 }
 
 pub(crate) fn rotating_core_slot_y_offset(
@@ -1968,305 +1953,14 @@ pub(crate) fn slot_side_bottom_and_top_width_from_rot_core(
     return [b_bottom, b_top];
 }
 
-/**
-This function takes the given contour and "limits" it to the given bounding box.
-
-The function is a relict from an earlier version of planar_geo and should
-eventually be replaced by a more general solution within planar_geo.
- */
-fn apply_bounds(contour: &Contour, bounding_box: &BoundingBox) -> Contour {
-    #[derive(PartialEq, Clone, Copy, Debug)]
-    enum BoundingBoxSide {
-        Left,
-        Right,
-        Top,
-        Bottom,
-    }
-
-    impl BoundingBoxSide {
-        // Get the side of the bounding box where the given point is located.
-        // If the point is directly on a bounding box corner, return the corresponding
-        // vertical side. The point must be on one of the bounding box sides!
-        fn new(point: [f64; 2], bounding_box: &BoundingBox) -> BoundingBoxSide {
-            if point[0] == bounding_box.xmin() {
-                if point[1] == bounding_box.ymax() {
-                    return BoundingBoxSide::Top;
-                } else {
-                    return BoundingBoxSide::Left;
-                }
-            }
-            if point[1] == bounding_box.ymin() {
-                if point[0] == bounding_box.xmin() {
-                    return BoundingBoxSide::Left;
-                } else {
-                    return BoundingBoxSide::Bottom;
-                }
-            }
-            if point[0] == bounding_box.xmax() {
-                if point[1] == bounding_box.ymin() {
-                    return BoundingBoxSide::Bottom;
-                } else {
-                    return BoundingBoxSide::Right;
-                }
-            }
-            if point[1] == bounding_box.ymax() {
-                return BoundingBoxSide::Right;
-            } else {
-                return BoundingBoxSide::Top;
-            }
-        }
-
-        fn adjacent_side(&self, clockwise: bool) -> Self {
-            if clockwise {
-                match self {
-                    BoundingBoxSide::Bottom => return BoundingBoxSide::Left,
-                    BoundingBoxSide::Left => return BoundingBoxSide::Top,
-                    BoundingBoxSide::Top => return BoundingBoxSide::Right,
-                    BoundingBoxSide::Right => return BoundingBoxSide::Bottom,
-                }
-            } else {
-                match self {
-                    BoundingBoxSide::Bottom => return BoundingBoxSide::Right,
-                    BoundingBoxSide::Right => return BoundingBoxSide::Top,
-                    BoundingBoxSide::Top => return BoundingBoxSide::Left,
-                    BoundingBoxSide::Left => return BoundingBoxSide::Bottom,
-                }
-            }
-        }
-
-        fn corner(&self, bounding_box: &BoundingBox, clockwise: bool) -> [f64; 2] {
-            if clockwise {
-                match self {
-                    BoundingBoxSide::Bottom => {
-                        return [bounding_box.xmin(), bounding_box.ymin()];
-                    }
-                    BoundingBoxSide::Left => {
-                        return [bounding_box.xmin(), bounding_box.ymax()];
-                    }
-                    BoundingBoxSide::Top => {
-                        return [bounding_box.xmax(), bounding_box.ymax()];
-                    }
-                    BoundingBoxSide::Right => {
-                        return [bounding_box.xmax(), bounding_box.ymin()];
-                    }
-                }
-            } else {
-                match self {
-                    BoundingBoxSide::Bottom => {
-                        return [bounding_box.xmax(), bounding_box.ymin()];
-                    }
-                    BoundingBoxSide::Right => {
-                        return [bounding_box.xmax(), bounding_box.ymax()];
-                    }
-                    BoundingBoxSide::Top => {
-                        return [bounding_box.xmin(), bounding_box.ymax()];
-                    }
-                    BoundingBoxSide::Left => {
-                        return [bounding_box.xmin(), bounding_box.ymin()];
-                    }
-                }
-            }
-        }
-    }
-
-    fn try_add_segment(primitives: &mut Vec<Segment>, new_addition: Segment) {
-        if new_addition.start() != new_addition.stop() {
-            if let Some(primitive) = primitives.last() {
-                if &new_addition != primitive {
-                    primitives.push(new_addition);
-                }
-            } else {
-                primitives.push(new_addition);
-            }
-        }
-    }
-
-    fn add_glue_segments(
-        primitives: &mut Vec<Segment>,
-        contour: &Contour,
-        start: [f64; 2],
-        stop: [f64; 2],
-        bounding_box: &BoundingBox,
-    ) {
-        // Get the location of start and stop points on the bounding box
-        let stop_side = BoundingBoxSide::new(stop, bounding_box);
-        let start_side = BoundingBoxSide::new(start, bounding_box);
-
-        // Short-circuit: If start and stop are on the same side, they might be
-        // connected by a direct line. Calculate the middle point and check if
-        // it is inside the segment_chain. If true, add the direct line and return
-        let middle_point = [0.5 * (start[0] + stop[0]), 0.5 * (start[1] + stop[1])];
-
-        // Check if the middle point is on the border of the bounding box AND inside the
-        // polygon
-        if ulps_eq!(
-            middle_point[0],
-            bounding_box.xmin(),
-            epsilon = DEFAULT_EPSILON,
-            max_ulps = DEFAULT_MAX_ULPS
-        ) || ulps_eq!(
-            middle_point[0],
-            bounding_box.xmax(),
-            epsilon = DEFAULT_EPSILON,
-            max_ulps = DEFAULT_MAX_ULPS
-        ) || ulps_eq!(
-            middle_point[1],
-            bounding_box.ymin(),
-            epsilon = DEFAULT_EPSILON,
-            max_ulps = DEFAULT_MAX_ULPS
-        ) || ulps_eq!(
-            middle_point[1],
-            bounding_box.ymax(),
-            epsilon = DEFAULT_EPSILON,
-            max_ulps = DEFAULT_MAX_ULPS
-        ) {
-            if contour.covers_point(middle_point, DEFAULT_EPSILON, DEFAULT_MAX_ULPS) {
-                if let Ok(ls) = LineSegment::new(stop, start, DEFAULT_EPSILON, DEFAULT_MAX_ULPS) {
-                    primitives.push(ls.into());
-                }
-                return ();
-            }
-        }
-
-        // Add corners in a clockwise fashion until the start side is reached.
-        // If one of the corners is not inside the original segment_chain, stop and
-        // search in the counter-clockwise direction instead. It is sufficient
-        // to check the first added corner!
-        let mut clockwise = true;
-        let first_corner = stop_side.corner(bounding_box, clockwise);
-
-        let first_corner = if contour.covers_point(first_corner, DEFAULT_EPSILON, DEFAULT_MAX_ULPS)
-        {
-            first_corner
-        } else {
-            clockwise = false;
-            stop_side.corner(bounding_box, clockwise)
-        };
-
-        // Add the first corner
-        if let Ok(ls) = LineSegment::new(stop, first_corner, DEFAULT_EPSILON, DEFAULT_MAX_ULPS) {
-            primitives.push(ls.into());
-        }
-
-        // Loop until the start side has been reached
-        let mut prev_side = stop_side;
-        let mut prev_corner = first_corner;
-        loop {
-            // Check if start is located on the adjacent side
-            let new_side = prev_side.adjacent_side(clockwise);
-            if new_side == start_side {
-                if let Ok(ls) =
-                    LineSegment::new(prev_corner, start, DEFAULT_EPSILON, DEFAULT_MAX_ULPS)
-                {
-                    try_add_segment(primitives, ls.into());
-                }
-                return ();
-            } else {
-                let new_corner = new_side.corner(&bounding_box, clockwise);
-                if let Ok(ls) =
-                    LineSegment::new(prev_corner, new_corner, DEFAULT_EPSILON, DEFAULT_MAX_ULPS)
-                {
-                    try_add_segment(primitives, ls.into());
-                }
-                prev_side = new_side;
-                prev_corner = new_corner;
-            }
-        }
-    }
-
-    // =========================================================================================================
-
-    // Check if the bounding box contains any part of self
-    let bb = contour.bounding_box();
-    if bounding_box.approx_covers(&bb, DEFAULT_EPSILON, DEFAULT_MAX_ULPS) {
-        // Fully contained
-        return contour.clone();
-    }
-    if !bounding_box.intersects(&bb)
-        && !bounding_box.approx_covers(&bb, DEFAULT_EPSILON, DEFAULT_MAX_ULPS)
-        && !bb.approx_covers(&bounding_box, DEFAULT_EPSILON, DEFAULT_MAX_ULPS)
-    {
-        // Bounds do not contain any part of the segment_chain.
-        return Polysegment::new().into();
-    }
-
-    /*
-    The general idea is as follows: Perform an intersection cut with a segment_chain representing the bounding box.
-    Then, filter away all polylines which are not inside the bounding box. After that, connect the start of each
-    segment_chain with the end of its predecessor. Finally, close the segment_chain again if it was closed in the first place.
-    */
-    let cut_polylines = contour.polysegment().intersection_cut(
-        Contour::from(bounding_box.clone()).polysegment(),
-        DEFAULT_EPSILON,
-        DEFAULT_MAX_ULPS,
-    );
-
-    let mut bound_primitives: Vec<Segment> = Vec::new();
-
-    for pl in cut_polylines.into_iter() {
-        for primitive in pl.into_iter() {
-            let primitive_bounding_box = primitive.bounding_box();
-            if bounding_box.approx_covers(
-                &primitive_bounding_box,
-                DEFAULT_EPSILON,
-                DEFAULT_MAX_ULPS,
-            ) {
-                if let Some(prev) = bound_primitives.last() {
-                    let stop = prev.stop();
-                    let start = primitive.start();
-
-                    if ulps_ne!(
-                        start,
-                        stop,
-                        epsilon = DEFAULT_EPSILON,
-                        max_ulps = DEFAULT_MAX_ULPS
-                    ) {
-                        add_glue_segments(
-                            &mut bound_primitives,
-                            contour,
-                            start,
-                            stop,
-                            bounding_box,
-                        );
-                    }
-                }
-
-                try_add_segment(&mut bound_primitives, primitive);
-            }
-        }
-    }
-
-    // Add a corner, if necessary
-    if bound_primitives.is_empty() {
-        return Polysegment::new().into();
-    }
-
-    let start = bound_primitives.first().expect("is not empty").start();
-    let stop = bound_primitives.last().expect("is not empty").stop();
-
-    if ulps_ne!(
-        start,
-        stop,
-        epsilon = DEFAULT_EPSILON,
-        max_ulps = DEFAULT_MAX_ULPS
-    ) {
-        add_glue_segments(&mut bound_primitives, contour, start, stop, bounding_box);
-    }
-
-    return Polysegment::from_iter(bound_primitives.into_iter()).into();
-}
-
 #[cfg(test)]
 mod tests {
-    use std::f64::consts::PI;
-
     use super::*;
     use crate::rectangular::RectangularSlot;
-    use crate::semi_trapezoid::{SemiTrapezoidSlot, SemiTrapezoidWithoutSlopesBuilder};
     use approx;
 
     #[test]
-    fn test_layer_bounds_rectangular() {
+    fn test_lower_part_of_layer_area_rectangular() {
         let opening_height = Length::new::<millimeter>(1.0);
         let opening_width = Length::new::<millimeter>(3.0);
         let width = Length::new::<millimeter>(3.0);
@@ -2321,13 +2015,13 @@ mod tests {
 
         approx::assert_abs_diff_eq!(
             lower_part_of_layer_area(10e-3, &slot_contour, &bounds),
-            10e-3 * 0.5 * width.get::<meter>(),
+            7.5e-6,
             epsilon = 1e-6
         );
 
         approx::assert_abs_diff_eq!(
             lower_part_of_layer_area(12e-3, &slot_contour, &bounds),
-            8e-3 * 0.5 * width.get::<meter>(),
+            6e-6,
             epsilon = 1e-6
         );
 
@@ -2343,19 +2037,19 @@ mod tests {
         );
 
         approx::assert_abs_diff_eq!(
-            lower_part_of_layer_area(10e-3, &slot_contour, &bounds),
-            9.5e-3 * width.get::<meter>(),
-            epsilon = 1e-6
-        );
-        approx::assert_abs_diff_eq!(
             lower_part_of_layer_area(15e-3, &slot_contour, &bounds),
             5e-3 * width.get::<meter>(),
-            epsilon = 1e-6
+            epsilon = 1e-8
+        );
+        approx::assert_abs_diff_eq!(
+            lower_part_of_layer_area(10e-3, &slot_contour, &bounds),
+            5.7e-5,
+            epsilon = 1e-8
         );
         approx::assert_abs_diff_eq!(
             lower_part_of_layer_area(5e-3, &slot_contour, &bounds),
-            9.5e-3 * width.get::<meter>(),
-            epsilon = 1e-6
+            5.7e-5,
+            epsilon = 1e-8
         );
 
         let bounds = layer_bounds(
@@ -2383,50 +2077,6 @@ mod tests {
             0.0,
             epsilon = 1e-6
         );
-    }
-
-    #[test]
-    fn test_layer_bounds_semi_trapezoid() {
-        let slot: SemiTrapezoidSlot = SemiTrapezoidWithoutSlopesBuilder {
-            bottom_width: Length::new::<millimeter>(10.0),
-            opening_width: Length::new::<millimeter>(2.0),
-            height: Length::new::<millimeter>(20.0),
-            opening_height: Length::new::<millimeter>(2.0),
-            angle_slot: 10.0 * PI / 180.0,
-            bottom_radius: Length::new::<millimeter>(2.0),
-            top_radius: Length::new::<millimeter>(1.0),
-            opening_radius: Length::new::<millimeter>(0.0),
-            consider_tooth_tip_leakage: true,
-        }
-        .try_into()
-        .unwrap();
-
-        let slot_contour_no_opening = Contour::new(slot.outline_winding_area());
-
-        // Single layer
-        let layer_bounds = layer_bounds(
-            &slot,
-            0,
-            &CoilLayout::Single,
-            slot_contour_no_opening.centroid(),
-            &slot_contour_no_opening.bounding_box(),
-            1.0,
-            0.0,
-        );
-
-        let layer_contour = apply_bounds(&slot_contour_no_opening, &layer_bounds);
-
-        let delta_area = lower_part_of_layer_area(10e-3, &layer_contour, &layer_bounds);
-        approx::assert_abs_diff_eq!(89.1529e-6, delta_area, epsilon = 1e-10);
-
-        let delta_area = lower_part_of_layer_area(5e-3, &layer_contour, &layer_bounds);
-        approx::assert_abs_diff_eq!(128.2168e-6, delta_area, epsilon = 1e-10);
-
-        let delta_area = lower_part_of_layer_area(3e-3, &layer_contour, &layer_bounds);
-        approx::assert_abs_diff_eq!(142.6175e-6, delta_area, epsilon = 1e-10);
-
-        let delta_area = lower_part_of_layer_area(2e-3, &layer_contour, &layer_bounds);
-        approx::assert_abs_diff_eq!(149.2063e-6, delta_area, epsilon = 0.001);
     }
 
     #[test]

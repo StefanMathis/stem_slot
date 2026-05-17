@@ -89,7 +89,7 @@ fn test_deserialize_top_with_width_and_height() {
 }
 
 #[test]
-fn test_test_angle_bottom_from_width_height() {
+fn test_angle_bottom_from_width_height() {
     let angle_slot = TAU / 36.0; // 10°
 
     // Case: No slope (bottom_width = side_bottom_width)
@@ -159,7 +159,7 @@ fn test_test_angle_bottom_from_width_height() {
 }
 
 #[test]
-fn test_test_angle_top_from_width_height() {
+fn test_angle_top_from_width_height() {
     let angle_slot = TAU / 36.0; // 10°
 
     // Case: No slope (bottom_width = side_bottom_width)

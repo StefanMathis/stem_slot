@@ -352,8 +352,6 @@ fn test_mutual_inductance_leakage_coefficient() {
 
     // Analytical formula of the self inductance slot leakage coefficient: In the
     // layer area, the coefficient is h / 3b, above that, it is h / b.
-    // Analytical formula of the mutual inductance slot leakage coefficient: In the
-    // layer area, the coefficient is h / 2b, above that, it is h / b.
 
     // Double-layer winding
     let coil_layout = CoilLayout::DoubleHorizontal;
