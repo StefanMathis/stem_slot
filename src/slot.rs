@@ -10,7 +10,6 @@ as part of custom implementations for the trait method.
 [`semi_regular_polygon_side_length`] is a helper method for defining a
 semi-regular polygon.
  */
-#![deny(missing_docs)]
 
 use akima_spline::AkimaSpline;
 use approx::ulps_eq;
@@ -513,7 +512,7 @@ pub trait Slot: Send + Sync + std::fmt::Debug + DynClone + Any + 'static {
     ///     consider_tooth_tip_leakage: true,
     /// }
     /// .try_into()
-    /// .unwrap();
+    /// .expect("valid inputs");
     ///
     /// let contours = slot.layer_contours(&CoilLayout::Quadruple, true);
     /// assert_eq!(contours.len(), 4);
@@ -536,22 +535,24 @@ pub trait Slot: Send + Sync + std::fmt::Debug + DynClone + Any + 'static {
 
                 let verts_par = [[0.0, bb.ymin() - 1.0], [0.0, bb.ymax() + 1.0]];
                 let vertical_line = Polysegment::from_points(verts_par.as_slice());
-                let mut separated_lines =
+                let separated_lines =
                     contour.intersection_cut(&vertical_line, DEFAULT_EPSILON, DEFAULT_MAX_ULPS);
 
-                // Check which half has positive x-values
-                let bb_first = separated_lines[0].bounding_box();
-
-                let contour_u: Polysegment; // Contour of the upper layer
-                let contour_l: Polysegment; // Contour of the lower layer
-                if bb_first.xmin() >= 0.0 {
-                    contour_l = separated_lines.pop().unwrap();
-                    contour_u = separated_lines.pop().unwrap();
+                let invert = if let Some(ps) = separated_lines.get(0) {
+                    let bb = ps.bounding_box();
+                    bb.xmin() >= 0.0
                 } else {
-                    contour_u = separated_lines.pop().unwrap();
-                    contour_l = separated_lines.pop().unwrap();
+                    false
+                };
+                if invert {
+                    return separated_lines
+                        .into_iter()
+                        .rev()
+                        .map(Contour::new)
+                        .collect();
+                } else {
+                    return separated_lines.into_iter().map(Contour::new).collect();
                 }
-                return vec![Contour::new(contour_l), Contour::new(contour_u)];
             }
 
             CoilLayout::DoubleVertical => {
@@ -562,22 +563,25 @@ pub trait Slot: Send + Sync + std::fmt::Debug + DynClone + Any + 'static {
 
                 let verts_par = [[2.0 * bb.xmin(), center[1]], [2.0 * bb.xmax(), center[1]]];
                 let horizontal_line = Polysegment::from_points(verts_par.as_slice());
-                let mut separated_lines =
+                let separated_lines =
                     contour.intersection_cut(&horizontal_line, DEFAULT_EPSILON, DEFAULT_MAX_ULPS);
 
                 // Check which half is the upper one
-                let bb_first = separated_lines[0].bounding_box();
-
-                let contour_u: Polysegment; // Contour of the upper layer
-                let contour_l: Polysegment; // Contour of the lower layer
-                if bb_first.center()[1] >= center[1] {
-                    contour_l = separated_lines.pop().unwrap();
-                    contour_u = separated_lines.pop().unwrap();
+                let invert = if let Some(ps) = separated_lines.get(0) {
+                    let bb = ps.bounding_box();
+                    bb.center()[1] < center[1]
                 } else {
-                    contour_u = separated_lines.pop().unwrap();
-                    contour_l = separated_lines.pop().unwrap();
+                    false
                 };
-                return vec![Contour::new(contour_u), Contour::new(contour_l)];
+                if invert {
+                    return separated_lines
+                        .into_iter()
+                        .rev()
+                        .map(Contour::new)
+                        .collect();
+                } else {
+                    return separated_lines.into_iter().map(Contour::new).collect();
+                }
             }
             CoilLayout::Quadruple => {
                 // ==========================================================================
@@ -588,29 +592,32 @@ pub trait Slot: Send + Sync + std::fmt::Debug + DynClone + Any + 'static {
 
                 let bb = contour.bounding_box();
 
-                let vertical_line = Polysegment::from_points(
-                    [[0.0, bb.ymin() - 1.0], [0.0, bb.ymax() + 1.0]].as_slice(),
+                /*
+                The line described by this polysegment roughly looks like this:
+                  A
+                  |
+                --|->|
+                  |  |
+                  |<-|
+                 */
+                let cutter = Polysegment::from_points(
+                    [
+                        [2.0 * bb.xmin(), center[1]],
+                        [2.0 * bb.xmax(), center[1]],
+                        [2.0 * bb.xmax(), bb.ymin() - 1.0],
+                        [0.0, bb.ymin() - 1.0],
+                        [0.0, bb.ymax() + 1.0],
+                    ]
+                    .as_slice(),
                 );
-                let horizontal_line = Polysegment::from_points(
-                    [[2.0 * bb.xmin(), center[1]], [2.0 * bb.xmax(), center[1]]].as_slice(),
-                );
 
-                // Cut the contour vertically
-                let halfes =
-                    contour.intersection_cut(&vertical_line, DEFAULT_EPSILON, DEFAULT_MAX_ULPS);
+                // Cut the contour into four halfes
+                let quarters = contour.intersection_cut(&cutter, DEFAULT_EPSILON, DEFAULT_MAX_ULPS);
 
-                // Cut the halfes again horizontally
-                let mut quarters: Vec<Polysegment> = Vec::with_capacity(4);
-                for half in halfes {
-                    let mut cutted =
-                        half.intersection_cut(&horizontal_line, DEFAULT_EPSILON, DEFAULT_MAX_ULPS);
-                    quarters.append(&mut cutted);
-                }
-
-                let mut contour_ll: Option<Polysegment> = None; // Contour of the lower-left layer
-                let mut contour_ul: Option<Polysegment> = None; // Contour of the upper-left layer
-                let mut contour_lr: Option<Polysegment> = None; // Contour of the lower-right layer
-                let mut contour_ur: Option<Polysegment> = None; // Contour of the upper-right layer
+                let mut ps_ll: Option<Polysegment> = None; // Contour of the lower-left layer
+                let mut ps_ul: Option<Polysegment> = None; // Contour of the upper-left layer
+                let mut ps_lr: Option<Polysegment> = None; // Contour of the lower-right layer
+                let mut ps_ur: Option<Polysegment> = None; // Contour of the upper-right layer
 
                 let eps = std::f64::EPSILON.sqrt();
 
@@ -626,39 +633,37 @@ pub trait Slot: Send + Sync + std::fmt::Debug + DynClone + Any + 'static {
 
                     // Check for lower-left
                     if bb.xmax() <= eps && bb.ymax() <= center[1] + eps {
-                        contour_ul = Some(quarter);
+                        ps_ul = Some(quarter);
 
                     // Check for upper-left
                     } else if bb.xmax() <= eps && bb.ymin() >= center[1] - eps {
-                        contour_ll = Some(quarter);
+                        ps_ll = Some(quarter);
 
                     // Check for lower-right
                     } else if bb.xmin() >= -eps && bb.ymax() <= center[1] + eps {
-                        contour_ur = Some(quarter);
+                        ps_ur = Some(quarter);
 
                     // Check for upper-right
                     } else if bb.xmin() >= -eps && bb.ymin() >= center[1] - eps {
-                        contour_lr = Some(quarter);
-
-                    // Quarter could not be sorted into one of the boxes. This
-                    // indicates a bug.
-                    } else {
-                        unreachable!();
+                        ps_lr = Some(quarter);
                     }
                 }
 
                 // Create contours
                 let mut contours: Vec<Contour> = Vec::with_capacity(4);
-                for contour in [contour_ll, contour_ul, contour_ur, contour_lr].into_iter() {
-                    let mut ps = contour.expect("could not build slot shapes");
-
-                    // Create full contour
-                    let start = ps.segments().last().unwrap().stop();
-                    match LineSegment::new(start, center, DEFAULT_EPSILON, DEFAULT_MAX_ULPS) {
-                        Ok(ls) => ps.push_back(ls.into()),
-                        Err(_) => (),
+                for ps in [ps_ll, ps_ul, ps_ur, ps_lr].into_iter() {
+                    if let Some(mut ps) = ps {
+                        // Create full contour
+                        if let Some(seg) = ps.segments().last() {
+                            let start = seg.stop();
+                            match LineSegment::new(start, center, DEFAULT_EPSILON, DEFAULT_MAX_ULPS)
+                            {
+                                Ok(ls) => ps.push_back(ls.into()),
+                                Err(_) => (),
+                            }
+                        }
+                        contours.push(ps.into());
                     }
-                    contours.push(ps.into());
                 }
                 return contours;
             }
@@ -693,12 +698,12 @@ pub trait Slot: Send + Sync + std::fmt::Debug + DynClone + Any + 'static {
                         // Check which half is the upper one
                         let bb_first = separated_lines[0].bounding_box();
                         let [contour_u, contour_l] = if bb_first.center()[1] >= y {
-                            let contour_l = separated_lines.pop().unwrap();
-                            let contour_u = separated_lines.pop().unwrap();
+                            let contour_l = separated_lines.pop().unwrap_or(Polysegment::new());
+                            let contour_u = separated_lines.pop().unwrap_or(Polysegment::new());
                             [contour_u, contour_l]
                         } else {
-                            let contour_u = separated_lines.pop().unwrap();
-                            let contour_l = separated_lines.pop().unwrap();
+                            let contour_u = separated_lines.pop().unwrap_or(Polysegment::new());
+                            let contour_l = separated_lines.pop().unwrap_or(Polysegment::new());
                             [contour_u, contour_l]
                         };
 
@@ -1571,7 +1576,7 @@ pub fn leakage_coefficient_tooth_tip(opening_width: Length, magnetic_air_gap: Le
 /// use approx::assert_abs_diff_eq;
 /// use stem_slot::slot::semi_regular_polygon_side_length;
 ///
-/// let second_side = semi_regular_polygon_side_length(1.0, 2.0, 12).unwrap();
+/// let second_side = semi_regular_polygon_side_length(1.0, 2.0, 12).expect("valid inputs");;
 /// assert_abs_diff_eq!(1.070466, second_side, epsilon = 1e-6);
 /// ```
 pub fn semi_regular_polygon_side_length(
@@ -1954,7 +1959,7 @@ pub(crate) fn slot_side_bottom_and_top_width_from_rot_core(
             r_slot_opening_top.get::<meter>(),
             2 * slots as usize,
         )
-        .unwrap(),
+        .unwrap_or(0.0),
     );
 
     let delta_b_tooth = 0.5 * (b_tooth_tip_top - tooth_width);

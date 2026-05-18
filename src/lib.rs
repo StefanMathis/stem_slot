@@ -6,6 +6,8 @@ pub mod rectangular;
 pub mod semi_trapezoid;
 pub mod slot;
 
+// #![deny(missing_docs)]
+
 /**
 Standard [`Color`](planar_geo::draw::Color) for drawing slots.
 
