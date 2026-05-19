@@ -1,8 +1,9 @@
-/**
-! The `RectangularSlot` struct represents a semi-closed slot which has a rectangular shape.
-It can be seen as a special case of `SlotTrapezoidSemi`. For this particular slot shape,
-the current displacement can be expressed analytically.
-*/
+/*!
+This module defines a [`RectangularSlot`] - a simple slot consisting of a
+rectangular groove, possibly with a semi-closed or closed slot opening. See the
+struct documentation for more.
+ */
+
 use std::borrow::Cow;
 
 use rayon::prelude::*;
@@ -18,27 +19,138 @@ use stem_material::prelude::*;
 
 use crate::slot::Slot;
 
+/**
+A simple slot composed of two rectangles: winding area and slot opening area.
+
+This slot type is the standard for linear motors, because it results in teeth of
+constant thickness and can be easily wound. If the slot is open (opening width
+equals winding area width), it is even possible to prewind coils and then simply
+push them onto the teeth, which is especially useful for the efficient creation
+of tooth-coil windings. For rotary motors, a rectangular slot causes trapezoid
+teeth and therefore wastes space, but retains the other advantages and therefore
+can also sometimes be found there.
+
+# Geometry
+
+A rectangular slot is defined by the following parameters:
+- `width`: Width of the winding area. Must be positive (`width > 0 m`).
+- `opening_width`: Width of the slot opening area. Must be positive
+(`width > 0 m`).
+- `height`: Total height of the slot (height of winding area + height of slot
+opening). Must be larger than `opening_height` (`height > opening_height`).
+- `opening_height`: Height of the slot opening. Must be positive
+(`opening_height > 0 m`).
+*/
+#[doc = ""]
+#[cfg_attr(
+    feature = "doc-images",
+    doc = "![Rectangular slot definitions][cad_rectangular]"
+)]
+#[cfg_attr(
+    feature = "doc-images",
+    embed_doc_image::embed_doc_image("cad_rectangular", "docs/img/cad_rectangular.svg")
+)]
+#[cfg_attr(
+    not(feature = "doc-images"),
+    doc = "**Doc images not enabled**. Compile docs with
+    `cargo doc --features 'doc-images'` and Rust version >= 1.54."
+)]
+/**
+# Deserialization
+
+This struct can directly be deserialized from the parameters specified above,
+provided that the values are within the specified limits. Additionally, the
+`consider_tooth_tip_leakage` flag also needs to be given
+(see [`RectangularSlot::new`]).
+
+```
+use approx::assert_abs_diff_eq;
+use stem_slot::prelude::*;
+use serde_yaml;
+
+let str = indoc::indoc! {"
+width: 8 mm
+opening_width: 4 mm
+height: 20 mm
+opening_height: 2 mm
+consider_tooth_tip_leakage: true
+"};
+
+let slot: RectangularSlot = serde_yaml::from_str(&str).expect("valid dimensions");
+assert_abs_diff_eq!(slot.winding_area().get::<square_millimeter>(), 144.0, epsilon=1e-3);
+```
+ */
 #[derive(Clone, Debug)]
 #[cfg_attr(feature = "serde", derive(Serialize))]
 #[cfg_attr(feature = "serde", serde(deny_unknown_fields))]
 pub struct RectangularSlot {
-    width: Length,          // Slot width (equal over slot height)
-    opening_width: Length,  // Width of the slot opening
-    height: Length,         // Total slot height (including slot opening)
-    opening_height: Length, // Height of the slot opening
-    consider_tooth_tip_leakage: bool, /* Whether to consider the tooth tip leakage according to
-                             * diagram 3.7.2 of [MVP08] or not. */
-    #[cfg_attr(feature = "serde", serde(skip))]
+    width: Length,
+    opening_width: Length,
+    height: Length,
+    opening_height: Length,
+    consider_tooth_tip_leakage: bool,
+    #[cfg_attr(feature = "serde", serde(skip))] // Gets generated when deserializing
     outline: Polysegment,
 }
 
 impl RectangularSlot {
-    /// Create a new instance of `RectangularSlot`
+    /**
+    Returns a new [`RectangularSlot`].
+
+    The dimensions need to fulfill the value range constraints from the struct
+    docstring. If `consider_tooth_tip_leakage` is set to true, the default
+    implementation of [`Slot::leakage_coefficient_tooth_tip`] is used to
+    calculate the leakage coefficient. Otherwise, the coefficient is set to 0.
+
+    # Examples
+
+    ```
+    use stem_slot::prelude::*;
+
+    // Valid input parameters
+    let slot_tt_leakage = RectangularSlot::new(
+        Length::new::<millimeter>(8.0),
+        Length::new::<millimeter>(4.0),
+        Length::new::<millimeter>(20.0),
+        Length::new::<millimeter>(2.0),
+        true,
+    ).expect("valid inputs");
+    assert_eq!(slot_tt_leakage.leakage_coefficient_tooth_tip(Length::new::<millimeter>(0.5)), -0.11);
+
+    let slot_no_tt_leakage = RectangularSlot::new(
+        Length::new::<millimeter>(8.0),
+        Length::new::<millimeter>(4.0),
+        Length::new::<millimeter>(20.0),
+        Length::new::<millimeter>(2.0),
+        false,
+    ).expect("valid inputs");
+    assert_eq!(slot_no_tt_leakage.leakage_coefficient_tooth_tip(Length::new::<millimeter>(0.5)), 0.0);
+
+    // Negative lengths
+    assert!(RectangularSlot::new(
+        Length::new::<millimeter>(8.0),
+        Length::new::<millimeter>(4.0),
+        Length::new::<millimeter>(-20.0),
+        Length::new::<millimeter>(2.0),
+        true,
+    ).is_err());
+
+    // Total height smaller than opening height
+    assert!(RectangularSlot::new(
+        Length::new::<millimeter>(8.0),
+        Length::new::<millimeter>(4.0),
+        Length::new::<millimeter>(1.0),
+        Length::new::<millimeter>(2.0),
+        true,
+    ).is_err());
+
+    ```
+     */
     pub fn new(
-        width: Length,          // Slot width (equal over slot height)
-        opening_width: Length,  // Width of the slot opening
-        height: Length,         // Total slot height (including slot opening)
-        opening_height: Length, // Height of the slot opening
+        width: Length,
+        opening_width: Length,
+        height: Length,
+        opening_height: Length,
         consider_tooth_tip_leakage: bool,
     ) -> Result<Self, crate::error::Error> {
         let zero = Length::new::<meter>(0.0);
@@ -95,6 +207,9 @@ impl RectangularSlot {
         });
     }
 
+    /**
+    Returns the winding area width of `self`.
+     */
     pub fn width(&self) -> Length {
         return self.width;
     }
@@ -137,7 +252,7 @@ impl<'de> Deserialize<'de> for RectangularSlot {
 
         #[derive(Deserialize)]
         #[serde(deny_unknown_fields)]
-        pub struct RectangularSlotSerde {
+        struct RectangularSlotSerde {
             #[cfg_attr(feature = "serde", serde(deserialize_with = "deserialize_quantity"))]
             width: Length,
             #[cfg_attr(feature = "serde", serde(deserialize_with = "deserialize_quantity"))]
