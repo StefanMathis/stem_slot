@@ -32,8 +32,8 @@ fn test_angle_bottom() {
         height: Length::new::<millimeter>(20.0),
         opening_height: Length::new::<millimeter>(2.0),
         bottom_width: Length::new::<millimeter>(5.0),
-        angle_bottom: (120.0 * PI / 180.0).into(),
-        angle_slot: 10.0 * PI / 180.0,
+        bottom_angle: (120.0 * PI / 180.0).into(),
+        slot_angle: 10.0 * PI / 180.0,
         bottom_radius: Length::new::<millimeter>(2.0),
         slope_bottom_radius: Length::new::<millimeter>(1.0),
         consider_tooth_tip_leakage: true,
@@ -96,8 +96,8 @@ fn test_different_layers() {
         height: Length::new::<millimeter>(20.0),
         opening_height: Length::new::<millimeter>(2.0),
         bottom_width: Length::new::<millimeter>(5.0),
-        angle_bottom: (120.0 * PI / 180.0).into(),
-        angle_slot: 10.0 * PI / 180.0,
+        bottom_angle: (120.0 * PI / 180.0).into(),
+        slot_angle: 10.0 * PI / 180.0,
         bottom_radius: Length::new::<millimeter>(2.0),
         slope_bottom_radius: Length::new::<millimeter>(1.0),
         consider_tooth_tip_leakage: true,
@@ -152,7 +152,7 @@ fn test_open_slot_bottom_height() {
         opening_height: Length::new::<millimeter>(2.0),
         bottom_height: Length::new::<millimeter>(1.154),
         bottom_width: Length::new::<millimeter>(5.0),
-        angle_slot: 10.0 * PI / 180.0,
+        slot_angle: 10.0 * PI / 180.0,
         bottom_radius: Length::new::<millimeter>(2.0),
         slope_bottom_radius: Length::new::<millimeter>(1.0),
         consider_tooth_tip_leakage: true,
@@ -189,7 +189,7 @@ fn test_open_slot_bottom_slope_width() {
         opening_height: Length::new::<millimeter>(2.0),
         bottom_width: Length::new::<millimeter>(5.0),
         bottom_side_width: Length::new::<millimeter>(8.298),
-        angle_slot: 10.0 * PI / 180.0,
+        slot_angle: 10.0 * PI / 180.0,
         bottom_radius: Length::new::<millimeter>(2.0),
         slope_bottom_radius: Length::new::<millimeter>(1.0),
         consider_tooth_tip_leakage: true,
@@ -216,16 +216,16 @@ fn test_open_slot_bottom_slope_width() {
 #[test]
 fn test_open_slot_side_height_bugfix() {
     let bottom_radius = Length::new::<millimeter>(2.0);
-    let angle_slot = PI / 18.0;
+    let slot_angle = PI / 18.0;
     let bottom_width = Length::new::<millimeter>(9.21);
     let slot: OpenTrapezoidSlot = OpenTrapezoidBuilder {
         bottom_width,
         opening_width: bottom_width
-            - Length::new::<millimeter>(2.0 * 17.75) * (angle_slot / 2.0).sin(),
+            - Length::new::<millimeter>(2.0 * 17.75) * (slot_angle / 2.0).sin(),
         height: Length::new::<millimeter>(17.75),
         side_height: Length::new::<millimeter>(17.0),
         opening_height: Length::new::<millimeter>(0.75),
-        angle_slot,
+        slot_angle,
         bottom_radius,
         slope_bottom_radius: Length::new::<millimeter>(0.0),
         consider_tooth_tip_leakage: true,
@@ -277,7 +277,7 @@ fn test_multilayer_vertical() {
         opening_height: Length::new::<millimeter>(2.0),
         bottom_width: Length::new::<millimeter>(5.0),
         bottom_side_width: Length::new::<millimeter>(8.298),
-        angle_slot: 10.0 * PI / 180.0,
+        slot_angle: 10.0 * PI / 180.0,
         bottom_radius: Length::new::<millimeter>(2.0),
         slope_bottom_radius: Length::new::<millimeter>(1.0),
         consider_tooth_tip_leakage: true,
@@ -341,7 +341,7 @@ fn test_deserialize() {
                 opening_width: 9.6 mm
                 height: 20 mm
                 opening_height: 0.0 mm
-                angle_slot: 30.0 deg
+                slot_angle: 30.0 deg
                 bottom_radius: 1 mm
                 consider_tooth_tip_leakage: false
                 "};
@@ -360,7 +360,7 @@ fn test_deserialize() {
                         opening_width: 9.6 mm
                         height: 20 mm
                         opening_height: 1.0 mm
-                        angle_slot: 30.0 deg
+                        slot_angle: 30.0 deg
                         bottom_radius: 1 mm
                         consider_tooth_tip_leakage: false
                         "};
@@ -379,7 +379,7 @@ fn test_deserialize() {
                         opening_width: 9.6 mm
                         height: 20 mm
                         opening_height: 5.0 mm
-                        angle_slot: 30.0 deg
+                        slot_angle: 30.0 deg
                         bottom_radius: 1 mm
                         consider_tooth_tip_leakage: false
                         "};

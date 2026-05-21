@@ -9,7 +9,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         opening_width: Length::new::<millimeter>(2.0),
         height: Length::new::<millimeter>(20.0),
         opening_height: Length::new::<millimeter>(2.0),
-        angle_slot: 10.0 * PI / 180.0,
+        slot_angle: 10.0 * PI / 180.0,
         bottom_radius: Length::new::<millimeter>(2.0),
         top_radius: Length::new::<millimeter>(1.0),
         opening_radius: Length::new::<millimeter>(0.0),

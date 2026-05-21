@@ -7487,7 +7487,7 @@ AcDbMText
  72
     1
   1
-angle_slot
+slot_angle
   7
 standard
 210
@@ -8017,7 +8017,7 @@ AcDbMText
  72
     1
   1
-angle_slot
+slot_angle
   7
 standard
 210
@@ -8255,7 +8255,7 @@ AcDbMText
  72
     1
   1
-angle_slot
+slot_angle
   7
 standard
 210
@@ -15245,7 +15245,7 @@ AcDbMText
  72
     1
   1
-angle_slot
+slot_angle
   7
 standard
 210
@@ -16535,7 +16535,7 @@ AcDbMText
  72
     1
   1
-angle_slot
+slot_angle
   7
 standard
 210
@@ -18527,7 +18527,7 @@ AcDbDimension
  70
    34
   1
-angle_slot
+slot_angle
  71
     5
   3
@@ -19391,7 +19391,7 @@ AcDbDimension
  70
    34
   1
-angle_slot
+slot_angle
  71
     5
   3
@@ -20131,7 +20131,7 @@ AcDbDimension
  70
    34
   1
-angle_slot
+slot_angle
  71
     5
   3
@@ -20999,7 +20999,7 @@ AcDbDimension
  70
    34
   1
-angle_slot
+slot_angle
  71
     5
   3
@@ -21801,7 +21801,7 @@ AcDbDimension
  70
    34
   1
-angle_slot
+slot_angle
  71
     5
   3

@@ -32,11 +32,11 @@ fn test_deserialize_bottom_with_width_and_height() {
         bottom_width: 1.0 m
         side_bottom_width: 3.0 m
         bottom_height: 1.0 m
-        angle_slot: 10.0 deg
+        slot_angle: 10.0 deg
         "};
-    let angle_bottom: AngleBottomFromWidthHeight = serde_yaml::from_str(data).unwrap();
+    let bottom_angle: BottomAngleFromWidthHeight = serde_yaml::from_str(data).unwrap();
     approx::assert_abs_diff_eq!(
-        angle_bottom.value(),
+        bottom_angle.value(),
         0.75 * PI - 0.5 * TAU / 36.0,
         epsilon = 1e-15
     );
@@ -45,15 +45,15 @@ fn test_deserialize_bottom_with_width_and_height() {
         ---
         10.0 deg
         "};
-    let angle_bottom: AngleBottomFromWidthHeight = serde_yaml::from_str(data).unwrap();
-    approx::assert_abs_diff_eq!(angle_bottom.value(), TAU / 36.0, epsilon = 1e-15);
+    let bottom_angle: BottomAngleFromWidthHeight = serde_yaml::from_str(data).unwrap();
+    approx::assert_abs_diff_eq!(bottom_angle.value(), TAU / 36.0, epsilon = 1e-15);
 
     let data = indoc! {"
         ---
         1.0
         "};
-    let angle_bottom: AngleBottomFromWidthHeight = serde_yaml::from_str(data).unwrap();
-    approx::assert_abs_diff_eq!(angle_bottom.value(), 1.0, epsilon = 1e-15);
+    let bottom_angle: BottomAngleFromWidthHeight = serde_yaml::from_str(data).unwrap();
+    approx::assert_abs_diff_eq!(bottom_angle.value(), 1.0, epsilon = 1e-15);
 }
 
 #[test]
@@ -63,13 +63,13 @@ fn test_deserialize_top_with_width_and_height() {
         top_width: 1.0
         side_top_width: 3.0
         top_height: 1.0
-        angle_slot: 10.0 deg
+        slot_angle: 10.0 deg
         "};
-    let angle_top: AngleTopFromWidthHeight = serde_yaml::from_str(data).unwrap();
-    let angle_slot = TAU / 36.0; // 10°
+    let angle_top: TopAngleFromWidthHeight = serde_yaml::from_str(data).unwrap();
+    let slot_angle = TAU / 36.0; // 10°
     approx::assert_abs_diff_eq!(
         angle_top.value(),
-        0.75 * PI + 0.5 * angle_slot,
+        0.75 * PI + 0.5 * slot_angle,
         epsilon = 1e-15
     );
 
@@ -77,29 +77,29 @@ fn test_deserialize_top_with_width_and_height() {
         ---
         10.0 deg
         "};
-    let angle_top: AngleTopFromWidthHeight = serde_yaml::from_str(data).unwrap();
+    let angle_top: TopAngleFromWidthHeight = serde_yaml::from_str(data).unwrap();
     approx::assert_abs_diff_eq!(angle_top.value(), TAU / 36.0, epsilon = 1e-15);
 
     let data = indoc! {"
         ---
         1.0
         "};
-    let angle_top: AngleTopFromWidthHeight = serde_yaml::from_str(data).unwrap();
+    let angle_top: TopAngleFromWidthHeight = serde_yaml::from_str(data).unwrap();
     approx::assert_abs_diff_eq!(angle_top.value(), 1.0, epsilon = 1e-15);
 }
 
 #[test]
 fn test_angle_bottom_from_width_height() {
-    let angle_slot = TAU / 36.0; // 10°
+    let slot_angle = TAU / 36.0; // 10°
 
     // Case: No slope (bottom_width = side_bottom_width)
     approx::assert_abs_diff_eq!(
-        PI - 0.5 * angle_slot,
-        AngleBottomFromWidthHeight::Calculate {
+        PI - 0.5 * slot_angle,
+        BottomAngleFromWidthHeight::Calculate {
             bottom_width: Length::new::<millimeter>(1.0),
             side_bottom_width: Length::new::<millimeter>(1.0),
             bottom_height: Length::new::<millimeter>(1.0),
-            angle_slot
+            slot_angle
         }
         .value(),
         epsilon = 1e-6
@@ -107,12 +107,12 @@ fn test_angle_bottom_from_width_height() {
 
     // Case: Almost no slope
     approx::assert_abs_diff_eq!(
-        PI - 0.5 * angle_slot,
-        AngleBottomFromWidthHeight::Calculate {
+        PI - 0.5 * slot_angle,
+        BottomAngleFromWidthHeight::Calculate {
             bottom_width: Length::new::<millimeter>(1.0),
             side_bottom_width: Length::new::<millimeter>(1.0),
             bottom_height: Length::new::<millimeter>(0.01),
-            angle_slot
+            slot_angle
         }
         .value(),
         epsilon = 1e-6
@@ -121,11 +121,11 @@ fn test_angle_bottom_from_width_height() {
     // Case: slope with 60°
     approx::assert_abs_diff_eq!(
         1.9471774,
-        AngleBottomFromWidthHeight::Calculate {
+        BottomAngleFromWidthHeight::Calculate {
             bottom_width: Length::new::<millimeter>(1.0),
             side_bottom_width: Length::new::<millimeter>(3.0),
             bottom_height: Length::new::<millimeter>(0.5),
-            angle_slot
+            slot_angle
         }
         .value(),
         epsilon = 1e-6
@@ -133,12 +133,12 @@ fn test_angle_bottom_from_width_height() {
 
     // Case: slope with 45°
     approx::assert_abs_diff_eq!(
-        0.75 * PI - 0.5 * angle_slot,
-        AngleBottomFromWidthHeight::Calculate {
+        0.75 * PI - 0.5 * slot_angle,
+        BottomAngleFromWidthHeight::Calculate {
             bottom_width: Length::new::<millimeter>(1.0),
             side_bottom_width: Length::new::<millimeter>(3.0),
             bottom_height: Length::new::<millimeter>(1.0),
-            angle_slot
+            slot_angle
         }
         .value(),
         epsilon = 1e-6
@@ -147,11 +147,11 @@ fn test_angle_bottom_from_width_height() {
     // Case: slope with 60°
     approx::assert_abs_diff_eq!(
         2.59067858,
-        AngleBottomFromWidthHeight::Calculate {
+        BottomAngleFromWidthHeight::Calculate {
             bottom_width: Length::new::<millimeter>(1.0),
             side_bottom_width: Length::new::<millimeter>(2.0),
             bottom_height: Length::new::<millimeter>(1.0),
-            angle_slot
+            slot_angle
         }
         .value(),
         epsilon = 1e-6
@@ -160,16 +160,16 @@ fn test_angle_bottom_from_width_height() {
 
 #[test]
 fn test_angle_top_from_width_height() {
-    let angle_slot = TAU / 36.0; // 10°
+    let slot_angle = TAU / 36.0; // 10°
 
     // Case: No slope (bottom_width = side_bottom_width)
     approx::assert_abs_diff_eq!(
-        PI + 0.5 * angle_slot,
-        AngleTopFromWidthHeight::Calculate {
+        PI + 0.5 * slot_angle,
+        TopAngleFromWidthHeight::Calculate {
             top_width: Length::new::<millimeter>(1.0),
             side_top_width: Length::new::<millimeter>(1.0),
             top_height: Length::new::<millimeter>(1.0),
-            angle_slot
+            slot_angle
         }
         .value(),
         epsilon = 1e-6
@@ -177,12 +177,12 @@ fn test_angle_top_from_width_height() {
 
     // Case: Almost no slope
     approx::assert_abs_diff_eq!(
-        PI + 0.5 * angle_slot,
-        AngleTopFromWidthHeight::Calculate {
+        PI + 0.5 * slot_angle,
+        TopAngleFromWidthHeight::Calculate {
             top_width: Length::new::<millimeter>(1.0),
             side_top_width: Length::new::<millimeter>(1.0),
             top_height: Length::new::<millimeter>(0.01),
-            angle_slot
+            slot_angle
         }
         .value(),
         epsilon = 1e-6
@@ -190,12 +190,12 @@ fn test_angle_top_from_width_height() {
 
     // Case: slope with 60°
     approx::assert_abs_diff_eq!(
-        1.94717747 + angle_slot,
-        AngleTopFromWidthHeight::Calculate {
+        1.94717747 + slot_angle,
+        TopAngleFromWidthHeight::Calculate {
             top_width: Length::new::<millimeter>(1.0),
             side_top_width: Length::new::<millimeter>(3.0),
             top_height: Length::new::<millimeter>(0.5),
-            angle_slot
+            slot_angle
         }
         .value(),
         epsilon = 1e-6
@@ -203,12 +203,12 @@ fn test_angle_top_from_width_height() {
 
     // Case: slope with 45°
     approx::assert_abs_diff_eq!(
-        0.75 * PI + 0.5 * angle_slot,
-        AngleTopFromWidthHeight::Calculate {
+        0.75 * PI + 0.5 * slot_angle,
+        TopAngleFromWidthHeight::Calculate {
             top_width: Length::new::<millimeter>(1.0),
             side_top_width: Length::new::<millimeter>(3.0),
             top_height: Length::new::<millimeter>(1.0),
-            angle_slot
+            slot_angle
         }
         .value(),
         epsilon = 1e-6
@@ -216,12 +216,12 @@ fn test_angle_top_from_width_height() {
 
     // Case: slope with 60°
     approx::assert_abs_diff_eq!(
-        2.5906785 + angle_slot,
-        AngleTopFromWidthHeight::Calculate {
+        2.5906785 + slot_angle,
+        TopAngleFromWidthHeight::Calculate {
             top_width: Length::new::<millimeter>(1.0),
             side_top_width: Length::new::<millimeter>(2.0),
             top_height: Length::new::<millimeter>(1.0),
-            angle_slot
+            slot_angle
         }
         .value(),
         epsilon = 1e-6
@@ -238,7 +238,7 @@ fn test_properties() {
             opening_width: Length::new::<millimeter>(2.0),
             height: Length::new::<millimeter>(20.0),
             opening_height: Length::new::<millimeter>(2.0),
-            angle_slot: 10.0 * PI / 180.0,
+            slot_angle: 10.0 * PI / 180.0,
             bottom_radius: Length::new::<millimeter>(0.0),
             top_radius: Length::new::<millimeter>(0.0),
             opening_radius: Length::new::<millimeter>(0.0),
@@ -323,7 +323,7 @@ fn test_properties() {
             opening_width: Length::new::<millimeter>(0.0),
             height: Length::new::<millimeter>(20.0),
             opening_height: Length::new::<millimeter>(2.0),
-            angle_slot: 10.0 * PI / 180.0,
+            slot_angle: 10.0 * PI / 180.0,
             bottom_radius: Length::new::<millimeter>(0.0),
             top_radius: Length::new::<millimeter>(0.0),
             opening_radius: Length::new::<millimeter>(0.0),
@@ -352,20 +352,20 @@ fn test_current_displacement_coefficients() {
 
     // Slot from [Mat19]
     let bottom_radius = Length::new::<millimeter>(0.5);
-    let angle_slot = PI / 18.0;
+    let slot_angle = PI / 18.0;
     let bottom_width =
-        Length::new::<millimeter>(8.21) + 2.0 * bottom_radius * (1.0 + (angle_slot / 2.0).sin());
+        Length::new::<millimeter>(8.21) + 2.0 * bottom_radius * (1.0 + (slot_angle / 2.0).sin());
 
     let slot: SemiTrapezoidSlot = SemiTrapezoidBuilder {
         bottom_width,
-        top_width: bottom_width - 2.0 * Length::new::<millimeter>(17.0) * (angle_slot / 2.0).sin(),
+        top_width: bottom_width - 2.0 * Length::new::<millimeter>(17.0) * (slot_angle / 2.0).sin(),
         opening_width: Length::new::<millimeter>(2.0),
         height: Length::new::<millimeter>(17.75),
         side_height: Length::new::<millimeter>(17.0),
         opening_height: Length::new::<millimeter>(0.75),
-        angle_slot,
-        angle_bottom: AngleBottomFromWidthHeight::new_no_slope(angle_slot),
-        angle_top: AngleTopFromWidthHeight::new_no_slope(angle_slot),
+        slot_angle,
+        bottom_angle: BottomAngleFromWidthHeight::new_no_slope(slot_angle),
+        angle_top: TopAngleFromWidthHeight::new_no_slope(slot_angle),
         bottom_radius,
         slope_bottom_radius: Length::new::<millimeter>(0.0),
         top_radius: Length::new::<millimeter>(1.0),
@@ -392,20 +392,20 @@ fn test_current_displacement_coefficients() {
 #[test]
 fn test_slices() {
     let bottom_radius = Length::new::<millimeter>(0.5);
-    let angle_slot = PI / 18.0;
+    let slot_angle = PI / 18.0;
     let bottom_width =
-        Length::new::<millimeter>(8.21) + 2.0 * bottom_radius * (1.0 + (angle_slot / 2.0).sin());
+        Length::new::<millimeter>(8.21) + 2.0 * bottom_radius * (1.0 + (slot_angle / 2.0).sin());
 
     let slot: SemiTrapezoidSlot = SemiTrapezoidBuilder {
         bottom_width,
-        top_width: bottom_width - 2.0 * Length::new::<millimeter>(17.0) * (angle_slot / 2.0).sin(),
+        top_width: bottom_width - 2.0 * Length::new::<millimeter>(17.0) * (slot_angle / 2.0).sin(),
         opening_width: Length::new::<millimeter>(2.0),
         height: Length::new::<millimeter>(17.75),
         side_height: Length::new::<millimeter>(17.0),
         opening_height: Length::new::<millimeter>(0.75),
-        angle_slot,
-        angle_bottom: AngleBottomFromWidthHeight::new_no_slope(angle_slot),
-        angle_top: AngleTopFromWidthHeight::new_no_slope(angle_slot),
+        slot_angle,
+        bottom_angle: BottomAngleFromWidthHeight::new_no_slope(slot_angle),
+        angle_top: TopAngleFromWidthHeight::new_no_slope(slot_angle),
         bottom_radius,
         slope_bottom_radius: Length::new::<millimeter>(0.0),
         top_radius: Length::new::<millimeter>(1.0),
@@ -423,20 +423,20 @@ fn test_slices() {
 #[test]
 fn test_semi_trapezoid_side_height() {
     let bottom_radius = Length::new::<millimeter>(0.5);
-    let angle_slot = PI / 18.0;
+    let slot_angle = PI / 18.0;
     let bottom_width =
-        Length::new::<millimeter>(8.21) + 2.0 * bottom_radius * (1.0 + (angle_slot / 2.0).sin());
+        Length::new::<millimeter>(8.21) + 2.0 * bottom_radius * (1.0 + (slot_angle / 2.0).sin());
 
     let slot = SemiTrapezoidSlot::new(
         bottom_width,
-        bottom_width - Length::new::<millimeter>(2.0 * 17.0) * (angle_slot / 2.0).sin(),
+        bottom_width - Length::new::<millimeter>(2.0 * 17.0) * (slot_angle / 2.0).sin(),
         Length::new::<millimeter>(2.0),
         Length::new::<millimeter>(17.75),
         Length::new::<millimeter>(17.0),
         Length::new::<millimeter>(0.75),
-        angle_slot,
-        AngleBottomFromWidthHeight::new_no_slope(angle_slot).value(),
-        AngleTopFromWidthHeight::new_no_slope(angle_slot).value(),
+        slot_angle,
+        BottomAngleFromWidthHeight::new_no_slope(slot_angle).value(),
+        TopAngleFromWidthHeight::new_no_slope(slot_angle).value(),
         bottom_radius,
         Length::new::<millimeter>(0.0),
         Length::new::<millimeter>(1.0),
@@ -487,7 +487,7 @@ fn test_leakage_coefficients() {
         opening_width: Length::new::<millimeter>(2.0),
         height: Length::new::<millimeter>(20.0),
         opening_height: Length::new::<millimeter>(2.0),
-        angle_slot: 10.0 * PI / 180.0,
+        slot_angle: 10.0 * PI / 180.0,
         bottom_radius: Length::new::<millimeter>(2.0),
         top_radius: Length::new::<millimeter>(1.0),
         opening_radius: Length::new::<millimeter>(0.0),
@@ -549,7 +549,7 @@ fn test_leakage_coefficients() {
 
 #[test]
 fn test_plot_with_and_without_slot_opening() {
-    let angle_slot = PI / 3.0;
+    let slot_angle = PI / 3.0;
     let height = Length::new::<millimeter>(7.0);
     let opening_height = Length::new::<millimeter>(1.0);
     let bottom_width = Length::new::<millimeter>(15.3);
@@ -559,7 +559,7 @@ fn test_plot_with_and_without_slot_opening() {
         opening_width: Length::new::<millimeter>(2.0),
         height,
         opening_height,
-        angle_slot,
+        slot_angle,
         bottom_radius: Length::new::<millimeter>(0.0),
         top_radius: Length::new::<millimeter>(0.0),
         opening_radius: Length::new::<millimeter>(0.0),
@@ -575,7 +575,7 @@ fn test_plot_with_and_without_slot_opening() {
         opening_width: Length::new::<millimeter>(0.0),
         height,
         opening_height,
-        angle_slot,
+        slot_angle,
         bottom_radius: Length::new::<millimeter>(0.0),
         top_radius: Length::new::<millimeter>(0.0),
         opening_radius: Length::new::<millimeter>(0.0),
@@ -635,7 +635,7 @@ fn test_semi_trapezoid_no_slopes_deserialize() {
                 opening_width: 0.002
                 height: 0.02
                 opening_height: 0.002
-                angle_slot: 10deg
+                slot_angle: 10deg
                 bottom_radius: 0.002
                 top_radius: 0.001
                 opening_radius: 0.0
@@ -667,17 +667,17 @@ fn test_semi_trapezoid_side_top_width_deserialize() {
                 opening_width: 1.5 mm
                 height: 6.79 mm
                 opening_height: 0.75 mm
-                angle_slot: -360/28 deg
-                angle_bottom:
+                slot_angle: -360/28 deg
+                bottom_angle:
                   bottom_width: 6.76 mm
                   side_bottom_width: 6.76 mm
                   bottom_height: 0.0 mm
-                  angle_slot: -360/28 deg
+                  slot_angle: -360/28 deg
                 angle_top:
                   top_width: 1.5 mm
                   side_top_width: 8 mm
                   top_height: 0.5 mm
-                  angle_slot: -360/28 deg
+                  slot_angle: -360/28 deg
                 bottom_radius: 0.0 mm
                 slope_bottom_radius: 0.0 mm
                 top_radius: 0.0 mm
@@ -708,9 +708,9 @@ fn test_contour_main_body() {
 
     // Angle covered by one tooth
     let slots = 6;
-    let angle_slot = TAU / slots as f64;
-    let alpha = angle_slot * 1.0 / (1.0 + ratio_tooth_slot_bottom);
-    let beta = angle_slot - alpha;
+    let slot_angle = TAU / slots as f64;
+    let alpha = slot_angle * 1.0 / (1.0 + ratio_tooth_slot_bottom);
+    let beta = slot_angle - alpha;
 
     // Slot bottom width
     let b_bottom = 2.0 * yoke_radius * (beta / 2.0).sin();
@@ -731,7 +731,7 @@ fn test_contour_main_body() {
         opening_width: Length::new::<meter>(b_opening),
         height: Length::new::<meter>(h),
         opening_height: Length::new::<meter>(h_opening),
-        angle_slot,
+        slot_angle,
         bottom_radius: Length::new::<millimeter>(0.0),
         top_radius: Length::new::<millimeter>(0.0),
         opening_radius: Length::new::<millimeter>(0.0),
@@ -759,13 +759,13 @@ fn test_inner_slot() {
         height: Length::new::<millimeter>(6.79),
         side_top_width: Length::new::<millimeter>(8.0),
         opening_height: Length::new::<millimeter>(0.75),
-        angle_slot: PI / 14.0,
-        angle_bottom: AngleBottomFromWidthHeight::new_no_slope(PI / 14.0),
-        angle_top: AngleTopFromWidthHeight::Calculate {
+        slot_angle: PI / 14.0,
+        bottom_angle: BottomAngleFromWidthHeight::new_no_slope(PI / 14.0),
+        angle_top: TopAngleFromWidthHeight::Calculate {
             top_width: Length::new::<millimeter>(1.5),
             side_top_width: Length::new::<millimeter>(8.0),
             top_height: Length::new::<millimeter>(0.5),
-            angle_slot: PI / 14.0,
+            slot_angle: PI / 14.0,
         },
         bottom_radius: Length::new::<millimeter>(0.0),
         slope_bottom_radius: Length::new::<millimeter>(0.0),
@@ -812,7 +812,7 @@ fn test_from_rotary_core() {
 #[test]
 fn test_semi_trapezoid_inner_stator() {
     let bottom_radius = Length::new::<millimeter>(0.5);
-    let angle_slot = -PI / 18.0;
+    let slot_angle = -PI / 18.0;
     let bottom_width = Length::new::<millimeter>(6.33381);
     let top_width = Length::new::<millimeter>(9.297);
 
@@ -823,9 +823,9 @@ fn test_semi_trapezoid_inner_stator() {
         height: Length::new::<millimeter>(17.75),
         side_height: Length::new::<millimeter>(17.0),
         opening_height: Length::new::<millimeter>(0.75),
-        angle_slot,
-        angle_bottom: AngleBottomFromWidthHeight::new_no_slope(angle_slot),
-        angle_top: AngleTopFromWidthHeight::new_no_slope(angle_slot),
+        slot_angle,
+        bottom_angle: BottomAngleFromWidthHeight::new_no_slope(slot_angle),
+        angle_top: TopAngleFromWidthHeight::new_no_slope(slot_angle),
         bottom_radius,
         slope_bottom_radius: Length::new::<millimeter>(0.0),
         top_radius: Length::new::<millimeter>(1.0),
@@ -898,7 +898,7 @@ fn test_semi_trapezoid_creation_no_slopes() {
         opening_width: Length::new::<millimeter>(2.0),
         height: Length::new::<millimeter>(20.0),
         opening_height: Length::new::<millimeter>(2.0),
-        angle_slot: 10.0 * PI / 180.0,
+        slot_angle: 10.0 * PI / 180.0,
         bottom_radius: Length::new::<millimeter>(2.0),
         top_radius: Length::new::<millimeter>(1.0),
         opening_radius: Length::new::<millimeter>(0.0),
@@ -918,7 +918,7 @@ fn test_semi_trapezoid_creation_no_slopes() {
         slot.area().get::<square_millimeter>(),
         epsilon = 1e-2
     );
-    approx::assert_abs_diff_eq!(85.0 / 180.0 * PI, slot.angle_bottom(), epsilon = 1e-5);
+    approx::assert_abs_diff_eq!(85.0 / 180.0 * PI, slot.bottom_angle(), epsilon = 1e-5);
     approx::assert_abs_diff_eq!(95.0 / 180.0 * PI, slot.angle_top(), epsilon = 1e-5);
 
     approx::assert_abs_diff_eq!(

@@ -88,7 +88,7 @@ fn non_conform_slices() -> Result<(), Box<dyn std::error::Error>> {
 
 fn slices_comp() -> Result<(), Box<dyn std::error::Error>> {
     let bottom_radius = Length::new::<millimeter>(0.5);
-    let angle_slot = PI / 18.0;
+    let slot_angle = PI / 18.0;
     let top_width = Length::new::<millimeter>(6.33381);
     let bottom_width = Length::new::<millimeter>(9.297);
 
@@ -99,9 +99,9 @@ fn slices_comp() -> Result<(), Box<dyn std::error::Error>> {
         height: Length::new::<millimeter>(17.75),
         side_height: Length::new::<millimeter>(17.0),
         opening_height: Length::new::<millimeter>(0.75),
-        angle_slot,
-        angle_bottom: AngleBottomFromWidthHeight::new_no_slope(angle_slot),
-        angle_top: AngleTopFromWidthHeight::new_no_slope(angle_slot),
+        slot_angle,
+        bottom_angle: BottomAngleFromWidthHeight::new_no_slope(slot_angle),
+        angle_top: TopAngleFromWidthHeight::new_no_slope(slot_angle),
         bottom_radius,
         slope_bottom_radius: Length::new::<millimeter>(0.0),
         top_radius: Length::new::<millimeter>(1.0),

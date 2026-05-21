@@ -505,7 +505,7 @@ pub trait Slot: Send + Sync + std::fmt::Debug + DynClone + Any + 'static {
     ///     opening_width: Length::new::<millimeter>(2.0),
     ///     height: Length::new::<millimeter>(20.0),
     ///     opening_height: Length::new::<millimeter>(2.0),
-    ///     angle_slot: 10.0 * PI / 180.0,
+    ///     slot_angle: 10.0 * PI / 180.0,
     ///     bottom_radius: Length::new::<millimeter>(2.0),
     ///     top_radius: Length::new::<millimeter>(1.0),
     ///     opening_radius: Length::new::<millimeter>(0.0),
@@ -1943,7 +1943,7 @@ pub(crate) fn slot_side_bottom_and_top_width_from_rot_core(
     use uom::typenum::P2;
     let y_offset = rotating_core_slot_y_offset(air_gap_radius, opening_width);
 
-    let angle_slot = if air_gap_radius < yoke_radius {
+    let slot_angle = if air_gap_radius < yoke_radius {
         TAU / slots as f64
     } else {
         -TAU / slots as f64
@@ -1963,9 +1963,9 @@ pub(crate) fn slot_side_bottom_and_top_width_from_rot_core(
     );
 
     let delta_b_tooth = 0.5 * (b_tooth_tip_top - tooth_width);
-    let x = delta_b_tooth / (0.5 * angle_slot).cos();
+    let x = delta_b_tooth / (0.5 * slot_angle).cos();
     let b_top = 2.0 * x + opening_width;
-    let b_bottom = b_top + 2.0 * side_height * (0.5 * angle_slot).tan();
+    let b_bottom = b_top + 2.0 * side_height * (0.5 * slot_angle).tan();
 
     return [b_bottom, b_top];
 }
