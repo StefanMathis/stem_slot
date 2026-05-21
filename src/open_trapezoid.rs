@@ -74,6 +74,7 @@ implementations:
 use approx;
 use std::f64::consts::PI;
 use stem_slot::prelude::*;
+use stem_slot::open_trapezoid::OpenTrapezoidWithoutSlopesBuilder;
 
 let builder = OpenTrapezoidWithoutSlopesBuilder {
     opening_width: Length::new::<millimeter>(5.0),
@@ -84,7 +85,7 @@ let builder = OpenTrapezoidWithoutSlopesBuilder {
     consider_tooth_tip_leakage: true,
 };
 let slot = OpenTrapezoidSlot::try_from(builder).expect("valid inputs");
-approx::assert_abs_diff_eq!(magnet.opening_width().get::<millimeter>(), 5, epsilon=1e-3);
+approx::assert_abs_diff_eq!(slot.opening_width().get::<millimeter>(), 5.0, epsilon=1e-3);
 ```
 
 # Deserialization
@@ -102,6 +103,7 @@ use serde_yaml;
 
 // Parameters from "new" method
 let str = indoc::indoc! {"
+bottom_width: 10 mm
 opening_width: 5 mm
 opening_height: 2 mm
 bottom_width: 5 mm
@@ -114,13 +116,12 @@ consider_tooth_tip_leakage: true
 "};
 
 let slot: OpenTrapezoidSlot = serde_yaml::from_str(&str).expect("valid dimensions");
-approx::assert_abs_diff_eq!(magnet.opening_width().get::<millimeter>(), 5, epsilon=1e-3);
+approx::assert_abs_diff_eq!(slot.opening_width().get::<millimeter>(), 5.0, epsilon=1e-3);
 
 // Using OpenTrapezoidWithoutSlopesBuilder as an intermediate stage:
 let str = indoc::indoc! {"
 opening_width: 5 mm
 opening_height: 2 mm
-bottom_width: 5 mm
 height: 20 mm
 slot_angle: PI / 18
 bottom_radius: 2 mm 
@@ -128,7 +129,7 @@ consider_tooth_tip_leakage: true
 "};
 
 let slot: OpenTrapezoidSlot = serde_yaml::from_str(&str).expect("valid dimensions");
-approx::assert_abs_diff_eq!(magnet.opening_width().get::<millimeter>(), 5, epsilon=1e-3);
+approx::assert_abs_diff_eq!(slot.opening_width().get::<millimeter>(), 5.0, epsilon=1e-3);
 ```
 
 ##
@@ -417,8 +418,18 @@ impl TryFrom<OpenTrapezoidBuilder> for OpenTrapezoidSlot {
         compare_variables!(val zero <= opening_height)?;
         compare_variables!(val zero <= bottom_radius)?;
         compare_variables!(val zero <= slope_bottom_radius)?;
+
+        // A bit of tolerance is necessary to account for floating point rounding
+        // errors.
         let sum_side_opening_height = opening_height + side_height;
-        compare_variables!(height >= sum_side_opening_height)?;
+        if approx::ulps_ne!(
+            sum_side_opening_height.get::<meter>(),
+            height.get::<meter>(),
+            epsilon = DEFAULT_EPSILON,
+            max_ulps = DEFAULT_MAX_ULPS
+        ) {
+            compare_variables!(height >= sum_side_opening_height)?;
+        }
 
         // The slot height height is the sum of opening_height, side_height and
         // bottom_height
