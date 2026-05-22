@@ -56,12 +56,13 @@ opening). Must be larger than `opening_height` (`height > opening_height`).
     `cargo doc --features 'doc-images'` and Rust version >= 1.54."
 )]
 /**
-# Deserialization
+# Serialization and deserialization
 
 This struct can directly be deserialized from the parameters specified above,
 provided that the values are within the specified limits. Additionally, the
 `consider_tooth_tip_leakage` flag also needs to be given
-(see [`RectangularSlot::new`]).
+(see [`RectangularSlot::new`]). Its serialized form is that of a map as shown
+below.
 
 ```
 use approx::assert_abs_diff_eq;
@@ -84,9 +85,13 @@ assert_abs_diff_eq!(slot.winding_area().get::<square_millimeter>(), 144.0, epsil
 #[cfg_attr(feature = "serde", derive(Serialize))]
 #[cfg_attr(feature = "serde", serde(deny_unknown_fields))]
 pub struct RectangularSlot {
+    #[cfg_attr(feature = "serde", serde(serialize_with = "serialize_quantity"))]
     width: Length,
+    #[cfg_attr(feature = "serde", serde(serialize_with = "serialize_quantity"))]
     opening_width: Length,
+    #[cfg_attr(feature = "serde", serde(serialize_with = "serialize_quantity"))]
     height: Length,
+    #[cfg_attr(feature = "serde", serde(serialize_with = "serialize_quantity"))]
     opening_height: Length,
     consider_tooth_tip_leakage: bool,
     #[cfg_attr(feature = "serde", serde(skip))] // Gets generated when deserializing

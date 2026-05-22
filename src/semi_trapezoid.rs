@@ -1,7 +1,18 @@
 /*!
-The `SemiTrapezoidSlot` struct represents a semi-closed slot which may or may not have slopes or radii
-at the slot top or bottom. The slot top is the part where the slot opening is located.
-*/
+This module defines a [`SemiTrapezoidSlot`] - a trapezoid slot which is
+semi-opened or even closed towards the air gap - as well as a couple of
+"builder" structs which can be used to create a [`SemiTrapezoidSlot`]. See the
+struct documentation for more.
+
+Additionally, it defines a couple of helper functions and structs for
+calculating slot angles:
+- [`angle_top_slope`] and [`bottom_slope_angle`] functions for deriving the
+sides-slope angles from the slot angle and the slope-bottom angles.
+- [`BottomAngleFromWidthHeight`] and [`TopAngleFromWidthHeight`] structs for
+deriving slot angles from width and height parameters. These are used as
+parameters for some of the builder structs.
+ */
+
 use compare_variables::{Comparison, ComparisonOperator, ComparisonValue, compare_variables};
 use planar_geo::prelude::*;
 use rayon::prelude::*;
@@ -305,27 +316,44 @@ struct DependentParametersSemiTrapezoidSlot {
     side_bottom_width: Length,
     side_top_width: Length,
 }
+
 pub fn angle_top_slope(angle_top: f64, slot_angle: f64) -> f64 {
     return angle_top - slot_angle / 2.0 - FRAC_PI_2;
 }
+
 pub fn bottom_slope_angle(bottom_angle: f64, slot_angle: f64) -> f64 {
     return bottom_angle + slot_angle / 2.0 - FRAC_PI_2;
 }
 
-/**
-A helper struct for calculating the bottom angle of a [``]
- */
 #[derive(Debug, Clone, Copy)]
 #[cfg_attr(feature = "serde", derive(Deserialize))]
 #[cfg_attr(feature = "serde", serde(untagged))]
 pub enum BottomAngleFromWidthHeight {
     Value(#[cfg_attr(feature = "serde", serde(deserialize_with = "deserialize_angle"))] f64),
     Calculate {
-        #[cfg_attr(feature = "serde", serde(deserialize_with = "deserialize_quantity"))]
+        #[cfg_attr(
+            feature = "serde",
+            serde(
+                deserialize_with = "deserialize_quantity",
+                serialize_with = "serialize_quantity"
+            )
+        )]
         bottom_width: Length,
-        #[cfg_attr(feature = "serde", serde(deserialize_with = "deserialize_quantity"))]
+        #[cfg_attr(
+            feature = "serde",
+            serde(
+                deserialize_with = "deserialize_quantity",
+                serialize_with = "serialize_quantity"
+            )
+        )]
         side_bottom_width: Length,
-        #[cfg_attr(feature = "serde", serde(deserialize_with = "deserialize_quantity"))]
+        #[cfg_attr(
+            feature = "serde",
+            serde(
+                deserialize_with = "deserialize_quantity",
+                serialize_with = "serialize_quantity"
+            )
+        )]
         bottom_height: Length,
         #[cfg_attr(feature = "serde", serde(deserialize_with = "deserialize_angle"))]
         slot_angle: f64,
@@ -360,20 +388,35 @@ impl From<f64> for BottomAngleFromWidthHeight {
     }
 }
 
-/**
-Helper struct to derive the top angle from the top width, side top width, top height and the slot angle
- */
 #[derive(Debug, Clone, Copy)]
 #[cfg_attr(feature = "serde", derive(Deserialize))]
 #[cfg_attr(feature = "serde", serde(untagged))]
 pub enum TopAngleFromWidthHeight {
     Value(#[cfg_attr(feature = "serde", serde(deserialize_with = "deserialize_angle"))] f64),
     Calculate {
-        #[cfg_attr(feature = "serde", serde(deserialize_with = "deserialize_quantity"))]
+        #[cfg_attr(
+            feature = "serde",
+            serde(
+                deserialize_with = "deserialize_quantity",
+                serialize_with = "serialize_quantity"
+            )
+        )]
         top_width: Length,
-        #[cfg_attr(feature = "serde", serde(deserialize_with = "deserialize_quantity"))]
+        #[cfg_attr(
+            feature = "serde",
+            serde(
+                deserialize_with = "deserialize_quantity",
+                serialize_with = "serialize_quantity"
+            )
+        )]
         side_top_width: Length,
-        #[cfg_attr(feature = "serde", serde(deserialize_with = "deserialize_quantity"))]
+        #[cfg_attr(
+            feature = "serde",
+            serde(
+                deserialize_with = "deserialize_quantity",
+                serialize_with = "serialize_quantity"
+            )
+        )]
         top_height: Length,
         #[cfg_attr(feature = "serde", serde(deserialize_with = "deserialize_angle"))]
         slot_angle: f64,
@@ -413,17 +456,53 @@ impl From<f64> for TopAngleFromWidthHeight {
 #[cfg_attr(feature = "serde", derive(Deserialize))]
 #[cfg_attr(feature = "serde", serde(deny_unknown_fields))]
 pub struct SemiTrapezoidBuilder {
-    #[cfg_attr(feature = "serde", serde(deserialize_with = "deserialize_quantity"))]
+    #[cfg_attr(
+        feature = "serde",
+        serde(
+            deserialize_with = "deserialize_quantity",
+            serialize_with = "serialize_quantity"
+        )
+    )]
     pub bottom_width: Length, // Slot width at the slot bottom (opposite side of the slot opening)
-    #[cfg_attr(feature = "serde", serde(deserialize_with = "deserialize_quantity"))]
+    #[cfg_attr(
+        feature = "serde",
+        serde(
+            deserialize_with = "deserialize_quantity",
+            serialize_with = "serialize_quantity"
+        )
+    )]
     pub top_width: Length, // Slot width at the slot top (side of the slot opening)
-    #[cfg_attr(feature = "serde", serde(deserialize_with = "deserialize_quantity"))]
+    #[cfg_attr(
+        feature = "serde",
+        serde(
+            deserialize_with = "deserialize_quantity",
+            serialize_with = "serialize_quantity"
+        )
+    )]
     pub opening_width: Length, // Width of the slot opening
-    #[cfg_attr(feature = "serde", serde(deserialize_with = "deserialize_quantity"))]
+    #[cfg_attr(
+        feature = "serde",
+        serde(
+            deserialize_with = "deserialize_quantity",
+            serialize_with = "serialize_quantity"
+        )
+    )]
     pub height: Length, // Total slot height (including slot opening)
-    #[cfg_attr(feature = "serde", serde(deserialize_with = "deserialize_quantity"))]
+    #[cfg_attr(
+        feature = "serde",
+        serde(
+            deserialize_with = "deserialize_quantity",
+            serialize_with = "serialize_quantity"
+        )
+    )]
     pub side_height: Length, // Slot side height (slot height - slot opening - slopes)
-    #[cfg_attr(feature = "serde", serde(deserialize_with = "deserialize_quantity"))]
+    #[cfg_attr(
+        feature = "serde",
+        serde(
+            deserialize_with = "deserialize_quantity",
+            serialize_with = "serialize_quantity"
+        )
+    )]
     pub opening_height: Length, // Height of the slot opening
     #[cfg_attr(feature = "serde", serde(deserialize_with = "deserialize_angle"))]
     pub slot_angle: f64, // Angle between the slot sides
@@ -431,18 +510,48 @@ pub struct SemiTrapezoidBuilder {
                                                    * bottom in degree */
     pub angle_top: TopAngleFromWidthHeight, /* Angle between the slot sides and the slot top in
                                              * degree */
-    #[cfg_attr(feature = "serde", serde(deserialize_with = "deserialize_quantity"))]
+    #[cfg_attr(
+        feature = "serde",
+        serde(
+            deserialize_with = "deserialize_quantity",
+            serialize_with = "serialize_quantity"
+        )
+    )]
     pub bottom_radius: Length, /* Edge fillet radii of the trapezoid at the slot bottom
                                 * (opposite side of the slot
                                 * opening) */
-    #[cfg_attr(feature = "serde", serde(deserialize_with = "deserialize_quantity"))]
+    #[cfg_attr(
+        feature = "serde",
+        serde(
+            deserialize_with = "deserialize_quantity",
+            serialize_with = "serialize_quantity"
+        )
+    )]
     pub slope_bottom_radius: Length, // Edge fillet radii between bottom slope and slot side
-    #[cfg_attr(feature = "serde", serde(deserialize_with = "deserialize_quantity"))]
+    #[cfg_attr(
+        feature = "serde",
+        serde(
+            deserialize_with = "deserialize_quantity",
+            serialize_with = "serialize_quantity"
+        )
+    )]
     pub top_radius: Length, /* Edge fillet radii of the trapezoid at the slot top (side of the
                              * slot opening) */
-    #[cfg_attr(feature = "serde", serde(deserialize_with = "deserialize_quantity"))]
+    #[cfg_attr(
+        feature = "serde",
+        serde(
+            deserialize_with = "deserialize_quantity",
+            serialize_with = "serialize_quantity"
+        )
+    )]
     pub slope_top_radius: Length, // Edge fillet radii between top slope and slot side
-    #[cfg_attr(feature = "serde", serde(deserialize_with = "deserialize_quantity"))]
+    #[cfg_attr(
+        feature = "serde",
+        serde(
+            deserialize_with = "deserialize_quantity",
+            serialize_with = "serialize_quantity"
+        )
+    )]
     pub opening_radius: Length, // Edge fillet radii of the slot opening at the slot inside
     pub consider_tooth_tip_leakage: bool, /* Whether to consider the tooth tip leakage according
                                            * to
@@ -610,24 +719,66 @@ impl TryFrom<SemiTrapezoidBuilder> for SemiTrapezoidSlot {
 #[cfg_attr(feature = "serde", derive(Deserialize))]
 #[cfg_attr(feature = "serde", serde(deny_unknown_fields))]
 pub struct SemiTrapezoidWithoutSlopesBuilder {
-    #[cfg_attr(feature = "serde", serde(deserialize_with = "deserialize_quantity"))]
+    #[cfg_attr(
+        feature = "serde",
+        serde(
+            deserialize_with = "deserialize_quantity",
+            serialize_with = "serialize_quantity"
+        )
+    )]
     pub bottom_width: Length, // Slot width at the slot bottom (opposite side of the slot opening)
-    #[cfg_attr(feature = "serde", serde(deserialize_with = "deserialize_quantity"))]
+    #[cfg_attr(
+        feature = "serde",
+        serde(
+            deserialize_with = "deserialize_quantity",
+            serialize_with = "serialize_quantity"
+        )
+    )]
     pub opening_width: Length, // Width of the slot opening
-    #[cfg_attr(feature = "serde", serde(deserialize_with = "deserialize_quantity"))]
+    #[cfg_attr(
+        feature = "serde",
+        serde(
+            deserialize_with = "deserialize_quantity",
+            serialize_with = "serialize_quantity"
+        )
+    )]
     pub height: Length, // Total slot height (including slot opening)
-    #[cfg_attr(feature = "serde", serde(deserialize_with = "deserialize_quantity"))]
+    #[cfg_attr(
+        feature = "serde",
+        serde(
+            deserialize_with = "deserialize_quantity",
+            serialize_with = "serialize_quantity"
+        )
+    )]
     pub opening_height: Length, // Slot opening height
     #[cfg_attr(feature = "serde", serde(deserialize_with = "deserialize_angle"))]
     pub slot_angle: f64, // Angle between the slot sides and the slot bottom in degree
-    #[cfg_attr(feature = "serde", serde(deserialize_with = "deserialize_quantity"))]
+    #[cfg_attr(
+        feature = "serde",
+        serde(
+            deserialize_with = "deserialize_quantity",
+            serialize_with = "serialize_quantity"
+        )
+    )]
     pub bottom_radius: Length, /* Edge fillet radii of the trapezoid at the slot bottom
                                 * (opposite side of the slot
                                 * opening) */
-    #[cfg_attr(feature = "serde", serde(deserialize_with = "deserialize_quantity"))]
+    #[cfg_attr(
+        feature = "serde",
+        serde(
+            deserialize_with = "deserialize_quantity",
+            serialize_with = "serialize_quantity"
+        )
+    )]
     pub top_radius: Length, /* Edge fillet radii of the trapezoid at the slot top (side of the
                              * slot opening) */
-    #[cfg_attr(feature = "serde", serde(deserialize_with = "deserialize_quantity"))]
+    #[cfg_attr(
+        feature = "serde",
+        serde(
+            deserialize_with = "deserialize_quantity",
+            serialize_with = "serialize_quantity"
+        )
+    )]
     pub opening_radius: Length, // Edge fillet radii of the slot opening at the slot inside
     pub consider_tooth_tip_leakage: bool, /* Whether to consider the tooth tip leakage according
                                            * to
@@ -670,17 +821,53 @@ impl TryFrom<SemiTrapezoidWithoutSlopesBuilder> for SemiTrapezoidSlot {
 #[cfg_attr(feature = "serde", derive(Deserialize))]
 #[cfg_attr(feature = "serde", serde(deny_unknown_fields))]
 pub struct SemiTrapezoidWithTopHeightBuilder {
-    #[cfg_attr(feature = "serde", serde(deserialize_with = "deserialize_quantity"))]
+    #[cfg_attr(
+        feature = "serde",
+        serde(
+            deserialize_with = "deserialize_quantity",
+            serialize_with = "serialize_quantity"
+        )
+    )]
     pub bottom_width: Length, // Slot width at the slot bottom (opposite side of the slot opening)
-    #[cfg_attr(feature = "serde", serde(deserialize_with = "deserialize_quantity"))]
+    #[cfg_attr(
+        feature = "serde",
+        serde(
+            deserialize_with = "deserialize_quantity",
+            serialize_with = "serialize_quantity"
+        )
+    )]
     pub top_width: Length, // Slot width at the slot top (side of the slot opening)
-    #[cfg_attr(feature = "serde", serde(deserialize_with = "deserialize_quantity"))]
+    #[cfg_attr(
+        feature = "serde",
+        serde(
+            deserialize_with = "deserialize_quantity",
+            serialize_with = "serialize_quantity"
+        )
+    )]
     pub opening_width: Length, // Width of the slot opening
-    #[cfg_attr(feature = "serde", serde(deserialize_with = "deserialize_quantity"))]
+    #[cfg_attr(
+        feature = "serde",
+        serde(
+            deserialize_with = "deserialize_quantity",
+            serialize_with = "serialize_quantity"
+        )
+    )]
     pub height: Length, // Total slot height (including slot opening)
-    #[cfg_attr(feature = "serde", serde(deserialize_with = "deserialize_quantity"))]
+    #[cfg_attr(
+        feature = "serde",
+        serde(
+            deserialize_with = "deserialize_quantity",
+            serialize_with = "serialize_quantity"
+        )
+    )]
     pub top_height: Length, // Top slope height
-    #[cfg_attr(feature = "serde", serde(deserialize_with = "deserialize_quantity"))]
+    #[cfg_attr(
+        feature = "serde",
+        serde(
+            deserialize_with = "deserialize_quantity",
+            serialize_with = "serialize_quantity"
+        )
+    )]
     pub opening_height: Length, // Height of the slot opening
     #[cfg_attr(feature = "serde", serde(deserialize_with = "deserialize_angle"))]
     pub slot_angle: f64, // Angle between the slot sides
@@ -688,18 +875,48 @@ pub struct SemiTrapezoidWithTopHeightBuilder {
                                                    * bottom in degree */
     pub angle_top: TopAngleFromWidthHeight, /* Angle between the slot sides and the slot top in
                                              * degree */
-    #[cfg_attr(feature = "serde", serde(deserialize_with = "deserialize_quantity"))]
+    #[cfg_attr(
+        feature = "serde",
+        serde(
+            deserialize_with = "deserialize_quantity",
+            serialize_with = "serialize_quantity"
+        )
+    )]
     pub bottom_radius: Length, /* Edge fillet radii of the trapezoid at the slot bottom
                                 * (opposite side of the slot
                                 * opening) */
-    #[cfg_attr(feature = "serde", serde(deserialize_with = "deserialize_quantity"))]
+    #[cfg_attr(
+        feature = "serde",
+        serde(
+            deserialize_with = "deserialize_quantity",
+            serialize_with = "serialize_quantity"
+        )
+    )]
     pub slope_bottom_radius: Length, // Edge fillet radii between bottom slope and slot side
-    #[cfg_attr(feature = "serde", serde(deserialize_with = "deserialize_quantity"))]
+    #[cfg_attr(
+        feature = "serde",
+        serde(
+            deserialize_with = "deserialize_quantity",
+            serialize_with = "serialize_quantity"
+        )
+    )]
     pub top_radius: Length, /* Edge fillet radii of the trapezoid at the slot top (side of the
                              * slot opening) */
-    #[cfg_attr(feature = "serde", serde(deserialize_with = "deserialize_quantity"))]
+    #[cfg_attr(
+        feature = "serde",
+        serde(
+            deserialize_with = "deserialize_quantity",
+            serialize_with = "serialize_quantity"
+        )
+    )]
     pub slope_top_radius: Length, // Edge fillet radii between top slope and slot side
-    #[cfg_attr(feature = "serde", serde(deserialize_with = "deserialize_quantity"))]
+    #[cfg_attr(
+        feature = "serde",
+        serde(
+            deserialize_with = "deserialize_quantity",
+            serialize_with = "serialize_quantity"
+        )
+    )]
     pub opening_radius: Length, // Edge fillet radii of the slot opening at the slot inside
     pub consider_tooth_tip_leakage: bool, /* Whether to consider the tooth tip leakage according
                                            * to
@@ -776,17 +993,53 @@ impl TryFrom<SemiTrapezoidWithTopHeightBuilder> for SemiTrapezoidSlot {
 #[cfg_attr(feature = "serde", derive(Deserialize))]
 #[cfg_attr(feature = "serde", serde(deny_unknown_fields))]
 pub struct SemiTrapezoidWithBottomHeightBuilder {
-    #[cfg_attr(feature = "serde", serde(deserialize_with = "deserialize_quantity"))]
+    #[cfg_attr(
+        feature = "serde",
+        serde(
+            deserialize_with = "deserialize_quantity",
+            serialize_with = "serialize_quantity"
+        )
+    )]
     pub bottom_width: Length, // Slot width at the slot bottom (opposite side of the slot opening)
-    #[cfg_attr(feature = "serde", serde(deserialize_with = "deserialize_quantity"))]
+    #[cfg_attr(
+        feature = "serde",
+        serde(
+            deserialize_with = "deserialize_quantity",
+            serialize_with = "serialize_quantity"
+        )
+    )]
     pub top_width: Length, // Slot width at the slot top (side of the slot opening)
-    #[cfg_attr(feature = "serde", serde(deserialize_with = "deserialize_quantity"))]
+    #[cfg_attr(
+        feature = "serde",
+        serde(
+            deserialize_with = "deserialize_quantity",
+            serialize_with = "serialize_quantity"
+        )
+    )]
     pub opening_width: Length, // Width of the slot opening
-    #[cfg_attr(feature = "serde", serde(deserialize_with = "deserialize_quantity"))]
+    #[cfg_attr(
+        feature = "serde",
+        serde(
+            deserialize_with = "deserialize_quantity",
+            serialize_with = "serialize_quantity"
+        )
+    )]
     pub height: Length, // Total slot height (including slot opening)
-    #[cfg_attr(feature = "serde", serde(deserialize_with = "deserialize_quantity"))]
+    #[cfg_attr(
+        feature = "serde",
+        serde(
+            deserialize_with = "deserialize_quantity",
+            serialize_with = "serialize_quantity"
+        )
+    )]
     pub bottom_height: Length, // Bottom slope height
-    #[cfg_attr(feature = "serde", serde(deserialize_with = "deserialize_quantity"))]
+    #[cfg_attr(
+        feature = "serde",
+        serde(
+            deserialize_with = "deserialize_quantity",
+            serialize_with = "serialize_quantity"
+        )
+    )]
     pub opening_height: Length, // Height of the slot opening
     #[cfg_attr(feature = "serde", serde(deserialize_with = "deserialize_angle"))]
     pub slot_angle: f64, // Angle between the slot sides
@@ -794,18 +1047,48 @@ pub struct SemiTrapezoidWithBottomHeightBuilder {
                                                    * bottom in degree */
     pub angle_top: TopAngleFromWidthHeight, /* Angle between the slot sides and the slot top in
                                              * degree */
-    #[cfg_attr(feature = "serde", serde(deserialize_with = "deserialize_quantity"))]
+    #[cfg_attr(
+        feature = "serde",
+        serde(
+            deserialize_with = "deserialize_quantity",
+            serialize_with = "serialize_quantity"
+        )
+    )]
     pub bottom_radius: Length, /* Edge fillet radii of the trapezoid at the slot bottom
                                 * (opposite side of the slot
                                 * opening) */
-    #[cfg_attr(feature = "serde", serde(deserialize_with = "deserialize_quantity"))]
+    #[cfg_attr(
+        feature = "serde",
+        serde(
+            deserialize_with = "deserialize_quantity",
+            serialize_with = "serialize_quantity"
+        )
+    )]
     pub slope_bottom_radius: Length, // Edge fillet radii between bottom slope and slot side
-    #[cfg_attr(feature = "serde", serde(deserialize_with = "deserialize_quantity"))]
+    #[cfg_attr(
+        feature = "serde",
+        serde(
+            deserialize_with = "deserialize_quantity",
+            serialize_with = "serialize_quantity"
+        )
+    )]
     pub top_radius: Length, /* Edge fillet radii of the trapezoid at the slot top (side of the
                              * slot opening) */
-    #[cfg_attr(feature = "serde", serde(deserialize_with = "deserialize_quantity"))]
+    #[cfg_attr(
+        feature = "serde",
+        serde(
+            deserialize_with = "deserialize_quantity",
+            serialize_with = "serialize_quantity"
+        )
+    )]
     pub slope_top_radius: Length, // Edge fillet radii between top slope and slot side
-    #[cfg_attr(feature = "serde", serde(deserialize_with = "deserialize_quantity"))]
+    #[cfg_attr(
+        feature = "serde",
+        serde(
+            deserialize_with = "deserialize_quantity",
+            serialize_with = "serialize_quantity"
+        )
+    )]
     pub opening_radius: Length, // Edge fillet radii of the slot opening at the slot inside
     pub consider_tooth_tip_leakage: bool, /* Whether to consider the tooth tip leakage according
                                            * to
@@ -882,17 +1165,53 @@ impl TryFrom<SemiTrapezoidWithBottomHeightBuilder> for SemiTrapezoidSlot {
 #[cfg_attr(feature = "serde", derive(Deserialize))]
 #[cfg_attr(feature = "serde", serde(deny_unknown_fields))]
 pub struct SemiTrapezoidWithSideTopWidthBuilder {
-    #[cfg_attr(feature = "serde", serde(deserialize_with = "deserialize_quantity"))]
+    #[cfg_attr(
+        feature = "serde",
+        serde(
+            deserialize_with = "deserialize_quantity",
+            serialize_with = "serialize_quantity"
+        )
+    )]
     pub bottom_width: Length, // Slot width at the slot bottom (opposite side of the slot opening)
-    #[cfg_attr(feature = "serde", serde(deserialize_with = "deserialize_quantity"))]
+    #[cfg_attr(
+        feature = "serde",
+        serde(
+            deserialize_with = "deserialize_quantity",
+            serialize_with = "serialize_quantity"
+        )
+    )]
     pub top_width: Length, // Slot width at the slot top (side of the slot opening)
-    #[cfg_attr(feature = "serde", serde(deserialize_with = "deserialize_quantity"))]
+    #[cfg_attr(
+        feature = "serde",
+        serde(
+            deserialize_with = "deserialize_quantity",
+            serialize_with = "serialize_quantity"
+        )
+    )]
     pub opening_width: Length, // Width of the slot opening
-    #[cfg_attr(feature = "serde", serde(deserialize_with = "deserialize_quantity"))]
+    #[cfg_attr(
+        feature = "serde",
+        serde(
+            deserialize_with = "deserialize_quantity",
+            serialize_with = "serialize_quantity"
+        )
+    )]
     pub height: Length, // Total slot height (including slot opening)
-    #[cfg_attr(feature = "serde", serde(deserialize_with = "deserialize_quantity"))]
+    #[cfg_attr(
+        feature = "serde",
+        serde(
+            deserialize_with = "deserialize_quantity",
+            serialize_with = "serialize_quantity"
+        )
+    )]
     pub side_top_width: Length,
-    #[cfg_attr(feature = "serde", serde(deserialize_with = "deserialize_quantity"))]
+    #[cfg_attr(
+        feature = "serde",
+        serde(
+            deserialize_with = "deserialize_quantity",
+            serialize_with = "serialize_quantity"
+        )
+    )]
     pub opening_height: Length, // Height of the slot opening
     #[cfg_attr(feature = "serde", serde(deserialize_with = "deserialize_angle"))]
     pub slot_angle: f64, // Angle between the slot sides
@@ -900,18 +1219,48 @@ pub struct SemiTrapezoidWithSideTopWidthBuilder {
                                                    * bottom in degree */
     pub angle_top: TopAngleFromWidthHeight, /* Angle between the slot sides and the slot top in
                                              * degree */
-    #[cfg_attr(feature = "serde", serde(deserialize_with = "deserialize_quantity"))]
+    #[cfg_attr(
+        feature = "serde",
+        serde(
+            deserialize_with = "deserialize_quantity",
+            serialize_with = "serialize_quantity"
+        )
+    )]
     pub bottom_radius: Length, /* Edge fillet radii of the trapezoid at the slot bottom
                                 * (opposite side of the slot
                                 * opening) */
-    #[cfg_attr(feature = "serde", serde(deserialize_with = "deserialize_quantity"))]
+    #[cfg_attr(
+        feature = "serde",
+        serde(
+            deserialize_with = "deserialize_quantity",
+            serialize_with = "serialize_quantity"
+        )
+    )]
     pub slope_bottom_radius: Length, // Edge fillet radii between bottom slope and slot side
-    #[cfg_attr(feature = "serde", serde(deserialize_with = "deserialize_quantity"))]
+    #[cfg_attr(
+        feature = "serde",
+        serde(
+            deserialize_with = "deserialize_quantity",
+            serialize_with = "serialize_quantity"
+        )
+    )]
     pub top_radius: Length, /* Edge fillet radii of the trapezoid at the slot top (side of the
                              * slot opening) */
-    #[cfg_attr(feature = "serde", serde(deserialize_with = "deserialize_quantity"))]
+    #[cfg_attr(
+        feature = "serde",
+        serde(
+            deserialize_with = "deserialize_quantity",
+            serialize_with = "serialize_quantity"
+        )
+    )]
     pub slope_top_radius: Length, // Edge fillet radii between top slope and slot side
-    #[cfg_attr(feature = "serde", serde(deserialize_with = "deserialize_quantity"))]
+    #[cfg_attr(
+        feature = "serde",
+        serde(
+            deserialize_with = "deserialize_quantity",
+            serialize_with = "serialize_quantity"
+        )
+    )]
     pub opening_radius: Length, // Edge fillet radii of the slot opening at the slot inside
     pub consider_tooth_tip_leakage: bool, /* Whether to consider the tooth tip leakage according
                                            * to
@@ -1018,17 +1367,53 @@ impl TryFrom<SemiTrapezoidWithSideTopWidthBuilder> for SemiTrapezoidSlot {
 #[cfg_attr(feature = "serde", derive(Deserialize))]
 #[cfg_attr(feature = "serde", serde(deny_unknown_fields))]
 pub struct SemiTrapezoidWithSideBottomWidthBuilder {
-    #[cfg_attr(feature = "serde", serde(deserialize_with = "deserialize_quantity"))]
+    #[cfg_attr(
+        feature = "serde",
+        serde(
+            deserialize_with = "deserialize_quantity",
+            serialize_with = "serialize_quantity"
+        )
+    )]
     pub bottom_width: Length, // Slot width at the slot bottom (opposite side of the slot opening)
-    #[cfg_attr(feature = "serde", serde(deserialize_with = "deserialize_quantity"))]
+    #[cfg_attr(
+        feature = "serde",
+        serde(
+            deserialize_with = "deserialize_quantity",
+            serialize_with = "serialize_quantity"
+        )
+    )]
     pub top_width: Length, // Slot width at the slot top (side of the slot opening)
-    #[cfg_attr(feature = "serde", serde(deserialize_with = "deserialize_quantity"))]
+    #[cfg_attr(
+        feature = "serde",
+        serde(
+            deserialize_with = "deserialize_quantity",
+            serialize_with = "serialize_quantity"
+        )
+    )]
     pub opening_width: Length, // Width of the slot opening
-    #[cfg_attr(feature = "serde", serde(deserialize_with = "deserialize_quantity"))]
+    #[cfg_attr(
+        feature = "serde",
+        serde(
+            deserialize_with = "deserialize_quantity",
+            serialize_with = "serialize_quantity"
+        )
+    )]
     pub height: Length, // Total slot height (including slot opening)
-    #[cfg_attr(feature = "serde", serde(deserialize_with = "deserialize_quantity"))]
+    #[cfg_attr(
+        feature = "serde",
+        serde(
+            deserialize_with = "deserialize_quantity",
+            serialize_with = "serialize_quantity"
+        )
+    )]
     pub side_bottom_width: Length, // Bottom slope height
-    #[cfg_attr(feature = "serde", serde(deserialize_with = "deserialize_quantity"))]
+    #[cfg_attr(
+        feature = "serde",
+        serde(
+            deserialize_with = "deserialize_quantity",
+            serialize_with = "serialize_quantity"
+        )
+    )]
     pub opening_height: Length, // Height of the slot opening
     #[cfg_attr(feature = "serde", serde(deserialize_with = "deserialize_angle"))]
     pub slot_angle: f64, // Angle between the slot sides
@@ -1036,18 +1421,48 @@ pub struct SemiTrapezoidWithSideBottomWidthBuilder {
                                                    * bottom in degree */
     pub angle_top: TopAngleFromWidthHeight, /* Angle between the slot sides and the slot top in
                                              * degree */
-    #[cfg_attr(feature = "serde", serde(deserialize_with = "deserialize_quantity"))]
+    #[cfg_attr(
+        feature = "serde",
+        serde(
+            deserialize_with = "deserialize_quantity",
+            serialize_with = "serialize_quantity"
+        )
+    )]
     pub bottom_radius: Length, /* Edge fillet radii of the trapezoid at the slot bottom
                                 * (opposite side of the slot
                                 * opening) */
-    #[cfg_attr(feature = "serde", serde(deserialize_with = "deserialize_quantity"))]
+    #[cfg_attr(
+        feature = "serde",
+        serde(
+            deserialize_with = "deserialize_quantity",
+            serialize_with = "serialize_quantity"
+        )
+    )]
     pub slope_bottom_radius: Length, // Edge fillet radii between bottom slope and slot side
-    #[cfg_attr(feature = "serde", serde(deserialize_with = "deserialize_quantity"))]
+    #[cfg_attr(
+        feature = "serde",
+        serde(
+            deserialize_with = "deserialize_quantity",
+            serialize_with = "serialize_quantity"
+        )
+    )]
     pub top_radius: Length, /* Edge fillet radii of the trapezoid at the slot top (side of the
                              * slot opening) */
-    #[cfg_attr(feature = "serde", serde(deserialize_with = "deserialize_quantity"))]
+    #[cfg_attr(
+        feature = "serde",
+        serde(
+            deserialize_with = "deserialize_quantity",
+            serialize_with = "serialize_quantity"
+        )
+    )]
     pub slope_top_radius: Length, // Edge fillet radii between top slope and slot side
-    #[cfg_attr(feature = "serde", serde(deserialize_with = "deserialize_quantity"))]
+    #[cfg_attr(
+        feature = "serde",
+        serde(
+            deserialize_with = "deserialize_quantity",
+            serialize_with = "serialize_quantity"
+        )
+    )]
     pub opening_radius: Length, // Edge fillet radii of the slot opening at the slot inside
     pub consider_tooth_tip_leakage: bool, /* Whether to consider the tooth tip leakage according
                                            * to
@@ -1124,36 +1539,126 @@ impl TryFrom<SemiTrapezoidWithSideBottomWidthBuilder> for SemiTrapezoidSlot {
 #[cfg_attr(feature = "serde", derive(Deserialize))]
 #[cfg_attr(feature = "serde", serde(deny_unknown_fields))]
 pub struct SemiTrapezoidFromToothWidthRotBuilder {
-    #[cfg_attr(feature = "serde", serde(deserialize_with = "deserialize_quantity"))]
+    #[cfg_attr(
+        feature = "serde",
+        serde(
+            deserialize_with = "deserialize_quantity",
+            serialize_with = "serialize_quantity"
+        )
+    )]
     pub tooth_width: Length,
-    #[cfg_attr(feature = "serde", serde(deserialize_with = "deserialize_quantity"))]
+    #[cfg_attr(
+        feature = "serde",
+        serde(
+            deserialize_with = "deserialize_quantity",
+            serialize_with = "serialize_quantity"
+        )
+    )]
     pub air_gap_radius: Length,
-    #[cfg_attr(feature = "serde", serde(deserialize_with = "deserialize_quantity"))]
+    #[cfg_attr(
+        feature = "serde",
+        serde(
+            deserialize_with = "deserialize_quantity",
+            serialize_with = "serialize_quantity"
+        )
+    )]
     pub yoke_radius: Length,
     pub slots: u16,
-    #[cfg_attr(feature = "serde", serde(deserialize_with = "deserialize_quantity"))]
+    #[cfg_attr(
+        feature = "serde",
+        serde(
+            deserialize_with = "deserialize_quantity",
+            serialize_with = "serialize_quantity"
+        )
+    )]
     pub bottom_width: Length,
-    #[cfg_attr(feature = "serde", serde(deserialize_with = "deserialize_quantity"))]
+    #[cfg_attr(
+        feature = "serde",
+        serde(
+            deserialize_with = "deserialize_quantity",
+            serialize_with = "serialize_quantity"
+        )
+    )]
     pub top_width: Length,
-    #[cfg_attr(feature = "serde", serde(deserialize_with = "deserialize_quantity"))]
+    #[cfg_attr(
+        feature = "serde",
+        serde(
+            deserialize_with = "deserialize_quantity",
+            serialize_with = "serialize_quantity"
+        )
+    )]
     opening_width: Length,
-    #[cfg_attr(feature = "serde", serde(deserialize_with = "deserialize_quantity"))]
+    #[cfg_attr(
+        feature = "serde",
+        serde(
+            deserialize_with = "deserialize_quantity",
+            serialize_with = "serialize_quantity"
+        )
+    )]
     pub height: Length,
-    #[cfg_attr(feature = "serde", serde(deserialize_with = "deserialize_quantity"))]
+    #[cfg_attr(
+        feature = "serde",
+        serde(
+            deserialize_with = "deserialize_quantity",
+            serialize_with = "serialize_quantity"
+        )
+    )]
     pub bottom_height: Length,
-    #[cfg_attr(feature = "serde", serde(deserialize_with = "deserialize_quantity"))]
+    #[cfg_attr(
+        feature = "serde",
+        serde(
+            deserialize_with = "deserialize_quantity",
+            serialize_with = "serialize_quantity"
+        )
+    )]
     pub top_height: Length,
-    #[cfg_attr(feature = "serde", serde(deserialize_with = "deserialize_quantity"))]
+    #[cfg_attr(
+        feature = "serde",
+        serde(
+            deserialize_with = "deserialize_quantity",
+            serialize_with = "serialize_quantity"
+        )
+    )]
     pub opening_height: Length,
-    #[cfg_attr(feature = "serde", serde(deserialize_with = "deserialize_quantity"))]
+    #[cfg_attr(
+        feature = "serde",
+        serde(
+            deserialize_with = "deserialize_quantity",
+            serialize_with = "serialize_quantity"
+        )
+    )]
     pub bottom_radius: Length,
-    #[cfg_attr(feature = "serde", serde(deserialize_with = "deserialize_quantity"))]
+    #[cfg_attr(
+        feature = "serde",
+        serde(
+            deserialize_with = "deserialize_quantity",
+            serialize_with = "serialize_quantity"
+        )
+    )]
     slope_bottom_radius: Length,
-    #[cfg_attr(feature = "serde", serde(deserialize_with = "deserialize_quantity"))]
+    #[cfg_attr(
+        feature = "serde",
+        serde(
+            deserialize_with = "deserialize_quantity",
+            serialize_with = "serialize_quantity"
+        )
+    )]
     pub top_radius: Length,
-    #[cfg_attr(feature = "serde", serde(deserialize_with = "deserialize_quantity"))]
+    #[cfg_attr(
+        feature = "serde",
+        serde(
+            deserialize_with = "deserialize_quantity",
+            serialize_with = "serialize_quantity"
+        )
+    )]
     pub slope_top_radius: Length,
-    #[cfg_attr(feature = "serde", serde(deserialize_with = "deserialize_quantity"))]
+    #[cfg_attr(
+        feature = "serde",
+        serde(
+            deserialize_with = "deserialize_quantity",
+            serialize_with = "serialize_quantity"
+        )
+    )]
     pub opening_radius: Length,
     pub consider_tooth_tip_leakage: bool,
 }
@@ -1213,24 +1718,78 @@ impl TryFrom<SemiTrapezoidFromToothWidthRotBuilder> for SemiTrapezoidSlot {
 #[cfg_attr(feature = "serde", derive(Deserialize))]
 #[cfg_attr(feature = "serde", serde(deny_unknown_fields))]
 pub struct SemiTrapezoidFromToothWidthRotWithoutSlopesBuilder {
-    #[cfg_attr(feature = "serde", serde(deserialize_with = "deserialize_quantity"))]
+    #[cfg_attr(
+        feature = "serde",
+        serde(
+            deserialize_with = "deserialize_quantity",
+            serialize_with = "serialize_quantity"
+        )
+    )]
     pub tooth_width: Length,
-    #[cfg_attr(feature = "serde", serde(deserialize_with = "deserialize_quantity"))]
+    #[cfg_attr(
+        feature = "serde",
+        serde(
+            deserialize_with = "deserialize_quantity",
+            serialize_with = "serialize_quantity"
+        )
+    )]
     pub air_gap_radius: Length,
-    #[cfg_attr(feature = "serde", serde(deserialize_with = "deserialize_quantity"))]
+    #[cfg_attr(
+        feature = "serde",
+        serde(
+            deserialize_with = "deserialize_quantity",
+            serialize_with = "serialize_quantity"
+        )
+    )]
     pub yoke_radius: Length,
     pub slots: u16,
-    #[cfg_attr(feature = "serde", serde(deserialize_with = "deserialize_quantity"))]
+    #[cfg_attr(
+        feature = "serde",
+        serde(
+            deserialize_with = "deserialize_quantity",
+            serialize_with = "serialize_quantity"
+        )
+    )]
     pub opening_width: Length,
-    #[cfg_attr(feature = "serde", serde(deserialize_with = "deserialize_quantity"))]
+    #[cfg_attr(
+        feature = "serde",
+        serde(
+            deserialize_with = "deserialize_quantity",
+            serialize_with = "serialize_quantity"
+        )
+    )]
     pub height: Length,
-    #[cfg_attr(feature = "serde", serde(deserialize_with = "deserialize_quantity"))]
+    #[cfg_attr(
+        feature = "serde",
+        serde(
+            deserialize_with = "deserialize_quantity",
+            serialize_with = "serialize_quantity"
+        )
+    )]
     pub opening_height: Length,
-    #[cfg_attr(feature = "serde", serde(deserialize_with = "deserialize_quantity"))]
+    #[cfg_attr(
+        feature = "serde",
+        serde(
+            deserialize_with = "deserialize_quantity",
+            serialize_with = "serialize_quantity"
+        )
+    )]
     pub bottom_radius: Length,
-    #[cfg_attr(feature = "serde", serde(deserialize_with = "deserialize_quantity"))]
+    #[cfg_attr(
+        feature = "serde",
+        serde(
+            deserialize_with = "deserialize_quantity",
+            serialize_with = "serialize_quantity"
+        )
+    )]
     pub top_radius: Length,
-    #[cfg_attr(feature = "serde", serde(deserialize_with = "deserialize_quantity"))]
+    #[cfg_attr(
+        feature = "serde",
+        serde(
+            deserialize_with = "deserialize_quantity",
+            serialize_with = "serialize_quantity"
+        )
+    )]
     pub opening_radius: Length,
     pub consider_tooth_tip_leakage: bool,
 }

@@ -1,6 +1,7 @@
 /*!
-This module defines a [`OpenTrapezoidSlot`] - a trapezoid slot which is open
-towards the air gap. See the struct documentation for more.
+This module defines an [`OpenTrapezoidSlot`] - a trapezoid slot which is open
+towards the air gap - as well as a couple of "builder" structs which can be used
+to create an [`OpenTrapezoidSlot`]. See the struct documentation for more.
  */
 
 use compare_variables::{Comparison, ComparisonOperator, ComparisonValue, compare_variables};
@@ -21,18 +22,13 @@ use crate::{semi_trapezoid::BottomAngleFromWidthHeight, slot::Slot};
 A trapezoid slot which is "open" (i.e. not closed or semi-closed towards the air
 gap).
 
-TODO
+This slot type is typically found on rotary motors, using the trapezoid shape to
+create teeth of constant thickness. Since the slot is open, it is especially
+interesting for tooth coil windings, because the coils can be prewound and then
+pushed onto the teeth (albeit at the cost of a low slot filling factor).
 
-# Geometry
+# Geometry and constructors
 
-A open trapezoid slot is defined by the following parameters:
-- `width`: Width of the winding area. Must be positive (`width > 0 m`).
-- `opening_width`: Width of the slot opening area. Must be positive
-(`width > 0 m`).
-- `height`: Total height of the slot (height of winding area + height of slot
-opening). Must be larger than `opening_height` (`height > opening_height`).
-- `opening_height`: Height of the slot opening. Must be positive
-(`opening_height > 0 m`).
 */
 #[doc = ""]
 #[cfg_attr(
@@ -49,26 +45,19 @@ opening). Must be larger than `opening_height` (`height > opening_height`).
     `cargo doc --features 'doc-images'` and Rust version >= 1.54."
 )]
 /**
-# Constructors
 
-TODO: Describe advantage of builder struct: Many parameters with same type in functions
--> no danger of wrong ordering of arguments with builder. See [`OpenTrapezoidSlot::new`]
-and [`OpenTrapezoidBuilder`] which are functionally equivalent.
-
-The primary constructor for an [`OpenTrapezoidSlot`] is the
-[`new`](OpenTrapezoidSlot::new) method, which basically takes the fields of the
-struct as an arguments, sanity-checks them and then returns a struct instance.
-Besides this one, the following "builder" structs are available:
+Not all the parameters shown in the image are needed to unequivocally describe
+the slot geometry. For example, defining three of the four height parameters
+directly sets the value of the fourth. Therefore, this module defines a couple
+of "builder" structs which represent different possible parameter sets. These
+can be fallibly converted to an [`OpenTrapezoidSlot`] via their [`TryFrom`]
+implementations:
 - [`OpenTrapezoidBuilder`] (builder version of [`new`](OpenTrapezoidSlot::new))
 - [`OpenTrapezoidWithoutSlopesBuilder`]
 - [`OpenTrapezoidWithBottomHeightBuilder`]
 - [`OpenTrapezoidWithBottomSideWidthBuilder`]
 - [`OpenTrapezoidWithAngleBottomBuilder`]
 - [`OpenTrapezoidFromToothWidthRotBuilder`]
-
-These structs are "plain data" and all their fields are public. They are meant
-to be (fallibly) converted to an [`OpenTrapezoidSlot`] via their [`TryFrom`]
-implementations:
 
 ```
 use approx;
@@ -88,20 +77,27 @@ let slot = OpenTrapezoidSlot::try_from(builder).expect("valid inputs");
 approx::assert_abs_diff_eq!(slot.opening_width().get::<millimeter>(), 5.0, epsilon=1e-3);
 ```
 
-# Deserialization
+The conversion fails if a parameter is out of bounds or if the resulting slot
+outline intersects itself. The bounds of a parameter is specified in the field
+docstring of the respective builder struct.
 
-This struct can be deserialized from the same parameters used in
-[`OpenTrapezoidSlot::new`] (see below). Besides that, all the builder structs
-listed in the previous section implement [`Deserialize`], hence an
-[`OpenTrapezoidSlot] can be deserialized directly from their respective
-serialized representation (without the need for a tag).
+Using structs instead of constructor functions makes it less likely to confuse
+arguments, since the parameter name needs to be specified explicitly. For
+convenience, there exists a constructor function [`OpenTrapezoidSlot::new`]
+which internally creates an [`OpenTrapezoidBuilder`] and then converts it.
+
+# Serialization and deserialization
+
+This struct can be directly deserialized from any of its "builder" structs (no
+need for a tag). Its serialized form is that of the [`OpenTrapezoidBuilder`]
+struct.
 
 ```
 use approx;
 use stem_slot::prelude::*;
 use serde_yaml;
 
-// Parameters from "new" method
+// Parameters of an OpenTrapezoidBuilder
 let str = indoc::indoc! {"
 bottom_width: 10 mm
 opening_width: 5 mm
@@ -118,7 +114,7 @@ consider_tooth_tip_leakage: true
 let slot: OpenTrapezoidSlot = serde_yaml::from_str(&str).expect("valid dimensions");
 approx::assert_abs_diff_eq!(slot.opening_width().get::<millimeter>(), 5.0, epsilon=1e-3);
 
-// Using OpenTrapezoidWithoutSlopesBuilder as an intermediate stage:
+// Parameters of an OpenTrapezoidWithoutSlopesBuilder
 let str = indoc::indoc! {"
 opening_width: 5 mm
 opening_height: 2 mm
@@ -131,24 +127,26 @@ consider_tooth_tip_leakage: true
 let slot: OpenTrapezoidSlot = serde_yaml::from_str(&str).expect("valid dimensions");
 approx::assert_abs_diff_eq!(slot.opening_width().get::<millimeter>(), 5.0, epsilon=1e-3);
 ```
-
-##
-
  */
 #[derive(Clone, Debug)]
 #[cfg_attr(feature = "serde", derive(Serialize))]
 pub struct OpenTrapezoidSlot {
-    bottom_width: Length, // Slot width at the slot bottom (opposite side of the slot opening)
-    opening_width: Length, // Width of the slot opening
-    height: Length,       // Total slot height (including slot opening)
-    side_height: Length,  // Slot side height (slot height - slot opening - slopes)
-    opening_height: Length, // Height of the slot opening
-    slot_angle: f64,      // Angle between the slot sides and the slot bottom in degree
-    bottom_radius: Length, /* Edge fillet radii of the trapezoid at the slot bottom (opposite
-                           * side of the slot opening) */
-    slope_bottom_radius: Length, // Edge fillet radii between bottom slope and slot side
-    consider_tooth_tip_leakage: bool, /* Whether to consider the tooth tip leakage according to
-                                  * diagram 3.7.2 of [MVP08] or not. */
+    #[cfg_attr(feature = "serde", serde(serialize_with = "serialize_quantity"))]
+    bottom_width: Length,
+    #[cfg_attr(feature = "serde", serde(serialize_with = "serialize_quantity"))]
+    opening_width: Length,
+    #[cfg_attr(feature = "serde", serde(serialize_with = "serialize_quantity"))]
+    height: Length,
+    #[cfg_attr(feature = "serde", serde(serialize_with = "serialize_quantity"))]
+    side_height: Length,
+    #[cfg_attr(feature = "serde", serde(serialize_with = "serialize_quantity"))]
+    opening_height: Length,
+    slot_angle: f64,
+    #[cfg_attr(feature = "serde", serde(serialize_with = "serialize_quantity"))]
+    bottom_radius: Length,
+    #[cfg_attr(feature = "serde", serde(serialize_with = "serialize_quantity"))]
+    slope_bottom_radius: Length,
+    consider_tooth_tip_leakage: bool,
     #[cfg_attr(feature = "serde", serde(skip))]
     outline: Polysegment,
 }
@@ -353,32 +351,62 @@ let slot = OpenTrapezoidSlot::try_from(builder).expect("valid parameters");
 assert_abs_diff_eq!(slot.area().get::<square_millimeter>(), 140.045, epsilon=1e-3);
 ```
  */
-#[cfg_attr(feature = "serde", derive(Deserialize))]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "serde", serde(deny_unknown_fields))]
 pub struct OpenTrapezoidBuilder {
     /// Width of the slot bottom. Must be positive (`bottom_width > 0 m`).
-    #[cfg_attr(feature = "serde", serde(deserialize_with = "deserialize_quantity"))]
+    #[cfg_attr(
+        feature = "serde",
+        serde(
+            deserialize_with = "deserialize_quantity",
+            serialize_with = "serialize_quantity"
+        )
+    )]
     pub bottom_width: Length,
     /// Width of the slot opening. Must be positive (`opening_width > 0 m`).
-    #[cfg_attr(feature = "serde", serde(deserialize_with = "deserialize_quantity"))]
+    #[cfg_attr(
+        feature = "serde",
+        serde(
+            deserialize_with = "deserialize_quantity",
+            serialize_with = "serialize_quantity"
+        )
+    )]
     pub opening_width: Length,
     /// Height of the slot. Must not be smaller than the sum of
     /// [`OpenTrapezoidBuilder::opening_height`] and
     /// [`OpenTrapezoidBuilder::side_height`] (`height >= opening_height +
     /// side_height`).
-    #[cfg_attr(feature = "serde", serde(deserialize_with = "deserialize_quantity"))]
+    #[cfg_attr(
+        feature = "serde",
+        serde(
+            deserialize_with = "deserialize_quantity",
+            serialize_with = "serialize_quantity"
+        )
+    )]
     pub height: Length,
     /// Side height of the slot opening. Must be positive and not larger than
     /// [`OpenTrapezoidBuilder::height`] minus
     /// [`OpenTrapezoidBuilder::opening_height`] (`0 m < side_height <=
     /// height - opening_height`).
-    #[cfg_attr(feature = "serde", serde(deserialize_with = "deserialize_quantity"))]
+    #[cfg_attr(
+        feature = "serde",
+        serde(
+            deserialize_with = "deserialize_quantity",
+            serialize_with = "serialize_quantity"
+        )
+    )]
     pub side_height: Length,
     /// Opening height of the slot opening. Must not be negative and not larger
     /// than [`OpenTrapezoidBuilder::height`] minus
     /// [`OpenTrapezoidBuilder::side_height`] (`0 m <= opening_height <=
     /// height - side_height`).
-    #[cfg_attr(feature = "serde", serde(deserialize_with = "deserialize_quantity"))]
+    #[cfg_attr(
+        feature = "serde",
+        serde(
+            deserialize_with = "deserialize_quantity",
+            serialize_with = "serialize_quantity"
+        )
+    )]
     pub opening_height: Length,
     /// Angle between the slot sides.
     #[cfg_attr(feature = "serde", serde(deserialize_with = "deserialize_angle"))]
@@ -386,11 +414,23 @@ pub struct OpenTrapezoidBuilder {
     /// Radius of the fillet between the slot bottom and bottom slope (if one
     /// exists) or the slot sides. Must not be negative (`bottom_radius >= 0
     /// m`).
-    #[cfg_attr(feature = "serde", serde(deserialize_with = "deserialize_quantity"))]
+    #[cfg_attr(
+        feature = "serde",
+        serde(
+            deserialize_with = "deserialize_quantity",
+            serialize_with = "serialize_quantity"
+        )
+    )]
     pub bottom_radius: Length,
     /// Radius of the fillet between the bottom slope and the slot sides. Must
     /// not be negative (`slope_bottom_radius >= 0 m`).
-    #[cfg_attr(feature = "serde", serde(deserialize_with = "deserialize_quantity"))]
+    #[cfg_attr(
+        feature = "serde",
+        serde(
+            deserialize_with = "deserialize_quantity",
+            serialize_with = "serialize_quantity"
+        )
+    )]
     pub slope_bottom_radius: Length,
     /// If true, the tooth tip leakage is calculated using the default
     ///  implementation of [`Slot::leakage_coefficient_tooth_tip`]. Otherwise,
@@ -548,24 +588,48 @@ assert_abs_diff_eq!(slot.area().get::<square_millimeter>(), 149.613, epsilon=1e-
 #[cfg_attr(feature = "serde", serde(deny_unknown_fields))]
 pub struct OpenTrapezoidWithoutSlopesBuilder {
     /// Width of the slot opening. Must be positive (`opening_width > 0 m`).
-    #[cfg_attr(feature = "serde", serde(deserialize_with = "deserialize_quantity"))]
+    #[cfg_attr(
+        feature = "serde",
+        serde(
+            deserialize_with = "deserialize_quantity",
+            serialize_with = "serialize_quantity"
+        )
+    )]
     pub opening_width: Length,
     /// Height of the slot. Must not be smaller than
     /// [`OpenTrapezoidWithoutSlopesBuilder::opening_height`] (`height >=
     /// opening_height`).
-    #[cfg_attr(feature = "serde", serde(deserialize_with = "deserialize_quantity"))]
+    #[cfg_attr(
+        feature = "serde",
+        serde(
+            deserialize_with = "deserialize_quantity",
+            serialize_with = "serialize_quantity"
+        )
+    )]
     pub height: Length,
     /// Height of the slot. Must not be negative and not be larger than
     /// [`OpenTrapezoidWithoutSlopesBuilder::height`] (`0 m <= opening_height <=
     /// height`).
-    #[cfg_attr(feature = "serde", serde(deserialize_with = "deserialize_quantity"))]
+    #[cfg_attr(
+        feature = "serde",
+        serde(
+            deserialize_with = "deserialize_quantity",
+            serialize_with = "serialize_quantity"
+        )
+    )]
     pub opening_height: Length,
     /// Angle between the slot sides.
     #[cfg_attr(feature = "serde", serde(deserialize_with = "deserialize_angle"))]
     pub slot_angle: f64,
     /// Radius of the fillet between the slot bottom and the slot sides. Must
     /// not be negative (`bottom_radius >= 0 m`).
-    #[cfg_attr(feature = "serde", serde(deserialize_with = "deserialize_quantity"))]
+    #[cfg_attr(
+        feature = "serde",
+        serde(
+            deserialize_with = "deserialize_quantity",
+            serialize_with = "serialize_quantity"
+        )
+    )]
     pub bottom_radius: Length,
     /// If true, the tooth tip leakage is calculated using the default
     ///  implementation of [`Slot::leakage_coefficient_tooth_tip`]. Otherwise,
@@ -650,28 +714,58 @@ assert_abs_diff_eq!(slot.area().get::<square_millimeter>(), 148.79, epsilon=1e-3
 #[cfg_attr(feature = "serde", serde(deny_unknown_fields))]
 pub struct OpenTrapezoidWithBottomHeightBuilder {
     /// Width of the slot bottom. Must be positive (`bottom_width > 0 m`).
-    #[cfg_attr(feature = "serde", serde(deserialize_with = "deserialize_quantity"))]
+    #[cfg_attr(
+        feature = "serde",
+        serde(
+            deserialize_with = "deserialize_quantity",
+            serialize_with = "serialize_quantity"
+        )
+    )]
     pub bottom_width: Length,
     /// Width of the slot opening. Must be positive (`opening_width > 0 m`).
-    #[cfg_attr(feature = "serde", serde(deserialize_with = "deserialize_quantity"))]
+    #[cfg_attr(
+        feature = "serde",
+        serde(
+            deserialize_with = "deserialize_quantity",
+            serialize_with = "serialize_quantity"
+        )
+    )]
     pub opening_width: Length,
     /// Height of the slot. Must not be smaller than the sum of
     /// [`OpenTrapezoidWithBottomHeightBuilder::opening_height`] and
     /// [`OpenTrapezoidWithBottomHeightBuilder::bottom_height`] (`height >=
     /// opening_height + bottom_height`).
-    #[cfg_attr(feature = "serde", serde(deserialize_with = "deserialize_quantity"))]
+    #[cfg_attr(
+        feature = "serde",
+        serde(
+            deserialize_with = "deserialize_quantity",
+            serialize_with = "serialize_quantity"
+        )
+    )]
     pub height: Length,
     /// Opening height of the slot opening. Must not be negative and not larger
     /// than [`OpenTrapezoidWithBottomHeightBuilder::height`] minus
     /// [`OpenTrapezoidWithBottomHeightBuilder::bottom_height`] (`0 m <=
     /// opening_height <= height - bottom_height`).
-    #[cfg_attr(feature = "serde", serde(deserialize_with = "deserialize_quantity"))]
+    #[cfg_attr(
+        feature = "serde",
+        serde(
+            deserialize_with = "deserialize_quantity",
+            serialize_with = "serialize_quantity"
+        )
+    )]
     pub opening_height: Length,
     /// Height of the bottom slope. Must not be negative and not larger than
     /// [`OpenTrapezoidWithBottomHeightBuilder::height`] minus
     /// [`OpenTrapezoidWithBottomHeightBuilder::opening_height`] (`0 m <=
     /// bottom_height <= height - opening_height`).
-    #[cfg_attr(feature = "serde", serde(deserialize_with = "deserialize_quantity"))]
+    #[cfg_attr(
+        feature = "serde",
+        serde(
+            deserialize_with = "deserialize_quantity",
+            serialize_with = "serialize_quantity"
+        )
+    )]
     pub bottom_height: Length,
     /// Angle between the slot sides.
     #[cfg_attr(feature = "serde", serde(deserialize_with = "deserialize_angle"))]
@@ -679,11 +773,23 @@ pub struct OpenTrapezoidWithBottomHeightBuilder {
     /// Radius of the fillet between the slot bottom and bottom slope (if one
     /// exists) or the slot sides. Must not be negative (`bottom_radius >= 0
     /// m`).
-    #[cfg_attr(feature = "serde", serde(deserialize_with = "deserialize_quantity"))]
+    #[cfg_attr(
+        feature = "serde",
+        serde(
+            deserialize_with = "deserialize_quantity",
+            serialize_with = "serialize_quantity"
+        )
+    )]
     pub bottom_radius: Length,
     /// Radius of the fillet between the bottom slope and the slot sides. Must
     /// not be negative (`slope_bottom_radius >= 0 m`).
-    #[cfg_attr(feature = "serde", serde(deserialize_with = "deserialize_quantity"))]
+    #[cfg_attr(
+        feature = "serde",
+        serde(
+            deserialize_with = "deserialize_quantity",
+            serialize_with = "serialize_quantity"
+        )
+    )]
     pub slope_bottom_radius: Length,
     /// If true, the tooth tip leakage is calculated using the default
     ///  implementation of [`Slot::leakage_coefficient_tooth_tip`]. Otherwise,
@@ -767,26 +873,56 @@ pub struct OpenTrapezoidWithBottomSideWidthBuilder {
     /// Width of the slot bottom. Must be positive and not be larger than
     /// [`OpenTrapezoidWithBottomSideWidthBuilder::bottom_side_width`]
     /// (`0 m < bottom_width <= bottom_side_width`).
-    #[cfg_attr(feature = "serde", serde(deserialize_with = "deserialize_quantity"))]
+    #[cfg_attr(
+        feature = "serde",
+        serde(
+            deserialize_with = "deserialize_quantity",
+            serialize_with = "serialize_quantity"
+        )
+    )]
     pub bottom_width: Length,
     /// Width of the slot opening. Must be positive (`opening_width > 0 m`).
-    #[cfg_attr(feature = "serde", serde(deserialize_with = "deserialize_quantity"))]
+    #[cfg_attr(
+        feature = "serde",
+        serde(
+            deserialize_with = "deserialize_quantity",
+            serialize_with = "serialize_quantity"
+        )
+    )]
     pub opening_width: Length,
     /// Height of the slot. Must not be smaller than
     /// [`OpenTrapezoidWithBottomSideWidthBuilder::opening_height`] (`height >=
     /// opening_height`).
-    #[cfg_attr(feature = "serde", serde(deserialize_with = "deserialize_quantity"))]
+    #[cfg_attr(
+        feature = "serde",
+        serde(
+            deserialize_with = "deserialize_quantity",
+            serialize_with = "serialize_quantity"
+        )
+    )]
     pub height: Length,
     /// Height of the slot. Must not be negative and not be larger than
     /// [`OpenTrapezoidWithBottomSideWidthBuilder::height`] (`0 m <=
     /// opening_height <= height`).
-    #[cfg_attr(feature = "serde", serde(deserialize_with = "deserialize_quantity"))]
+    #[cfg_attr(
+        feature = "serde",
+        serde(
+            deserialize_with = "deserialize_quantity",
+            serialize_with = "serialize_quantity"
+        )
+    )]
     pub opening_height: Length,
     /// Width of the slot where the slot sides meet the bottom slope (widest
     /// part of the slot). Must not be smaller than
     /// [`OpenTrapezoidWithBottomSideWidthBuilder::bottom_width`]
     /// (`bottom_side_width >= bottom_width`).
-    #[cfg_attr(feature = "serde", serde(deserialize_with = "deserialize_quantity"))]
+    #[cfg_attr(
+        feature = "serde",
+        serde(
+            deserialize_with = "deserialize_quantity",
+            serialize_with = "serialize_quantity"
+        )
+    )]
     pub bottom_side_width: Length,
     /// Angle between the slot sides.
     #[cfg_attr(feature = "serde", serde(deserialize_with = "deserialize_angle"))]
@@ -794,11 +930,23 @@ pub struct OpenTrapezoidWithBottomSideWidthBuilder {
     /// Radius of the fillet between the slot bottom and bottom slope (if one
     /// exists) or the slot sides. Must not be negative (`bottom_radius >= 0
     /// m`).
-    #[cfg_attr(feature = "serde", serde(deserialize_with = "deserialize_quantity"))]
+    #[cfg_attr(
+        feature = "serde",
+        serde(
+            deserialize_with = "deserialize_quantity",
+            serialize_with = "serialize_quantity"
+        )
+    )]
     pub bottom_radius: Length,
     /// Radius of the fillet between the bottom slope and the slot sides. Must
     /// not be negative (`slope_bottom_radius >= 0 m`).
-    #[cfg_attr(feature = "serde", serde(deserialize_with = "deserialize_quantity"))]
+    #[cfg_attr(
+        feature = "serde",
+        serde(
+            deserialize_with = "deserialize_quantity",
+            serialize_with = "serialize_quantity"
+        )
+    )]
     pub slope_bottom_radius: Length,
     /// If true, the tooth tip leakage is calculated using the default
     ///  implementation of [`Slot::leakage_coefficient_tooth_tip`]. Otherwise,
@@ -886,20 +1034,44 @@ assert_abs_diff_eq!(slot.area().get::<square_millimeter>(), 151.788, epsilon=1e-
 #[cfg_attr(feature = "serde", serde(deny_unknown_fields))]
 pub struct OpenTrapezoidWithAngleBottomBuilder {
     /// Width of the slot bottom. Must be positive (`bottom_width > 0 m`).
-    #[cfg_attr(feature = "serde", serde(deserialize_with = "deserialize_quantity"))]
+    #[cfg_attr(
+        feature = "serde",
+        serde(
+            deserialize_with = "deserialize_quantity",
+            serialize_with = "serialize_quantity"
+        )
+    )]
     pub bottom_width: Length,
     /// Width of the slot opening. Must be positive (`opening_width > 0 m`).
-    #[cfg_attr(feature = "serde", serde(deserialize_with = "deserialize_quantity"))]
+    #[cfg_attr(
+        feature = "serde",
+        serde(
+            deserialize_with = "deserialize_quantity",
+            serialize_with = "serialize_quantity"
+        )
+    )]
     pub opening_width: Length,
     /// Height of the slot. Must not be smaller than
     /// [`OpenTrapezoidWithAngleBottomBuilder::opening_height`] (`height >=
     /// opening_height`).
-    #[cfg_attr(feature = "serde", serde(deserialize_with = "deserialize_quantity"))]
+    #[cfg_attr(
+        feature = "serde",
+        serde(
+            deserialize_with = "deserialize_quantity",
+            serialize_with = "serialize_quantity"
+        )
+    )]
     pub height: Length,
     /// Height of the slot. Must not be negative and not be larger than
     /// [`OpenTrapezoidWithAngleBottomBuilder::height`] (`0 m <= opening_height
     /// <= height`).
-    #[cfg_attr(feature = "serde", serde(deserialize_with = "deserialize_quantity"))]
+    #[cfg_attr(
+        feature = "serde",
+        serde(
+            deserialize_with = "deserialize_quantity",
+            serialize_with = "serialize_quantity"
+        )
+    )]
     pub opening_height: Length,
     /// Angle between the bottom slope and the slot bottom. Can be created
     /// directly from the angle value or from other geometric parameters, see
@@ -910,11 +1082,23 @@ pub struct OpenTrapezoidWithAngleBottomBuilder {
     pub slot_angle: f64,
     /// Radius of the fillet between the slot bottom and the slot sides. Must
     /// not be negative (`bottom_radius >= 0 m`).
-    #[cfg_attr(feature = "serde", serde(deserialize_with = "deserialize_quantity"))]
+    #[cfg_attr(
+        feature = "serde",
+        serde(
+            deserialize_with = "deserialize_quantity",
+            serialize_with = "serialize_quantity"
+        )
+    )]
     pub bottom_radius: Length,
     /// Radius of the fillet between the bottom slope and the slot sides. Must
     /// not be negative (`slope_bottom_radius >= 0 m`).
-    #[cfg_attr(feature = "serde", serde(deserialize_with = "deserialize_quantity"))]
+    #[cfg_attr(
+        feature = "serde",
+        serde(
+            deserialize_with = "deserialize_quantity",
+            serialize_with = "serialize_quantity"
+        )
+    )]
     pub slope_bottom_radius: Length,
     /// If true, the tooth tip leakage is calculated using the default
     ///  implementation of [`Slot::leakage_coefficient_tooth_tip`]. Otherwise,
@@ -1029,51 +1213,105 @@ assert_abs_diff_eq!(slot.area().get::<square_millimeter>(), 147.020, epsilon=1e-
 pub struct OpenTrapezoidFromToothWidthRotBuilder {
     /// Constant width of the teeth between the slots. Is used to determine the
     /// slot widths. Must be positive (`tooth_width > 0 m`).
-    #[cfg_attr(feature = "serde", serde(deserialize_with = "deserialize_quantity"))]
+    #[cfg_attr(
+        feature = "serde",
+        serde(
+            deserialize_with = "deserialize_quantity",
+            serialize_with = "serialize_quantity"
+        )
+    )]
     pub tooth_width: Length,
     /// Air gap radius of the magnetic core. If smaller than
     /// [`OpenTrapezoidFromToothWidthRotBuilder::yoke_radius`], the slots are
     /// created for an outer core, otherwise for an inner core. Must be positive
     /// (`air_gap_radius > 0 m`).
-    #[cfg_attr(feature = "serde", serde(deserialize_with = "deserialize_quantity"))]
+    #[cfg_attr(
+        feature = "serde",
+        serde(
+            deserialize_with = "deserialize_quantity",
+            serialize_with = "serialize_quantity"
+        )
+    )]
     pub air_gap_radius: Length,
     /// Yoke radius of the magnetic core. If smaller than
     /// [`OpenTrapezoidFromToothWidthRotBuilder::air_gap_radius`], the slots are
     /// created for an inner core, otherwise for an outer core. Must be positive
     /// (`air_gap_radius > 0 m`).
-    #[cfg_attr(feature = "serde", serde(deserialize_with = "deserialize_quantity"))]
+    #[cfg_attr(
+        feature = "serde",
+        serde(
+            deserialize_with = "deserialize_quantity",
+            serialize_with = "serialize_quantity"
+        )
+    )]
     pub yoke_radius: Length,
     /// Number of slots. The slot angle is calculated as `2 * PI / slots`.
     pub slots: u16,
     /// Width of the slot opening. Must be positive (`opening_width > 0 m`).
-    #[cfg_attr(feature = "serde", serde(deserialize_with = "deserialize_quantity"))]
+    #[cfg_attr(
+        feature = "serde",
+        serde(
+            deserialize_with = "deserialize_quantity",
+            serialize_with = "serialize_quantity"
+        )
+    )]
     pub opening_width: Length,
     /// Height of the slot. Must not be smaller than the sum of
     /// [`OpenTrapezoidFromToothWidthRotBuilder::opening_height`] and
     /// [`OpenTrapezoidFromToothWidthRotBuilder::bottom_height`] (`height >=
     /// opening_height + bottom_height`).
-    #[cfg_attr(feature = "serde", serde(deserialize_with = "deserialize_quantity"))]
+    #[cfg_attr(
+        feature = "serde",
+        serde(
+            deserialize_with = "deserialize_quantity",
+            serialize_with = "serialize_quantity"
+        )
+    )]
     pub height: Length,
     /// Height of the bottom slope. Must not be negative and not larger than
     /// [`OpenTrapezoidFromToothWidthRotBuilder::height`] minus
     /// [`OpenTrapezoidFromToothWidthRotBuilder::opening_height`] (`0 m <=
     /// bottom_height <= height - opening_height`).
-    #[cfg_attr(feature = "serde", serde(deserialize_with = "deserialize_quantity"))]
+    #[cfg_attr(
+        feature = "serde",
+        serde(
+            deserialize_with = "deserialize_quantity",
+            serialize_with = "serialize_quantity"
+        )
+    )]
     pub bottom_height: Length,
     /// Opening height of the slot opening. Must not be negative and not larger
     /// than [`OpenTrapezoidFromToothWidthRotBuilder::height`] minus
     /// [`OpenTrapezoidFromToothWidthRotBuilder::bottom_height`] (`0 m <=
     /// opening_height <= height - bottom_height`).
-    #[cfg_attr(feature = "serde", serde(deserialize_with = "deserialize_quantity"))]
+    #[cfg_attr(
+        feature = "serde",
+        serde(
+            deserialize_with = "deserialize_quantity",
+            serialize_with = "serialize_quantity"
+        )
+    )]
     pub opening_height: Length,
     /// Radius of the fillet between the slot bottom and bottom slope (if one
     /// exists) or the slot sides. Must not be negative (`bottom_radius >= 0
     /// m`).
-    #[cfg_attr(feature = "serde", serde(deserialize_with = "deserialize_quantity"))]
+    #[cfg_attr(
+        feature = "serde",
+        serde(
+            deserialize_with = "deserialize_quantity",
+            serialize_with = "serialize_quantity"
+        )
+    )]
     pub bottom_radius: Length,
     /// Radius of the fillet between the bottom slope and the slot sides. Must
     /// not be negative (`slope_bottom_radius >= 0 m`).
-    #[cfg_attr(feature = "serde", serde(deserialize_with = "deserialize_quantity"))]
+    #[cfg_attr(
+        feature = "serde",
+        serde(
+            deserialize_with = "deserialize_quantity",
+            serialize_with = "serialize_quantity"
+        )
+    )]
     pub slope_bottom_radius: Length,
     /// If true, the tooth tip leakage is calculated using the default
     ///  implementation of [`Slot::leakage_coefficient_tooth_tip`]. Otherwise,
