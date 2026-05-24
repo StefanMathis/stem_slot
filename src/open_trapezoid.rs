@@ -4,7 +4,6 @@ towards the air gap - as well as a couple of "builder" structs which can be used
 to create an [`OpenTrapezoidSlot`]. See the struct documentation for more.
  */
 
-use approx::ulps_ne;
 use compare_variables::{Comparison, ComparisonOperator, ComparisonValue, compare_variables};
 use planar_geo::prelude::*;
 use rayon::prelude::*;
@@ -267,9 +266,9 @@ impl OpenTrapezoidSlot {
     /// use std::f64::consts::PI;
     /// use approx::assert_abs_diff_eq;
     /// use stem_slot::prelude::*;
-    /// use stem_slot::open_trapezoid::OpenTrapezoidWithBottomSideAngleBuilder;
+    /// use stem_slot::open_trapezoid::OpenTrapezoidWithBottomAngleBuilder;
     ///
-    /// let builder = OpenTrapezoidWithBottomSideAngleBuilder {
+    /// let builder = OpenTrapezoidWithBottomAngleBuilder {
     ///     opening_width: Length::new::<millimeter>(5.0),
     ///     height: Length::new::<millimeter>(20.0),
     ///     opening_height: Length::new::<millimeter>(2.0),
@@ -283,12 +282,12 @@ impl OpenTrapezoidSlot {
     /// let slot = OpenTrapezoidSlot::try_from(builder).unwrap();
     /// assert_abs_diff_eq!(
     ///     slot.bottom_radius().get::<millimeter>(),
-    ///     6.3837,
+    ///     5.2637,
     ///     epsilon = 1e-3
     /// ); // Input value was 20 mm
     /// assert_abs_diff_eq!(
     ///     slot.bottom_side_radius().get::<millimeter>(),
-    ///     3.4862297,
+    ///     9.6385654,
     ///     epsilon = 1e-6
     /// ); // Input value was 20 mm
     /// ```
@@ -307,9 +306,9 @@ impl OpenTrapezoidSlot {
     /// use std::f64::consts::PI;
     /// use approx::assert_abs_diff_eq;
     /// use stem_slot::prelude::*;
-    /// use stem_slot::open_trapezoid::OpenTrapezoidWithBottomSideAngleBuilder;
+    /// use stem_slot::open_trapezoid::OpenTrapezoidWithBottomAngleBuilder;
     ///
-    /// let builder = OpenTrapezoidWithBottomSideAngleBuilder {
+    /// let builder = OpenTrapezoidWithBottomAngleBuilder {
     ///     opening_width: Length::new::<millimeter>(5.0),
     ///     height: Length::new::<millimeter>(20.0),
     ///     opening_height: Length::new::<millimeter>(2.0),
@@ -323,12 +322,12 @@ impl OpenTrapezoidSlot {
     /// let slot = OpenTrapezoidSlot::try_from(builder).unwrap();
     /// assert_abs_diff_eq!(
     ///     slot.bottom_radius().get::<millimeter>(),
-    ///     6.3837,
+    ///     5.2637,
     ///     epsilon = 1e-3
     /// ); // Input value was 20 mm
     /// assert_abs_diff_eq!(
     ///     slot.bottom_side_radius().get::<millimeter>(),
-    ///     3.4862297,
+    ///     9.6385654,
     ///     epsilon = 1e-6
     /// ); // Input value was 20 mm
     /// ```
@@ -511,7 +510,7 @@ pub struct OpenTrapezoidBuilder {
     /// Radius of the fillet between the bottom slope and the slot sides. Must
     /// not be negative (`bottom_side_radius >= 0 m`). Is shrunk to the maximum
     /// possible value if required by the slot geometry, see
-    /// [`Slot::bottom_side_radius`].
+    /// [`OpenTrapezoidSlot::bottom_side_radius`].
     #[cfg_attr(
         feature = "serde",
         serde(
@@ -521,7 +520,7 @@ pub struct OpenTrapezoidBuilder {
     )]
     pub bottom_side_radius: Length,
     /// If true, the tooth tip leakage is calculated using the default
-    ///  implementation of [`Slot::leakage_coefficient_tooth_tip`]. Otherwise,
+    /// implementation of [`Slot::leakage_coefficient_tooth_tip`]. Otherwise,
     /// it is set to zero.
     pub consider_tooth_tip_leakage: bool,
 }
@@ -598,31 +597,28 @@ impl TryFrom<OpenTrapezoidBuilder> for OpenTrapezoidSlot {
 
         // Check if the radii had to be shrunk to create the fillet chain and
         // update their values accordingly.
-        let mut i = 0;
-        let maxcount = (bottom_radius > zero) as i32 + (bottom_side_radius > zero) as i32;
-        for segment in outline.segments() {
-            if i == maxcount {
-                break;
+        let mut nonzero_radii = Vec::with_capacity(2);
+        for r in [&mut bottom_side_radius, &mut bottom_radius] {
+            if *r > zero {
+                nonzero_radii.push(r);
             }
+        }
+        let mut i = 0;
+        for segment in outline.segments() {
             if let Segment::ArcSegment(arc_segment) = segment {
-                let current_param = if i == 0 {
-                    if bottom_side_radius > zero {
-                        &mut bottom_side_radius
-                    } else {
-                        &mut bottom_radius
-                    }
-                } else {
-                    &mut bottom_radius
-                };
-                if ulps_ne!(
+                let current_param = &mut nonzero_radii[i];
+                if approx::ulps_ne!(
                     arc_segment.radius(),
                     (*current_param).get::<meter>(),
                     epsilon = DEFAULT_EPSILON,
                     max_ulps = DEFAULT_MAX_ULPS
                 ) {
-                    *current_param = Length::new::<meter>(arc_segment.radius());
+                    **current_param = Length::new::<meter>(arc_segment.radius());
                 }
                 i += 1;
+                if i == nonzero_radii.len() {
+                    break;
+                }
             }
         }
 
@@ -1148,7 +1144,7 @@ let builder = OpenTrapezoidWithBottomAngleBuilder {
     consider_tooth_tip_leakage: true,
 };
 let slot = OpenTrapezoidSlot::try_from(builder).expect("valid parameters");
-assert_abs_diff_eq!(slot.area().get::<square_millimeter>(), 151.788, epsilon=1e-3);
+assert_abs_diff_eq!(slot.area().get::<square_millimeter>(), 146.603, epsilon=1e-3);
 ```
  */
 #[cfg_attr(feature = "serde", derive(Deserialize))]

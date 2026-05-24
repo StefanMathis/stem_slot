@@ -245,6 +245,14 @@ impl Slot for RectangularSlot {
             0.0
         }
     }
+
+    fn area(&self) -> Area {
+        return self.winding_area() + self.opening_height * self.opening_width;
+    }
+
+    fn winding_area(&self) -> Area {
+        return self.width * (self.height - self.opening_height);
+    }
 }
 
 #[cfg(feature = "serde")]

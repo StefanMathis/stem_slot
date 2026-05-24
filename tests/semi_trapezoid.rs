@@ -423,8 +423,8 @@ fn test_semi_trapezoid_side_height() {
         bottom_width - Length::new::<millimeter>(2.0 * 17.0) * (slot_angle / 2.0).sin(),
         Length::new::<millimeter>(2.0),
         Length::new::<millimeter>(17.75),
-        Length::new::<millimeter>(17.0),
         Length::new::<millimeter>(0.75),
+        Length::new::<millimeter>(17.0),
         slot_angle,
         BottomAngle::new_no_slope(slot_angle),
         TopAngle::new_no_slope(slot_angle),
@@ -999,8 +999,8 @@ fn test_with_slopes() {
         Length::new::<millimeter>(0.75),
         Length::new::<millimeter>(14.0),
         PI / 18.0,
-        (PI * 0.5).into(),
-        (PI * 0.7).into(),
+        PI * 0.7,
+        PI * 0.7,
         Length::new::<millimeter>(1.0),
         Length::new::<millimeter>(1.0),
         Length::new::<millimeter>(1.0),
@@ -1017,7 +1017,7 @@ fn test_with_slopes() {
     );
     approx::assert_abs_diff_eq!(
         slot.area().get::<square_millimeter>(),
-        200.818,
+        171.635,
         epsilon = 1e-3
     );
 }
