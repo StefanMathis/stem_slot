@@ -2,7 +2,7 @@ use cairo_viewport::*;
 use indoc::indoc;
 use planar_geo::prelude::*;
 use std::f64::consts::PI;
-use stem_slot::{open_trapezoid::*, prelude::*};
+use stem_slot::{open_trapezoid::*, prelude::*, semi_trapezoid::BottomAngle};
 
 fn compare_to_reference<P: AsRef<std::path::Path>>(
     drawables: &[DrawableCow<'_>],
@@ -26,20 +26,53 @@ fn compare_to_reference<P: AsRef<std::path::Path>>(
 }
 
 #[test]
-fn test_angle_bottom() {
-    let builder = OpenTrapezoidWithAngleBottomBuilder {
+fn test_shrunk_fillet_radii() {
+    let builder = OpenTrapezoidWithBottomAngleBuilder {
         opening_width: Length::new::<millimeter>(5.0),
         height: Length::new::<millimeter>(20.0),
         opening_height: Length::new::<millimeter>(2.0),
         bottom_width: Length::new::<millimeter>(5.0),
-        bottom_angle: (120.0 * PI / 180.0).into(),
+        bottom_angle: BottomAngle::FromBottomSideAngle {
+            bottom_side_angle: 120.0 * PI / 180.0,
+            slot_angle: 10.0 * PI / 180.0,
+        },
+        slot_angle: 10.0 * PI / 180.0,
+        bottom_radius: Length::new::<millimeter>(20.0),
+        bottom_side_radius: Length::new::<millimeter>(20.0),
+        consider_tooth_tip_leakage: true,
+    };
+    let slot = OpenTrapezoidSlot::try_from(builder).unwrap();
+    approx::assert_abs_diff_eq!(
+        slot.bottom_radius().get::<millimeter>(),
+        6.3837,
+        epsilon = 1e-3
+    );
+    approx::assert_abs_diff_eq!(
+        slot.bottom_side_radius().get::<millimeter>(),
+        3.4862297,
+        epsilon = 1e-6
+    );
+}
+
+#[test]
+fn test_angle_bottom() {
+    let builder = OpenTrapezoidWithBottomAngleBuilder {
+        opening_width: Length::new::<millimeter>(5.0),
+        height: Length::new::<millimeter>(20.0),
+        opening_height: Length::new::<millimeter>(2.0),
+        bottom_width: Length::new::<millimeter>(5.0),
+        bottom_angle: BottomAngle::FromBottomSideAngle {
+            bottom_side_angle: 120.0 * PI / 180.0,
+            slot_angle: 10.0 * PI / 180.0,
+        },
         slot_angle: 10.0 * PI / 180.0,
         bottom_radius: Length::new::<millimeter>(2.0),
-        slope_bottom_radius: Length::new::<millimeter>(1.0),
+        bottom_side_radius: Length::new::<millimeter>(1.0),
         consider_tooth_tip_leakage: true,
     };
     let slot = OpenTrapezoidSlot::try_from(builder).unwrap();
 
+    approx::assert_abs_diff_eq!(slot.bottom_side_angle(), 120.0 * PI / 180.0, epsilon = 1e-6);
     approx::assert_abs_diff_eq!(slot.outline().length(), 0.0465666, epsilon = 1e-6);
     approx::assert_abs_diff_eq!(
         slot.area().get::<square_millimeter>(),
@@ -91,15 +124,18 @@ fn test_angle_bottom() {
 
 #[test]
 fn test_different_layers() {
-    let builder = OpenTrapezoidWithAngleBottomBuilder {
+    let builder = OpenTrapezoidWithBottomAngleBuilder {
         opening_width: Length::new::<millimeter>(5.0),
         height: Length::new::<millimeter>(20.0),
         opening_height: Length::new::<millimeter>(2.0),
         bottom_width: Length::new::<millimeter>(5.0),
-        bottom_angle: (120.0 * PI / 180.0).into(),
+        bottom_angle: BottomAngle::FromBottomSideAngle {
+            bottom_side_angle: 120.0 * PI / 180.0,
+            slot_angle: 10.0 * PI / 180.0,
+        },
         slot_angle: 10.0 * PI / 180.0,
         bottom_radius: Length::new::<millimeter>(2.0),
-        slope_bottom_radius: Length::new::<millimeter>(1.0),
+        bottom_side_radius: Length::new::<millimeter>(1.0),
         consider_tooth_tip_leakage: true,
     };
     let slot = OpenTrapezoidSlot::try_from(builder).unwrap();
@@ -154,7 +190,7 @@ fn test_open_slot_bottom_height() {
         bottom_width: Length::new::<millimeter>(5.0),
         slot_angle: 10.0 * PI / 180.0,
         bottom_radius: Length::new::<millimeter>(2.0),
-        slope_bottom_radius: Length::new::<millimeter>(1.0),
+        bottom_side_radius: Length::new::<millimeter>(1.0),
         consider_tooth_tip_leakage: true,
     }
     .try_into()
@@ -191,7 +227,7 @@ fn test_open_slot_bottom_slope_width() {
         bottom_side_width: Length::new::<millimeter>(8.298),
         slot_angle: 10.0 * PI / 180.0,
         bottom_radius: Length::new::<millimeter>(2.0),
-        slope_bottom_radius: Length::new::<millimeter>(1.0),
+        bottom_side_radius: Length::new::<millimeter>(1.0),
         consider_tooth_tip_leakage: true,
     }
     .try_into()
@@ -227,7 +263,7 @@ fn test_open_slot_side_height_bugfix() {
         opening_height: Length::new::<millimeter>(0.75),
         slot_angle,
         bottom_radius,
-        slope_bottom_radius: Length::new::<millimeter>(0.0),
+        bottom_side_radius: Length::new::<millimeter>(0.0),
         consider_tooth_tip_leakage: true,
     }
     .try_into()
@@ -254,7 +290,7 @@ fn test_test_from_rotary_core() {
         bottom_height: Length::new::<millimeter>(0.0),
         opening_height: Length::new::<millimeter>(1.0),
         bottom_radius: Length::new::<millimeter>(0.0),
-        slope_bottom_radius: Length::new::<millimeter>(0.0),
+        bottom_side_radius: Length::new::<millimeter>(0.0),
         consider_tooth_tip_leakage: false,
     }
     .try_into()
@@ -279,7 +315,7 @@ fn test_multilayer_vertical() {
         bottom_side_width: Length::new::<millimeter>(8.298),
         slot_angle: 10.0 * PI / 180.0,
         bottom_radius: Length::new::<millimeter>(2.0),
-        slope_bottom_radius: Length::new::<millimeter>(1.0),
+        bottom_side_radius: Length::new::<millimeter>(1.0),
         consider_tooth_tip_leakage: true,
     }
     .try_into()

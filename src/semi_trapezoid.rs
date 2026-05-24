@@ -4,13 +4,9 @@ semi-opened or even closed towards the air gap - as well as a couple of
 "builder" structs which can be used to create a [`SemiTrapezoidSlot`]. See the
 struct documentation for more.
 
-Additionally, it defines a couple of helper functions and structs for
-calculating slot angles:
-- [`angle_top_slope`] and [`bottom_slope_angle`] functions for deriving the
-sides-slope angles from the slot angle and the slope-bottom angles.
-- [`BottomAngleFromWidthHeight`] and [`TopAngleFromWidthHeight`] structs for
-deriving slot angles from width and height parameters. These are used as
-parameters for some of the builder structs.
+Additionally, it defines the [`BottomAngle`] and
+[`TopAngle`] structs for calculating slot angles from width and
+height parameters. These are used as parameters for some of the builder structs.
  */
 
 use compare_variables::{Comparison, ComparisonOperator, ComparisonValue, compare_variables};
@@ -18,7 +14,7 @@ use planar_geo::prelude::*;
 use rayon::prelude::*;
 use std::{
     borrow::Cow,
-    f64::consts::{FRAC_PI_2, TAU},
+    f64::consts::{FRAC_PI_2, PI, TAU},
 };
 use stem_material::prelude::*;
 
@@ -30,31 +26,55 @@ use serde::{Deserialize, Serialize};
 use crate::slot::Slot;
 
 /**
-TODO
+A trapezoid slot which is semi-closed or closed towards the air gap.
 
-# Constructors
+Semi-trapezoid slots are the standard slot on rotary motors, especially for
+distributed winding. Thanks to the semi-closed slot opening, the air gap width
+permeance does not change compared to the tooth area, leading to a small
+effective air gap. When special winding technologies are used, the slot might
+even be fully closed to minimize the permeance disturbance. The trapezoid form
+allows the usage of parallel-sided teeth, optimizing the available space for the
+winding.
 
-The primary constructor for an [`SemiTrapezoidSlot`] is the
-[`new`](SemiTrapezoidSlot::new) method, which basically takes the fields of the
-struct as an arguments, sanity-checks them and then returns a struct instance.
-Besides this one, the following "builder" structs are available:
+# Geometry and constructors
+
+*/
+#[doc = ""]
+#[cfg_attr(
+    feature = "doc-images",
+    doc = "![Semi trapezoid slot definitions][cad_semi_trapezoid]"
+)]
+#[cfg_attr(
+    feature = "doc-images",
+    embed_doc_image::embed_doc_image("cad_semi_trapezoid", "docs/img/cad_semi_trapezoid.svg")
+)]
+#[cfg_attr(
+    not(feature = "doc-images"),
+    doc = "**Doc images not enabled**. Compile docs with
+    `cargo doc --features 'doc-images'` and Rust version >= 1.54."
+)]
+/**
+
+Not all the parameters shown in the image are needed to unequivocally describe
+the slot geometry. For example, defining four of the five height parameters
+directly sets the value of the fifth. Therefore, this module defines a couple
+of "builder" structs which represent different possible parameter sets. These
+can be fallibly converted to an [`OpenTrapezoidSlot`] via their [`TryFrom`]
+implementations:
 - [`SemiTrapezoidBuilder`] (builder version of [`new`](SemiTrapezoidSlot::new))
 - [`SemiTrapezoidWithoutSlopesBuilder`]
 - [`SemiTrapezoidWithTopHeightBuilder`]
 - [`SemiTrapezoidWithBottomHeightBuilder`]
-- [`SemiTrapezoidWithSideTopWidthBuilder`]
-- [`SemiTrapezoidWithSideBottomWidthBuilder`]
+- [`SemiTrapezoidWithTopSideWidthBuilder`]
+- [`SemiTrapezoidWithBottomSideWidthBuilder`]
 - [`SemiTrapezoidFromToothWidthRotBuilder`]
 - [`SemiTrapezoidFromToothWidthRotWithoutSlopesBuilder`]
-
-These structs are "plain data" and all their fields are public. They are meant
-to be (fallibly) converted to an [`SemiTrapezoidSlot`] via their [`TryFrom`]
-implementations:
 
 ```
 use approx;
 use std::f64::consts::PI;
 use stem_slot::prelude::*;
+use stem_slot::semi_trapezoid::SemiTrapezoidWithoutSlopesBuilder;
 
 let builder = SemiTrapezoidWithoutSlopesBuilder {
     opening_width: Length::new::<millimeter>(5.0),
@@ -69,20 +89,27 @@ let slot = SemiTrapezoidSlot::try_from(builder).expect("valid inputs");
 approx::assert_abs_diff_eq!(magnet.opening_width().get::<millimeter>(), 5, epsilon=1e-3);
 ```
 
-# Deserialization
+The conversion fails if a parameter is out of bounds or if the resulting slot
+outline intersects itself. The bounds of a parameter is specified in the field
+docstring of the respective builder struct.
 
-This struct can be deserialized from the same parameters used in
-[`SemiTrapezoidSlot::new`] (see below). Besides that, all the builder structs
-listed in the previous section implement [`Deserialize`], hence an
-[`SemiTrapezoidSlot] can be deserialized directly from their respective
-serialized representation (without the need for a tag).
+Using structs instead of constructor functions makes it less likely to confuse
+arguments, since the parameter name needs to be specified explicitly. For
+convenience, there exists a constructor function [`SemiTrapezoidSlot::new`]
+which internally creates an [`SemiTrapezoidBuilder`] and then converts it.
+
+# Serialization and deserialization
+
+This struct can be directly deserialized from any of its "builder" structs (no
+need for a tag). Its serialized form is that of the [`SemiTrapezoidBuilder`]
+struct.
 
 ```
 use approx;
 use stem_slot::prelude::*;
 use serde_yaml;
 
-// Parameters from "new" method
+// Parameters of a SemiTrapezoidBuilder
 let str = indoc::indoc! {"
 opening_width: 5 mm
 opening_height: 2 mm
@@ -92,14 +119,14 @@ side_height: 16 mm
 effective_opening_height: 2 mm
 slot_angle: PI / 18
 bottom_radius: 2 mm 
-slope_bottom_radius: 1 mm
+bottom_side_radius: 1 mm
 consider_tooth_tip_leakage: true
 "};
 
 let slot: SemiTrapezoidSlot = serde_yaml::from_str(&str).expect("valid dimensions");
-approx::assert_abs_diff_eq!(magnet.opening_width().get::<millimeter>(), 5, epsilon=1e-3);
+approx::assert_abs_diff_eq!(slot.opening_width().get::<millimeter>(), 5.0, epsilon=1e-3);
 
-// Using OpenTrapezoidWithoutSlopesBuilder as an intermediate stage:
+// Parameters of a SemiTrapezoidWithoutSlopesBuilder
 let str = indoc::indoc! {"
 opening_width: 5 mm
 opening_height: 2 mm
@@ -112,60 +139,92 @@ consider_tooth_tip_leakage: true
 "};
 
 let slot: SemiTrapezoidSlot = serde_yaml::from_str(&str).expect("valid dimensions");
-approx::assert_abs_diff_eq!(slot.opening_width().get::<millimeter>(), 5, epsilon=1e-3);
+approx::assert_abs_diff_eq!(slot.opening_width().get::<millimeter>(), 5.0, epsilon=1e-3);
 ```
-##
-
  */
 #[derive(Clone, Debug)]
 #[cfg_attr(feature = "serde", derive(Serialize))]
 pub struct SemiTrapezoidSlot {
-    bottom_width: Length, // Slot width at the slot bottom (opposite side of the slot opening)
-    top_width: Length,    // Slot width at the slot top (side of the slot opening)
-    opening_width: Length, // Width of the slot opening
-    height: Length,       // Total slot height (including slot opening)
-    side_height: Length,  // Slot side height (slot height - slot opening - slopes)
-    opening_height: Length, // Height of the slot opening
-    slot_angle: f64,      // Angle between the slot sides
-    bottom_angle: f64,    // Angle between the slot sides and the slot bottom in degree
-    angle_top: f64,       // Angle between the slot sides and the slot top in degree
-    bottom_radius: Length, /* Edge fillet radii of the trapezoid at the slot bottom (opposite
-                           * side of the slot opening) */
-    slope_bottom_radius: Length, // Edge fillet radii between bottom slope and slot side
-    top_radius: Length,          /* Edge fillet radii of the trapezoid at the slot top (side of
-                                  * the slot opening) */
-    slope_top_radius: Length, // Edge fillet radii between top slope and slot side
-    opening_radius: Length,   // Edge fillet radii of the slot opening at the slot inside
-    consider_tooth_tip_leakage: bool, /* Whether to consider the tooth tip leakage according to
-                               * diagram 3.7.2 of [MVP08] or not. */
+    #[cfg_attr(feature = "serde", serde(serialize_with = "serialize_quantity"))]
+    bottom_width: Length,
+    #[cfg_attr(feature = "serde", serde(serialize_with = "serialize_quantity"))]
+    top_width: Length,
+    #[cfg_attr(feature = "serde", serde(serialize_with = "serialize_quantity"))]
+    opening_width: Length,
+    #[cfg_attr(feature = "serde", serde(serialize_with = "serialize_quantity"))]
+    height: Length,
+    #[cfg_attr(feature = "serde", serde(serialize_with = "serialize_quantity"))]
+    side_height: Length,
+    #[cfg_attr(feature = "serde", serde(serialize_with = "serialize_quantity"))]
+    opening_height: Length,
+    slot_angle: f64,
+    bottom_angle: f64,
+    top_angle: f64,
+    #[cfg_attr(feature = "serde", serde(serialize_with = "serialize_quantity"))]
+    bottom_radius: Length,
+    #[cfg_attr(feature = "serde", serde(serialize_with = "serialize_quantity"))]
+    bottom_side_radius: Length,
+    #[cfg_attr(feature = "serde", serde(serialize_with = "serialize_quantity"))]
+    top_radius: Length,
+    #[cfg_attr(feature = "serde", serde(serialize_with = "serialize_quantity"))]
+    top_side_radius: Length,
+    #[cfg_attr(feature = "serde", serde(serialize_with = "serialize_quantity"))]
+    opening_radius: Length,
+    consider_tooth_tip_leakage: bool,
     #[cfg_attr(feature = "serde", serde(skip))]
     outline: Polysegment,
 }
 
 impl SemiTrapezoidSlot {
-    /// This function creates a SemiTrapezoidSlot instance from various geometry
-    /// parameters. For a full documentation, see
-    /// [20201109_BerechnungNut.pdf]
-    ///
-    /// At least one of the `Option` width (prefix `b_`) or height (prefix `h_`)
-    /// arguments must be given to `Some(builder)`. All other arguments can then
-    /// be set to None. If both bottom_width and side_bottom_width are given
-    /// AND if they are identical, bottom_angle can be omitted as well. The
-    /// same goes for angle_top.
+    /**
+    Creates a new [`SemiTrapezoidSlot`].
+
+    This is the function equivalent for the [`SemiTrapezoidBuilder`] (and in
+    fact creates a builder under the hood which is then converted to the final
+    slot type). See the docstring of the builder struct for parameter
+    descriptions.
+
+    # Examples
+
+    ```
+    use approx::assert_abs_diff_eq;
+    use std::f64::consts::PI;
+    use stem_slot::prelude::*;
+
+    let slot = SemiTrapezoidSlot::new(
+        Length::new::<millimeter>(9.0),
+        Length::new::<millimeter>(7.0),
+        Length::new::<millimeter>(2.0),
+        Length::new::<millimeter>(17.75),
+        Length::new::<millimeter>(0.75),
+        Length::new::<millimeter>(14.0),
+        PI / 18.0,
+        PI * 0.7,
+        PI * 0.7,
+        Length::new::<millimeter>(1.0),
+        Length::new::<millimeter>(1.0),
+        Length::new::<millimeter>(1.0),
+        Length::new::<millimeter>(1.0),
+        Length::new::<millimeter>(0.5),
+        true,
+    ).expect("valid parameters");
+    assert_abs_diff_eq!(slot.area().get::<square_millimeter>(), 200.818, epsilon=1e-3);
+    ```
+     */
     pub fn new(
         bottom_width: Length,
         top_width: Length,
         opening_width: Length,
         height: Length,
-        side_height: Length,
         opening_height: Length,
+        side_height: Length,
         slot_angle: f64,
-        bottom_angle: f64,
-        angle_top: f64,
+        bottom_angle: BottomAngle,
+        top_angle: TopAngle,
         bottom_radius: Length,
-        slope_bottom_radius: Length,
+        bottom_side_radius: Length,
         top_radius: Length,
-        slope_top_radius: Length,
+        top_side_radius: Length,
         opening_radius: Length,
         consider_tooth_tip_leakage: bool,
     ) -> Result<Self, crate::error::Error> {
@@ -177,53 +236,81 @@ impl SemiTrapezoidSlot {
             opening_height,
             slot_angle,
             bottom_radius,
-            slope_bottom_radius,
+            bottom_side_radius,
             consider_tooth_tip_leakage,
             top_width,
             bottom_angle: bottom_angle.into(),
-            angle_top: angle_top.into(),
+            top_angle: top_angle.into(),
             top_radius,
-            slope_top_radius,
+            top_side_radius,
             opening_radius,
         }
         .try_into()
     }
 
-    /// Returns slot bottom width
+    /// Returns the slot bottom width.
     pub fn bottom_width(&self) -> Length {
-        let dep_params = self.dependent_parameters();
-        return dep_params.side_bottom_width;
+        let params = self.calculate_params();
+        return params.bottom_side_width;
     }
 
+    /// Returns the width of the winding area at the intersection of the bottom
+    /// slope and the slot side.
     pub fn bottom_side_width(&self) -> Length {
-        return self.dependent_parameters().side_bottom_width;
+        return self.calculate_params().bottom_side_width;
     }
 
+    /// Returns the slot top width.
     pub fn top_width(&self) -> Length {
         return self.top_width;
     }
 
+    /// Returns the vertical height of the slot side.
+    pub fn side_height(&self) -> Length {
+        return self.side_height;
+    }
+
+    /// Returns the width of the winding area at the intersection of the top
+    /// slope and the slot side.
     pub fn top_side_width(&self) -> Length {
-        return self.dependent_parameters().side_top_width;
+        return self.calculate_params().top_side_width;
     }
 
+    /// Returns the vertical height of the slope at the slot bottom.
     pub fn top_height(&self) -> Length {
-        return self.dependent_parameters().top_height;
+        return self.calculate_params().top_height;
     }
 
+    /// Returns the vertical height of the slope at the slot bottom.
+    pub fn bottom_height(&self) -> Length {
+        return self.height - self.side_height - self.opening_height - self.top_height();
+    }
+
+    /// Returns the angle between the bottom slope and the slot bottom.
     pub fn bottom_angle(&self) -> f64 {
         return self.bottom_angle;
     }
 
-    pub fn angle_top(&self) -> f64 {
-        return self.angle_top;
+    /// Returns the angle between the slot side and the bottom slope.
+    pub fn bottom_side_angle(&self) -> f64 {
+        return self.calculate_params().bottom_side_angle;
     }
 
-    /// Helper function, not to be called directly
-    fn dependent_parameters(&self) -> DependentParametersSemiTrapezoidSlot {
-        let alpha = bottom_slope_angle(self.bottom_angle, self.slot_angle);
-        let beta = angle_top_slope(self.angle_top, self.slot_angle);
-        let delta_b_side = self.side_height * (self.slot_angle / 2.0).tan();
+    /// Returns the angle between the top slope and the slot top.
+    pub fn top_angle(&self) -> f64 {
+        return self.top_angle;
+    }
+
+    /// Returns the angle between the slot side and the top slope.
+    pub fn top_side_angle(&self) -> f64 {
+        return self.calculate_params().top_side_angle;
+    }
+
+    /// Calculates some parameters of `self`.
+    fn calculate_params(&self) -> CalculatedParams {
+        let bottom_side_angle = calculate_bottom_side_angle(self.bottom_angle, self.slot_angle);
+        let top_side_angle = calculate_top_side_angle(self.top_angle, self.slot_angle);
+        let delta_side_width = self.side_height * (self.slot_angle / 2.0).tan();
 
         /*
         Now the slope points 4 and 5 must fulfill two conditions:
@@ -251,30 +338,33 @@ impl SemiTrapezoidSlot {
         bottom_height = (2*Δb_side - bottom_width + top_width + 2*(height - side_height - opening_height)/tand(β))/(2/tand(α) + 2/tand(β))
         */
         let bottom_height: Length;
-        let side_bottom_width: Length;
-        if approx::abs_diff_eq!(alpha, 0.0, epsilon = 1e-15) {
+        let bottom_side_width: Length;
+        if approx::abs_diff_eq!(bottom_side_angle, PI, epsilon = 1e-15) {
             bottom_height = Length::new::<meter>(0.0);
-            side_bottom_width = self.bottom_width;
+            bottom_side_width = self.bottom_width;
         } else {
-            bottom_height = (2.0 * delta_b_side - self.bottom_width
+            bottom_height = (2.0 * delta_side_width - self.bottom_width
                 + self.top_width
-                + 2.0 * (self.height - self.side_height - self.opening_height) / beta.tan())
-                / (2.0 / alpha.tan() + 2.0 / beta.tan());
-            side_bottom_width = self.bottom_width + 2.0 * bottom_height / alpha.tan();
+                + 2.0 * (self.height - self.side_height - self.opening_height)
+                    / top_side_angle.tan())
+                / (2.0 / bottom_side_angle.tan() + 2.0 / top_side_angle.tan());
+            bottom_side_width =
+                self.bottom_width + 2.0 * bottom_height * (self.bottom_angle - FRAC_PI_2).tan();
         }
 
         let top_height = self.height - self.side_height - bottom_height - self.opening_height;
-        let side_top_width: Length;
-        if approx::abs_diff_eq!(beta, 0.0, epsilon = 1e-15) {
-            side_top_width = self.top_width;
+        let top_side_width = if approx::abs_diff_eq!(top_side_angle, PI, epsilon = 1e-15) {
+            self.top_width
         } else {
-            side_top_width = self.top_width + 2.0 * top_height / beta.tan()
-        }
+            self.top_width + 2.0 * top_height * (self.top_angle - FRAC_PI_2).tan()
+        };
 
-        return DependentParametersSemiTrapezoidSlot {
+        return CalculatedParams {
             top_height,
-            side_bottom_width,
-            side_top_width,
+            bottom_side_width,
+            top_side_width,
+            bottom_side_angle,
+            top_side_angle,
         };
     }
 }
@@ -285,17 +375,14 @@ impl Slot for SemiTrapezoidSlot {
         return Cow::Borrowed(&self.outline);
     }
 
-    /// Returns the total slot height
     fn height(&self) -> Length {
         return self.height;
     }
 
-    /// Returns the slot opening width
     fn opening_width(&self) -> Length {
         return self.opening_width;
     }
 
-    /// Returns the slot opening width
     fn opening_height(&self) -> Length {
         return self.opening_height;
     }
@@ -310,27 +397,159 @@ impl Slot for SemiTrapezoidSlot {
 }
 
 /// Helper struct for the calculation of dependent properties, not meant for
-/// external use
-struct DependentParametersSemiTrapezoidSlot {
+/// external use.
+struct CalculatedParams {
     top_height: Length,
-    side_bottom_width: Length,
-    side_top_width: Length,
+    bottom_side_width: Length,
+    top_side_width: Length,
+    bottom_side_angle: f64,
+    top_side_angle: f64,
 }
 
-pub fn angle_top_slope(angle_top: f64, slot_angle: f64) -> f64 {
-    return angle_top - slot_angle / 2.0 - FRAC_PI_2;
+/// Helper function for calculating the calculate_top_side_angle, not meant for
+/// external use.
+fn calculate_top_side_angle(top_angle: f64, slot_angle: f64) -> f64 {
+    return 3.0 * FRAC_PI_2 - top_angle + 0.5 * slot_angle;
 }
 
-pub fn bottom_slope_angle(bottom_angle: f64, slot_angle: f64) -> f64 {
-    return bottom_angle + slot_angle / 2.0 - FRAC_PI_2;
+/// Helper function for calculating the bottom_side_angle, not meant for
+/// external use.
+fn calculate_bottom_side_angle(bottom_angle: f64, slot_angle: f64) -> f64 {
+    return 3.0 * FRAC_PI_2 - bottom_angle - 0.5 * slot_angle;
 }
 
+/**
+An enum for calculating the slot bottom angle from different inputs.
+
+Some slot types such as the
+[`OpenTrapezoidSlot`](crate::open_trapezoid::OpenTrapezoidSlot) or the
+[`SemiTrapezoidSlot`] can have slopes between the slot sides and the slot bottom
+to improve the magnetic flux.
+ */
+#[doc = ""]
+#[cfg_attr(
+    feature = "doc-images",
+    doc = "![Bottom angle calculation][cad_bottom_angle_calc]"
+)]
+#[cfg_attr(
+    feature = "doc-images",
+    embed_doc_image::embed_doc_image(
+        "cad_bottom_angle_calc",
+        "docs/img/cad_bottom_angle_calc.svg"
+    )
+)]
+#[cfg_attr(
+    not(feature = "doc-images"),
+    doc = "**Doc images not enabled**. Compile docs with
+    `cargo doc --features 'doc-images'` and Rust version >= 1.54."
+)]
+/**
+ *
+When defining such a slot, the `bottom_angle` between the slot bottom and the
+slope can be either given directly or be calculated from other parameters using
+variants of this enum. The explicit angle value can be retrieved via
+[`BottomAngle::value`].
+
+This enum can be created via [`From`] from a [`f64`] (wrapping the float in
+[`BottomAngle::Value`]). Converting the enum into a [`f64`] calls
+[`BottomAngle::value`].
+
+# Serialization and deserialization
+
+This enum is serialized / deserialized as an untagged enum:
+
+```
+use approx::assert_abs_diff_eq;
+use indoc::indoc;
+use stem_slot::semi_trapezoid::BottomAngle;
+
+// Deserialize directly from angle value
+let data = indoc! {"
+    ---
+    135.0 deg
+    "};
+let bottom_angle: BottomAngle = serde_yaml::from_str(data).unwrap();
+assert_abs_diff_eq!(bottom_angle.value(), 0.75 * PI, epsilon = 1e-10);
+
+// Deserialize from parameters
+let data = indoc! {"
+    ---
+    bottom_width: 1.0 m
+    bottom_side_width: 3.0 m
+    bottom_height: 1.0 m
+    slot_angle: 10.0 deg
+    "};
+let bottom_angle: BottomAngle = serde_yaml::from_str(data).unwrap();
+approx::assert_abs_diff_eq!(bottom_angle.value(), 0.75 * PI, epsilon = 1e-10);
+```
+
+Of course, the untagged representation can of course also be used when
+deserializing [`BottomAngle`] as part of a slot builder struct.
+ */
 #[derive(Debug, Clone, Copy)]
-#[cfg_attr(feature = "serde", derive(Deserialize))]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "serde", serde(untagged))]
-pub enum BottomAngleFromWidthHeight {
-    Value(#[cfg_attr(feature = "serde", serde(deserialize_with = "deserialize_angle"))] f64),
-    Calculate {
+pub enum BottomAngle {
+    /// Explicit angle value.
+    Value(
+        /// Explicit angle value.
+        #[cfg_attr(feature = "serde", serde(deserialize_with = "deserialize_angle"))]
+        f64,
+    ),
+    /**
+    Angle value specified via `bottom_side_angle` and `slot_angle`.
+    `bottom_angle` is calculated using the sum of angles in a triangle:
+
+    `bottom_angle = 3/2 PI - bottom_side_angle - slot_angle / 2`
+
+    # Examples
+
+    ```
+    use std::f64::consts::{FRAC_PI_2, FRAC_PI_4};
+    use approx::assert_abs_diff_eq;
+    use stem_slot::semi_trapezoid::BottomAngle;
+
+    let bottom_angle: f64 = BottomAngle::FromBottomSideAngle {
+        bottom_side_angle: FRAC_PI_2,
+        slot_angle: FRAC_PI_2,
+    }.into(); // Calls BottomAngle::value()
+    approx::assert_abs_diff_eq!(bottom_angle, FRAC_PI_2 + FRAC_PI_4, epsilon = 1e-10);
+    ```
+     */
+    FromBottomSideAngle {
+        /// Angle between bottom slope and slot side.
+        #[cfg_attr(feature = "serde", serde(deserialize_with = "deserialize_angle"))]
+        bottom_side_angle: f64,
+        /// Angle between the slot sides.
+        #[cfg_attr(feature = "serde", serde(deserialize_with = "deserialize_angle"))]
+        slot_angle: f64,
+    },
+    /**
+    Angle value specified by `bottom_width`, `bottom_side_width` and
+    `bottom_height`. If the latter value is zero, no slope exists and the slot
+    bottom directly touches the slot sides. To calculate `bottom_angle` for this
+    case, the `slot_angle` is needed.
+
+    # Examples
+
+    ```
+    use std::f64::consts::{TAU, FRAC_PI_4};
+    use approx::assert_abs_diff_eq;
+    use stem_slot::prelude::*;
+    use stem_slot::semi_trapezoid::BottomAngle;
+
+    // 45° slope (relative to slot bottom)
+    let bottom_angle: f64 = BottomAngle::FromWidthAndHeight {
+        bottom_width: Length::new::<millimeter>(1.0),
+        bottom_side_width: Length::new::<millimeter>(3.0),
+        bottom_height: Length::new::<millimeter>(1.0),
+        TAU / 36.0,
+    }.into(); // Calls BottomAngle::value()
+    approx::assert_abs_diff_eq!(bottom_angle, FRAC_PI_4, epsilon = 1e-10);
+    ```
+     */
+    FromWidthAndHeight {
+        /// Width of the slot bottom.
         #[cfg_attr(
             feature = "serde",
             serde(
@@ -339,6 +558,7 @@ pub enum BottomAngleFromWidthHeight {
             )
         )]
         bottom_width: Length,
+        /// Width of the slot at the corner between slot sides and slopes.
         #[cfg_attr(
             feature = "serde",
             serde(
@@ -346,7 +566,8 @@ pub enum BottomAngleFromWidthHeight {
                 serialize_with = "serialize_quantity"
             )
         )]
-        side_bottom_width: Length,
+        bottom_side_width: Length,
+        /// Height of the bottom slope.
         #[cfg_attr(
             feature = "serde",
             serde(
@@ -355,45 +576,212 @@ pub enum BottomAngleFromWidthHeight {
             )
         )]
         bottom_height: Length,
+        /// Angle between the slot sides.
         #[cfg_attr(feature = "serde", serde(deserialize_with = "deserialize_angle"))]
         slot_angle: f64,
     },
 }
 
-impl BottomAngleFromWidthHeight {
+impl BottomAngle {
+    /**
+    Returns the `bottom_angle` if there is no slope.
+
+    The formula is: `PI/2 - slot_angle/2`
+     */
     pub fn new_no_slope(slot_angle: f64) -> Self {
-        return Self::Value(FRAC_PI_2 - slot_angle / 2.0);
+        return Self::Value(FRAC_PI_2 - 0.5 * slot_angle);
     }
 
+    /**
+    Calculates the value of the `bottom_angle` from the variants.
+
+    # Examples
+
+    ```
+    use std::f64::consts::{FRAC_PI_2, FRAC_PI_4};
+    use approx::assert_abs_diff_eq;
+    use stem_slot::semi_trapezoid::BottomAngle;
+
+    let bottom_angle: f64 = BottomAngle::FromBottomSideAngle {
+        bottom_side_angle: FRAC_PI_2,
+        slot_angle: FRAC_PI_2,
+    }.value();
+    approx::assert_abs_diff_eq!(bottom_angle, FRAC_PI_2 + FRAC_PI_4, epsilon = 1e-10);
+    ```
+     */
     pub fn value(&self) -> f64 {
         match self {
-            BottomAngleFromWidthHeight::Value(v) => v.clone(),
-            BottomAngleFromWidthHeight::Calculate {
+            BottomAngle::Value(v) => v.clone(),
+            BottomAngle::FromBottomSideAngle {
+                bottom_side_angle,
+                slot_angle,
+            } => {
+                return 3.0 * FRAC_PI_2 - *bottom_side_angle - 0.5 * *slot_angle;
+            }
+            BottomAngle::FromWidthAndHeight {
                 bottom_width,
-                side_bottom_width,
+                bottom_side_width,
                 bottom_height,
                 slot_angle,
             } => {
-                let delta = 0.5 * (*side_bottom_width - *bottom_width);
-                return bottom_height.get::<meter>().atan2(delta.get::<meter>()) + FRAC_PI_2
-                    - 0.5 * slot_angle;
+                let bottom_height = (*bottom_height).get::<meter>();
+                if approx::ulps_ne!(
+                    bottom_height,
+                    0.0,
+                    epsilon = DEFAULT_EPSILON,
+                    max_ulps = DEFAULT_MAX_ULPS
+                ) {
+                    return (*bottom_side_width - *bottom_width)
+                        .get::<meter>()
+                        .atan2(2.0 * bottom_height)
+                        + FRAC_PI_2;
+                } else {
+                    return Self::new_no_slope(*slot_angle).value();
+                }
             }
         }
     }
 }
 
-impl From<f64> for BottomAngleFromWidthHeight {
+impl From<f64> for BottomAngle {
     fn from(value: f64) -> Self {
         Self::Value(value)
     }
 }
 
+impl From<BottomAngle> for f64 {
+    fn from(value: BottomAngle) -> Self {
+        value.value()
+    }
+}
+
+/**
+An enum for calculating the slot top angle from different inputs.
+
+Some slot types such as the [`SemiTrapezoidSlot`] can have slopes between the
+slot sides and the slot top to improve the magnetic flux.
+ */
+#[doc = ""]
+#[cfg_attr(
+    feature = "doc-images",
+    doc = "![Top angle calculation][cad_top_angle_calc]"
+)]
+#[cfg_attr(
+    feature = "doc-images",
+    embed_doc_image::embed_doc_image("cad_top_angle_calc", "docs/img/cad_top_angle_calc.svg")
+)]
+#[cfg_attr(
+    not(feature = "doc-images"),
+    doc = "**Doc images not enabled**. Compile docs with
+    `cargo doc --features 'doc-images'` and Rust version >= 1.54."
+)]
+/**
+ *
+When defining such a slot, the `top_angle` between the slot top and the slope
+can be either given directly or be calculated from other parameters using
+variants of this enum. The explicit angle value can be retrieved via
+[`TopAngle::value`].
+
+This enum can be created via [`From`] from a [`f64`] (wrapping the float in
+[`TopAngle::Value`]). Converting the enum into a [`f64`] calls
+[`TopAngle::value`].
+
+# Serialization and deserialization
+
+This enum is serialized / deserialized as an untagged enum:
+
+```
+use approx::assert_abs_diff_eq;
+use indoc::indoc;
+use stem_slot::semi_trapezoid::TopAngle;
+
+// Deserialize directly from angle value
+let data = indoc! {"
+    ---
+    135.0 deg
+    "};
+let top_angle: TopAngle = serde_yaml::from_str(data).unwrap();
+assert_abs_diff_eq!(top_angle.value(), 0.75 * PI, epsilon = 1e-10);
+
+// Deserialize from parameters
+let data = indoc! {"
+    ---
+    top_width: 1.0 m
+    top_side_width: 3.0 m
+    top_height: 1.0 m
+    slot_angle: 10.0 deg
+    "};
+let top_angle: TopAngle = serde_yaml::from_str(data).unwrap();
+approx::assert_abs_diff_eq!(top_angle.value(), 0.75 * PI, epsilon = 1e-10);
+```
+
+Of course, the untagged representation can of course also be used when
+deserializing [`TopAngle`] as part of a slot builder struct.
+ */
 #[derive(Debug, Clone, Copy)]
-#[cfg_attr(feature = "serde", derive(Deserialize))]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "serde", serde(untagged))]
-pub enum TopAngleFromWidthHeight {
-    Value(#[cfg_attr(feature = "serde", serde(deserialize_with = "deserialize_angle"))] f64),
-    Calculate {
+pub enum TopAngle {
+    /// Explicit angle value.
+    Value(
+        /// Explicit angle value.
+        #[cfg_attr(feature = "serde", serde(deserialize_with = "deserialize_angle"))]
+        f64,
+    ),
+    /**
+    Angle value specified via `top_side_angle` and `slot_angle`.
+    `top_angle` is calculated using the sum of angles in a triangle:
+
+    `top_angle = 2 PI - bottom_side_angle + slot_angle / 2`
+
+    # Examples
+
+    ```
+    use std::f64::consts::{FRAC_PI_2, FRAC_PI_4};
+    use approx::assert_abs_diff_eq;
+    use stem_slot::semi_trapezoid::TopAngle;
+
+    let top_angle: f64 = TopAngle::FromBottomSideAngle {
+        bottom_side_angle: FRAC_PI_2,
+        slot_angle: FRAC_PI_2,
+    }.into(); // Calls TopAngle::value()
+    approx::assert_abs_diff_eq!(top_angle, FRAC_PI_2 + FRAC_PI_4, epsilon = 1e-10);
+    ```
+     */
+    FromTopSideAngle {
+        /// Angle between top slope and slot side.
+        #[cfg_attr(feature = "serde", serde(deserialize_with = "deserialize_angle"))]
+        top_side_angle: f64,
+        /// Angle between the slot sides.
+        #[cfg_attr(feature = "serde", serde(deserialize_with = "deserialize_angle"))]
+        slot_angle: f64,
+    },
+    /**
+    Angle value specified by `top_width`, `top_side_width` and `top_height`. If
+    the latter value is zero, no slope exists and the slot bottom directly
+    touches the slot sides. To calculate `top_angle` in this case, the
+    `slot_angle` is needed.
+
+    # Examples
+
+    ```
+    use std::f64::consts::{TAU, FRAC_PI_4};
+    use approx::assert_abs_diff_eq;
+    use stem_slot::prelude::*;
+    use stem_slot::semi_trapezoid::TopAngle;
+
+    // 45° slope (relative to slot top)
+    let top_angle: f64 = TopAngle::FromWidthAndHeight {
+        top_width: Length::new::<millimeter>(1.0),
+        top_side_width: Length::new::<millimeter>(3.0),
+        top_height: Length::new::<millimeter>(1.0),
+        TAU / 36.0,
+    }.into(); // Calls TopAngle::value()
+    approx::assert_abs_diff_eq!(top_angle, FRAC_PI_4, epsilon = 1e-10);
+    ```
+     */
+    FromWidthAndHeight {
+        /// Width of the slot top.
         #[cfg_attr(
             feature = "serde",
             serde(
@@ -402,6 +790,7 @@ pub enum TopAngleFromWidthHeight {
             )
         )]
         top_width: Length,
+        /// Width of the slot at the corner between slot sides and slopes.
         #[cfg_attr(
             feature = "serde",
             serde(
@@ -409,7 +798,8 @@ pub enum TopAngleFromWidthHeight {
                 serialize_with = "serialize_quantity"
             )
         )]
-        side_top_width: Length,
+        top_side_width: Length,
+        /// Height of the top slope.
         #[cfg_attr(
             feature = "serde",
             serde(
@@ -418,42 +808,138 @@ pub enum TopAngleFromWidthHeight {
             )
         )]
         top_height: Length,
+        /// Angle between the slot sides.
         #[cfg_attr(feature = "serde", serde(deserialize_with = "deserialize_angle"))]
         slot_angle: f64,
     },
 }
 
-impl TopAngleFromWidthHeight {
+impl TopAngle {
+    /**
+    Returns the `bottom_angle` if there is no slope.
+
+    The formula is: `PI/2 + slot_angle/2`
+     */
     pub fn new_no_slope(slot_angle: f64) -> Self {
         return Self::Value(FRAC_PI_2 + slot_angle / 2.0);
     }
 
+    /**
+    Calculates the value of the `top_angle` from the variants.
+
+    # Examples
+
+    ```
+    use std::f64::consts::{FRAC_PI_2, FRAC_PI_4};
+    use approx::assert_abs_diff_eq;
+    use stem_slot::semi_trapezoid::BottomAngle;
+
+    let top_angle: f64 = TopAngle::FromTopSideAngle {
+        bottom_side_angle: 1.25*FRAC_PI_2,
+        slot_angle: FRAC_PI_2,
+    }.value();
+    approx::assert_abs_diff_eq!(top_angle, FRAC_PI_2 + FRAC_PI_4, epsilon = 1e-10);
+    ```
+     */
     pub fn value(&self) -> f64 {
         match self {
-            TopAngleFromWidthHeight::Value(v) => v.clone(),
-            TopAngleFromWidthHeight::Calculate {
+            TopAngle::Value(v) => v.clone(),
+            TopAngle::FromTopSideAngle {
+                top_side_angle,
+                slot_angle,
+            } => {
+                return TAU - *top_side_angle + 0.5 * *slot_angle;
+            }
+            TopAngle::FromWidthAndHeight {
                 top_width,
-                side_top_width,
+                top_side_width,
                 top_height,
                 slot_angle,
             } => {
-                let delta = 0.5 * (*side_top_width - *top_width);
-                return top_height.get::<meter>().atan2(delta.get::<meter>())
-                    + FRAC_PI_2
-                    + 0.5 * *slot_angle;
+                let top_height = (*top_height).get::<meter>();
+                if approx::ulps_ne!(
+                    top_height,
+                    0.0,
+                    epsilon = DEFAULT_EPSILON,
+                    max_ulps = DEFAULT_MAX_ULPS
+                ) {
+                    return (*top_side_width - *top_width)
+                        .get::<meter>()
+                        .atan2(2.0 * top_height)
+                        + FRAC_PI_2;
+                } else {
+                    return Self::new_no_slope(*slot_angle).value();
+                }
             }
         }
     }
 }
 
-impl From<f64> for TopAngleFromWidthHeight {
+impl From<f64> for TopAngle {
     fn from(value: f64) -> Self {
         Self::Value(value)
     }
 }
 
+impl From<TopAngle> for f64 {
+    fn from(value: TopAngle) -> Self {
+        value.value()
+    }
+}
+
+/**
+A builder struct for an [`SemiTrapezoidSlot`] which is functionally equivalent
+to [`SemiTrapezoidSlot::new`].
+
+This struct can be (fallibly) converted into an [`SemiTrapezoidSlot`] via its
+[`TryFrom`] / [`TryInto`] implementation. It is composed from some of the
+parameters shown in the drawing below. See the field docstrings for the valid
+value ranges. Even with all parameters being inside the value ranges, some
+parameter combinations might still result in invalid slot outlines, in which
+case this function will return an
+[`Error::OutlineIntersection`](crate::error::Error::OutlineIntersection).
+ */
+#[doc = ""]
+#[cfg_attr(
+    feature = "doc-images",
+    doc = "![Semi trapezoid slot definitions][cad_semi_trapezoid]"
+)]
+#[cfg_attr(
+    feature = "doc-images",
+    embed_doc_image::embed_doc_image("cad_semi_trapezoid", "docs/img/cad_semi_trapezoid.svg")
+)]
+#[cfg_attr(
+    not(feature = "doc-images"),
+    doc = "**Doc images not enabled**. Compile docs with
+    `cargo doc --features 'doc-images'` and Rust version >= 1.54."
+)]
+/**
+
+# Examples
+
+```
+use approx::assert_abs_diff_eq;
+use std::f64::consts::PI;
+use stem_slot::prelude::*;
+use stem_slot::semi_trapezoid::SemiTrapezoidBuilder;
+
+let builder = SemiTrapezoidBuilder {
+    bottom_width: Length::new::<millimeter>(9.0),
+    opening_width: Length::new::<millimeter>(7.0),
+    height: Length::new::<millimeter>(17.75),
+    side_height: Length::new::<millimeter>(17.0),
+    opening_height: Length::new::<millimeter>(0.75),
+    slot_angle: PI / 18.0,
+    bottom_radius: Length::new::<millimeter>(2.0),
+    bottom_side_radius: Length::new::<millimeter>(0.0),
+    consider_tooth_tip_leakage: true,
+};
+let slot = SemiTrapezoidSlot::try_from(builder).expect("valid parameters");
+assert_abs_diff_eq!(slot.area().get::<square_millimeter>(), 140.045, epsilon=1e-3);
+```
+ */
 #[derive(Clone, Debug)]
-#[cfg_attr(feature = "serde", derive(Deserialize))]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "serde", serde(deny_unknown_fields))]
 pub struct SemiTrapezoidBuilder {
     #[cfg_attr(
@@ -463,7 +949,7 @@ pub struct SemiTrapezoidBuilder {
             serialize_with = "serialize_quantity"
         )
     )]
-    pub bottom_width: Length, // Slot width at the slot bottom (opposite side of the slot opening)
+    pub bottom_width: Length,
     #[cfg_attr(
         feature = "serde",
         serde(
@@ -471,7 +957,7 @@ pub struct SemiTrapezoidBuilder {
             serialize_with = "serialize_quantity"
         )
     )]
-    pub top_width: Length, // Slot width at the slot top (side of the slot opening)
+    pub top_width: Length,
     #[cfg_attr(
         feature = "serde",
         serde(
@@ -479,7 +965,7 @@ pub struct SemiTrapezoidBuilder {
             serialize_with = "serialize_quantity"
         )
     )]
-    pub opening_width: Length, // Width of the slot opening
+    pub opening_width: Length,
     #[cfg_attr(
         feature = "serde",
         serde(
@@ -487,7 +973,7 @@ pub struct SemiTrapezoidBuilder {
             serialize_with = "serialize_quantity"
         )
     )]
-    pub height: Length, // Total slot height (including slot opening)
+    pub height: Length,
     #[cfg_attr(
         feature = "serde",
         serde(
@@ -495,7 +981,7 @@ pub struct SemiTrapezoidBuilder {
             serialize_with = "serialize_quantity"
         )
     )]
-    pub side_height: Length, // Slot side height (slot height - slot opening - slopes)
+    pub side_height: Length,
     #[cfg_attr(
         feature = "serde",
         serde(
@@ -503,13 +989,11 @@ pub struct SemiTrapezoidBuilder {
             serialize_with = "serialize_quantity"
         )
     )]
-    pub opening_height: Length, // Height of the slot opening
+    pub opening_height: Length,
     #[cfg_attr(feature = "serde", serde(deserialize_with = "deserialize_angle"))]
-    pub slot_angle: f64, // Angle between the slot sides
-    pub bottom_angle: BottomAngleFromWidthHeight, /* Angle between the slot sides and the slot
-                                                   * bottom in degree */
-    pub angle_top: TopAngleFromWidthHeight, /* Angle between the slot sides and the slot top in
-                                             * degree */
+    pub slot_angle: f64,
+    pub bottom_angle: BottomAngle,
+    pub top_angle: TopAngle,
     #[cfg_attr(
         feature = "serde",
         serde(
@@ -517,9 +1001,7 @@ pub struct SemiTrapezoidBuilder {
             serialize_with = "serialize_quantity"
         )
     )]
-    pub bottom_radius: Length, /* Edge fillet radii of the trapezoid at the slot bottom
-                                * (opposite side of the slot
-                                * opening) */
+    pub bottom_radius: Length,
     #[cfg_attr(
         feature = "serde",
         serde(
@@ -527,7 +1009,7 @@ pub struct SemiTrapezoidBuilder {
             serialize_with = "serialize_quantity"
         )
     )]
-    pub slope_bottom_radius: Length, // Edge fillet radii between bottom slope and slot side
+    pub bottom_side_radius: Length,
     #[cfg_attr(
         feature = "serde",
         serde(
@@ -535,8 +1017,7 @@ pub struct SemiTrapezoidBuilder {
             serialize_with = "serialize_quantity"
         )
     )]
-    pub top_radius: Length, /* Edge fillet radii of the trapezoid at the slot top (side of the
-                             * slot opening) */
+    pub top_radius: Length,
     #[cfg_attr(
         feature = "serde",
         serde(
@@ -544,7 +1025,7 @@ pub struct SemiTrapezoidBuilder {
             serialize_with = "serialize_quantity"
         )
     )]
-    pub slope_top_radius: Length, // Edge fillet radii between top slope and slot side
+    pub top_side_radius: Length,
     #[cfg_attr(
         feature = "serde",
         serde(
@@ -552,10 +1033,8 @@ pub struct SemiTrapezoidBuilder {
             serialize_with = "serialize_quantity"
         )
     )]
-    pub opening_radius: Length, // Edge fillet radii of the slot opening at the slot inside
-    pub consider_tooth_tip_leakage: bool, /* Whether to consider the tooth tip leakage according
-                                           * to
-                                           * diagram 3.7.2 of [MVP08] or not. */
+    pub opening_radius: Length,
+    pub consider_tooth_tip_leakage: bool,
 }
 
 impl TryFrom<SemiTrapezoidBuilder> for SemiTrapezoidSlot {
@@ -568,14 +1047,14 @@ impl TryFrom<SemiTrapezoidBuilder> for SemiTrapezoidSlot {
         let height = builder.height;
         let bottom_radius = builder.bottom_radius;
         let top_radius = builder.top_radius;
-        let slope_bottom_radius = builder.slope_bottom_radius;
-        let slope_top_radius = builder.slope_top_radius;
+        let bottom_side_radius = builder.bottom_side_radius;
+        let top_side_radius = builder.top_side_radius;
         let opening_radius = builder.opening_radius;
         let opening_height = builder.opening_height;
         let side_height = builder.side_height;
         let bottom_angle = builder.bottom_angle.value();
         let slot_angle = builder.slot_angle;
-        let angle_top = builder.angle_top.value();
+        let top_angle = builder.top_angle.value();
 
         let zero = Length::new::<meter>(0.0);
         compare_variables!(val zero < bottom_width)?;
@@ -584,9 +1063,9 @@ impl TryFrom<SemiTrapezoidBuilder> for SemiTrapezoidSlot {
         compare_variables!(val zero < height)?;
         compare_variables!(val zero <= opening_height)?;
         compare_variables!(val zero <= bottom_radius)?;
-        compare_variables!(val zero <= slope_bottom_radius)?;
+        compare_variables!(val zero <= bottom_side_radius)?;
         compare_variables!(val zero <= top_radius)?;
-        compare_variables!(val zero <= slope_top_radius)?;
+        compare_variables!(val zero <= top_side_radius)?;
         compare_variables!(val zero <= opening_radius)?;
         compare_variables!(opening_height < height)?;
 
@@ -603,17 +1082,18 @@ impl TryFrom<SemiTrapezoidBuilder> for SemiTrapezoidSlot {
             opening_height,
             slot_angle,
             bottom_angle,
-            angle_top,
+            top_angle,
             bottom_radius,
-            slope_bottom_radius,
+            bottom_side_radius,
             top_radius,
-            slope_top_radius,
+            top_side_radius,
             opening_radius,
             consider_tooth_tip_leakage: builder.consider_tooth_tip_leakage,
             outline: Polysegment::new(),
         };
 
-        let dep_params = this.dependent_parameters();
+        let params = this.calculate_params();
+
         let is_open = builder.opening_width.get::<meter>() > 0.0;
 
         // Vertex 1
@@ -632,7 +1112,7 @@ impl TryFrom<SemiTrapezoidBuilder> for SemiTrapezoidSlot {
 
         // Vertex 3
         if !approx::abs_diff_eq!(
-            dep_params.side_top_width.get::<meter>(),
+            params.top_side_width.get::<meter>(),
             builder.top_width.get::<meter>(),
             epsilon = 1e-15
         ) {
@@ -640,24 +1120,23 @@ impl TryFrom<SemiTrapezoidBuilder> for SemiTrapezoidSlot {
                 builder.top_width.get::<meter>() / 2.0,
                 builder.opening_height.get::<meter>(),
             ]);
-            radii.push(builder.slope_top_radius.get::<meter>());
+            radii.push(builder.top_side_radius.get::<meter>());
         }
 
         // Vertex 4
         points.push([
-            dep_params.side_top_width.get::<meter>() / 2.0,
-            (builder.opening_height + dep_params.top_height).get::<meter>(),
+            params.top_side_width.get::<meter>() / 2.0,
+            (builder.opening_height + params.top_height).get::<meter>(),
         ]);
         radii.push(builder.top_radius.get::<meter>());
 
         // Vertex 5
-        if dep_params.side_bottom_width > builder.bottom_width {
+        if params.bottom_side_width > builder.bottom_width {
             points.push([
-                dep_params.side_bottom_width.get::<meter>() / 2.0,
-                (builder.opening_height + dep_params.top_height + builder.side_height)
-                    .get::<meter>(),
+                params.bottom_side_width.get::<meter>() / 2.0,
+                (builder.opening_height + params.top_height + builder.side_height).get::<meter>(),
             ]);
-            radii.push(builder.slope_bottom_radius.get::<meter>());
+            radii.push(builder.bottom_side_radius.get::<meter>());
         }
 
         // Vertex 6
@@ -716,7 +1195,54 @@ impl TryFrom<SemiTrapezoidBuilder> for SemiTrapezoidSlot {
     }
 }
 
-#[cfg_attr(feature = "serde", derive(Deserialize))]
+/**
+A builder struct for an [`SemiTrapezoidSlot`] without slopes.
+
+This struct can be (fallibly) converted into an [`SemiTrapezoidSlot`] via its
+[`TryFrom`] / [`TryInto`] implementation. It is composed from some of the
+parameters shown in the drawing below. See the field docstrings for the valid
+value ranges. Even with all parameters being inside the value ranges, some
+parameter combinations might still result in invalid slot outlines, in which
+case this function will return an
+[`Error::OutlineIntersection`](crate::error::Error::OutlineIntersection).
+ */
+#[doc = ""]
+#[cfg_attr(
+    feature = "doc-images",
+    doc = "![Semi trapezoid slot definitions][cad_semi_trapezoid]"
+)]
+#[cfg_attr(
+    feature = "doc-images",
+    embed_doc_image::embed_doc_image("cad_semi_trapezoid", "docs/img/cad_semi_trapezoid.svg")
+)]
+#[cfg_attr(
+    not(feature = "doc-images"),
+    doc = "**Doc images not enabled**. Compile docs with
+    `cargo doc --features 'doc-images'` and Rust version >= 1.54."
+)]
+/**
+
+# Examples
+
+```
+use approx::assert_abs_diff_eq;
+use std::f64::consts::PI;
+use stem_slot::prelude::*;
+use stem_slot::semi_trapezoid::SemiTrapezoidWithoutSlopesBuilder;
+
+let builder = OpenTrapezoidWithoutSlopesBuilder {
+    opening_width: Length::new::<millimeter>(7.0),
+    height: Length::new::<millimeter>(17.75),
+    opening_height: Length::new::<millimeter>(0.75),
+    slot_angle: PI / 18.0,
+    bottom_radius: Length::new::<millimeter>(2.0),
+    consider_tooth_tip_leakage: true,
+};
+let slot = SemiTrapezoidSlot::try_from(builder).expect("valid parameters");
+assert_abs_diff_eq!(slot.area().get::<square_millimeter>(), 149.613, epsilon=1e-3);
+```
+ */
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "serde", serde(deny_unknown_fields))]
 pub struct SemiTrapezoidWithoutSlopesBuilder {
     #[cfg_attr(
@@ -726,7 +1252,7 @@ pub struct SemiTrapezoidWithoutSlopesBuilder {
             serialize_with = "serialize_quantity"
         )
     )]
-    pub bottom_width: Length, // Slot width at the slot bottom (opposite side of the slot opening)
+    pub bottom_width: Length,
     #[cfg_attr(
         feature = "serde",
         serde(
@@ -734,7 +1260,7 @@ pub struct SemiTrapezoidWithoutSlopesBuilder {
             serialize_with = "serialize_quantity"
         )
     )]
-    pub opening_width: Length, // Width of the slot opening
+    pub opening_width: Length,
     #[cfg_attr(
         feature = "serde",
         serde(
@@ -742,7 +1268,7 @@ pub struct SemiTrapezoidWithoutSlopesBuilder {
             serialize_with = "serialize_quantity"
         )
     )]
-    pub height: Length, // Total slot height (including slot opening)
+    pub height: Length,
     #[cfg_attr(
         feature = "serde",
         serde(
@@ -750,9 +1276,9 @@ pub struct SemiTrapezoidWithoutSlopesBuilder {
             serialize_with = "serialize_quantity"
         )
     )]
-    pub opening_height: Length, // Slot opening height
+    pub opening_height: Length,
     #[cfg_attr(feature = "serde", serde(deserialize_with = "deserialize_angle"))]
-    pub slot_angle: f64, // Angle between the slot sides and the slot bottom in degree
+    pub slot_angle: f64,
     #[cfg_attr(
         feature = "serde",
         serde(
@@ -760,9 +1286,7 @@ pub struct SemiTrapezoidWithoutSlopesBuilder {
             serialize_with = "serialize_quantity"
         )
     )]
-    pub bottom_radius: Length, /* Edge fillet radii of the trapezoid at the slot bottom
-                                * (opposite side of the slot
-                                * opening) */
+    pub bottom_radius: Length,
     #[cfg_attr(
         feature = "serde",
         serde(
@@ -770,8 +1294,7 @@ pub struct SemiTrapezoidWithoutSlopesBuilder {
             serialize_with = "serialize_quantity"
         )
     )]
-    pub top_radius: Length, /* Edge fillet radii of the trapezoid at the slot top (side of the
-                             * slot opening) */
+    pub top_radius: Length,
     #[cfg_attr(
         feature = "serde",
         serde(
@@ -779,10 +1302,8 @@ pub struct SemiTrapezoidWithoutSlopesBuilder {
             serialize_with = "serialize_quantity"
         )
     )]
-    pub opening_radius: Length, // Edge fillet radii of the slot opening at the slot inside
-    pub consider_tooth_tip_leakage: bool, /* Whether to consider the tooth tip leakage according
-                                           * to
-                                           * diagram 3.7.2 of [MVP08] or not. */
+    pub opening_radius: Length,
+    pub consider_tooth_tip_leakage: bool,
 }
 
 impl TryFrom<SemiTrapezoidWithoutSlopesBuilder> for SemiTrapezoidSlot {
@@ -794,8 +1315,8 @@ impl TryFrom<SemiTrapezoidWithoutSlopesBuilder> for SemiTrapezoidSlot {
             - 2.0 * (builder.height - builder.opening_height) * (builder.slot_angle / 2.0).tan();
         let side_height = builder.height - builder.opening_height;
 
-        let angle_top = TopAngleFromWidthHeight::new_no_slope(builder.slot_angle);
-        let bottom_angle = BottomAngleFromWidthHeight::new_no_slope(builder.slot_angle);
+        let top_angle = TopAngle::new_no_slope(builder.slot_angle);
+        let bottom_angle = BottomAngle::new_no_slope(builder.slot_angle);
 
         return SemiTrapezoidBuilder {
             bottom_width: builder.bottom_width,
@@ -806,11 +1327,11 @@ impl TryFrom<SemiTrapezoidWithoutSlopesBuilder> for SemiTrapezoidSlot {
             opening_height: builder.opening_height,
             slot_angle: builder.slot_angle,
             bottom_angle,
-            angle_top,
+            top_angle,
             bottom_radius: builder.bottom_radius,
-            slope_bottom_radius: Length::new::<meter>(0.0),
+            bottom_side_radius: Length::new::<meter>(0.0),
             top_radius: builder.top_radius,
-            slope_top_radius: Length::new::<meter>(0.0),
+            top_side_radius: Length::new::<meter>(0.0),
             opening_radius: builder.opening_radius,
             consider_tooth_tip_leakage: builder.consider_tooth_tip_leakage,
         }
@@ -828,7 +1349,7 @@ pub struct SemiTrapezoidWithTopHeightBuilder {
             serialize_with = "serialize_quantity"
         )
     )]
-    pub bottom_width: Length, // Slot width at the slot bottom (opposite side of the slot opening)
+    pub bottom_width: Length,
     #[cfg_attr(
         feature = "serde",
         serde(
@@ -836,7 +1357,7 @@ pub struct SemiTrapezoidWithTopHeightBuilder {
             serialize_with = "serialize_quantity"
         )
     )]
-    pub top_width: Length, // Slot width at the slot top (side of the slot opening)
+    pub top_width: Length,
     #[cfg_attr(
         feature = "serde",
         serde(
@@ -844,7 +1365,7 @@ pub struct SemiTrapezoidWithTopHeightBuilder {
             serialize_with = "serialize_quantity"
         )
     )]
-    pub opening_width: Length, // Width of the slot opening
+    pub opening_width: Length,
     #[cfg_attr(
         feature = "serde",
         serde(
@@ -852,7 +1373,7 @@ pub struct SemiTrapezoidWithTopHeightBuilder {
             serialize_with = "serialize_quantity"
         )
     )]
-    pub height: Length, // Total slot height (including slot opening)
+    pub height: Length,
     #[cfg_attr(
         feature = "serde",
         serde(
@@ -860,7 +1381,7 @@ pub struct SemiTrapezoidWithTopHeightBuilder {
             serialize_with = "serialize_quantity"
         )
     )]
-    pub top_height: Length, // Top slope height
+    pub top_height: Length,
     #[cfg_attr(
         feature = "serde",
         serde(
@@ -868,13 +1389,11 @@ pub struct SemiTrapezoidWithTopHeightBuilder {
             serialize_with = "serialize_quantity"
         )
     )]
-    pub opening_height: Length, // Height of the slot opening
+    pub opening_height: Length,
     #[cfg_attr(feature = "serde", serde(deserialize_with = "deserialize_angle"))]
-    pub slot_angle: f64, // Angle between the slot sides
-    pub bottom_angle: BottomAngleFromWidthHeight, /* Angle between the slot sides and the slot
-                                                   * bottom in degree */
-    pub angle_top: TopAngleFromWidthHeight, /* Angle between the slot sides and the slot top in
-                                             * degree */
+    pub slot_angle: f64,
+    pub bottom_angle: BottomAngle,
+    pub top_angle: TopAngle,
     #[cfg_attr(
         feature = "serde",
         serde(
@@ -882,9 +1401,7 @@ pub struct SemiTrapezoidWithTopHeightBuilder {
             serialize_with = "serialize_quantity"
         )
     )]
-    pub bottom_radius: Length, /* Edge fillet radii of the trapezoid at the slot bottom
-                                * (opposite side of the slot
-                                * opening) */
+    pub bottom_radius: Length,
     #[cfg_attr(
         feature = "serde",
         serde(
@@ -892,7 +1409,7 @@ pub struct SemiTrapezoidWithTopHeightBuilder {
             serialize_with = "serialize_quantity"
         )
     )]
-    pub slope_bottom_radius: Length, // Edge fillet radii between bottom slope and slot side
+    pub bottom_side_radius: Length,
     #[cfg_attr(
         feature = "serde",
         serde(
@@ -900,8 +1417,7 @@ pub struct SemiTrapezoidWithTopHeightBuilder {
             serialize_with = "serialize_quantity"
         )
     )]
-    pub top_radius: Length, /* Edge fillet radii of the trapezoid at the slot top (side of the
-                             * slot opening) */
+    pub top_radius: Length,
     #[cfg_attr(
         feature = "serde",
         serde(
@@ -909,7 +1425,7 @@ pub struct SemiTrapezoidWithTopHeightBuilder {
             serialize_with = "serialize_quantity"
         )
     )]
-    pub slope_top_radius: Length, // Edge fillet radii between top slope and slot side
+    pub top_side_radius: Length,
     #[cfg_attr(
         feature = "serde",
         serde(
@@ -917,37 +1433,36 @@ pub struct SemiTrapezoidWithTopHeightBuilder {
             serialize_with = "serialize_quantity"
         )
     )]
-    pub opening_radius: Length, // Edge fillet radii of the slot opening at the slot inside
-    pub consider_tooth_tip_leakage: bool, /* Whether to consider the tooth tip leakage according
-                                           * to
-                                           * diagram 3.7.2 of [MVP08] or not. */
+    pub opening_radius: Length,
+    pub consider_tooth_tip_leakage: bool,
 }
 
 impl TryFrom<SemiTrapezoidWithTopHeightBuilder> for SemiTrapezoidSlot {
     type Error = crate::error::Error;
 
     fn try_from(builder: SemiTrapezoidWithTopHeightBuilder) -> Result<Self, Self::Error> {
-        let gamma = angle_top_slope(builder.angle_top.value(), builder.slot_angle);
-        let side_top_width = builder.top_width + 2.0 * builder.top_height / gamma.tan();
+        let gamma = calculate_top_side_angle(builder.top_angle.value(), builder.slot_angle);
+        let top_side_width = builder.top_width + 2.0 * builder.top_height / gamma.tan();
 
         // Construct two line equations with incline and one point.
         // Then find the intersection, it equals point 5 (side to slope_bottom)
-        let alpha = bottom_slope_angle(builder.bottom_angle.value(), builder.slot_angle);
-        let beta = FRAC_PI_2 - builder.slot_angle / 2.0;
+        let bottom_side_angle =
+            calculate_bottom_side_angle(builder.bottom_angle.value(), builder.slot_angle);
+        let top_side_angle = FRAC_PI_2 - builder.slot_angle / 2.0;
 
         let l1 = Line::from_point_angle(
             [
                 0.5 * builder.bottom_width.get::<meter>(),
                 builder.height.get::<meter>(),
             ],
-            alpha,
+            bottom_side_angle,
         );
         let l2 = Line::from_point_angle(
             [
-                side_top_width.get::<meter>() / 2.0,
+                top_side_width.get::<meter>() / 2.0,
                 (builder.opening_height + builder.top_height).get::<meter>(),
             ],
-            beta,
+            top_side_angle,
         );
 
         let intersection: [f64; 2] =
@@ -955,9 +1470,9 @@ impl TryFrom<SemiTrapezoidWithTopHeightBuilder> for SemiTrapezoidSlot {
                 PrimitiveIntersections::One(p) => p,
                 _ => {
                     return Err(Comparison::new(
-                        ComparisonValue::new(alpha, Some("angle of slot bottom slope")),
+                        ComparisonValue::new(bottom_side_angle, Some("angle of slot bottom slope")),
                         ComparisonOperator::Equal,
-                        ComparisonValue::new(beta, Some("perpendicular to slot side")),
+                        ComparisonValue::new(top_side_angle, Some("perpendicular to slot side")),
                         ComparisonOperator::Equal,
                         None,
                     )
@@ -978,11 +1493,11 @@ impl TryFrom<SemiTrapezoidWithTopHeightBuilder> for SemiTrapezoidSlot {
             opening_height: builder.opening_height,
             slot_angle: builder.slot_angle,
             bottom_angle: builder.bottom_angle,
-            angle_top: builder.angle_top,
+            top_angle: builder.top_angle,
             bottom_radius: builder.bottom_radius,
-            slope_bottom_radius: builder.slope_bottom_radius,
+            bottom_side_radius: builder.bottom_side_radius,
             top_radius: builder.top_radius,
-            slope_top_radius: builder.slope_top_radius,
+            top_side_radius: builder.top_side_radius,
             opening_radius: builder.opening_radius,
             consider_tooth_tip_leakage: builder.consider_tooth_tip_leakage,
         }
@@ -990,7 +1505,7 @@ impl TryFrom<SemiTrapezoidWithTopHeightBuilder> for SemiTrapezoidSlot {
     }
 }
 
-#[cfg_attr(feature = "serde", derive(Deserialize))]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "serde", serde(deny_unknown_fields))]
 pub struct SemiTrapezoidWithBottomHeightBuilder {
     #[cfg_attr(
@@ -1000,7 +1515,7 @@ pub struct SemiTrapezoidWithBottomHeightBuilder {
             serialize_with = "serialize_quantity"
         )
     )]
-    pub bottom_width: Length, // Slot width at the slot bottom (opposite side of the slot opening)
+    pub bottom_width: Length,
     #[cfg_attr(
         feature = "serde",
         serde(
@@ -1008,7 +1523,7 @@ pub struct SemiTrapezoidWithBottomHeightBuilder {
             serialize_with = "serialize_quantity"
         )
     )]
-    pub top_width: Length, // Slot width at the slot top (side of the slot opening)
+    pub top_width: Length,
     #[cfg_attr(
         feature = "serde",
         serde(
@@ -1016,7 +1531,7 @@ pub struct SemiTrapezoidWithBottomHeightBuilder {
             serialize_with = "serialize_quantity"
         )
     )]
-    pub opening_width: Length, // Width of the slot opening
+    pub opening_width: Length,
     #[cfg_attr(
         feature = "serde",
         serde(
@@ -1024,7 +1539,7 @@ pub struct SemiTrapezoidWithBottomHeightBuilder {
             serialize_with = "serialize_quantity"
         )
     )]
-    pub height: Length, // Total slot height (including slot opening)
+    pub height: Length,
     #[cfg_attr(
         feature = "serde",
         serde(
@@ -1032,7 +1547,7 @@ pub struct SemiTrapezoidWithBottomHeightBuilder {
             serialize_with = "serialize_quantity"
         )
     )]
-    pub bottom_height: Length, // Bottom slope height
+    pub bottom_height: Length,
     #[cfg_attr(
         feature = "serde",
         serde(
@@ -1040,13 +1555,11 @@ pub struct SemiTrapezoidWithBottomHeightBuilder {
             serialize_with = "serialize_quantity"
         )
     )]
-    pub opening_height: Length, // Height of the slot opening
+    pub opening_height: Length,
     #[cfg_attr(feature = "serde", serde(deserialize_with = "deserialize_angle"))]
-    pub slot_angle: f64, // Angle between the slot sides
-    pub bottom_angle: BottomAngleFromWidthHeight, /* Angle between the slot sides and the slot
-                                                   * bottom in degree */
-    pub angle_top: TopAngleFromWidthHeight, /* Angle between the slot sides and the slot top in
-                                             * degree */
+    pub slot_angle: f64,
+    pub bottom_angle: BottomAngle,
+    pub top_angle: TopAngle,
     #[cfg_attr(
         feature = "serde",
         serde(
@@ -1054,9 +1567,7 @@ pub struct SemiTrapezoidWithBottomHeightBuilder {
             serialize_with = "serialize_quantity"
         )
     )]
-    pub bottom_radius: Length, /* Edge fillet radii of the trapezoid at the slot bottom
-                                * (opposite side of the slot
-                                * opening) */
+    pub bottom_radius: Length,
     #[cfg_attr(
         feature = "serde",
         serde(
@@ -1064,7 +1575,7 @@ pub struct SemiTrapezoidWithBottomHeightBuilder {
             serialize_with = "serialize_quantity"
         )
     )]
-    pub slope_bottom_radius: Length, // Edge fillet radii between bottom slope and slot side
+    pub bottom_side_radius: Length,
     #[cfg_attr(
         feature = "serde",
         serde(
@@ -1072,8 +1583,7 @@ pub struct SemiTrapezoidWithBottomHeightBuilder {
             serialize_with = "serialize_quantity"
         )
     )]
-    pub top_radius: Length, /* Edge fillet radii of the trapezoid at the slot top (side of the
-                             * slot opening) */
+    pub top_radius: Length,
     #[cfg_attr(
         feature = "serde",
         serde(
@@ -1081,7 +1591,7 @@ pub struct SemiTrapezoidWithBottomHeightBuilder {
             serialize_with = "serialize_quantity"
         )
     )]
-    pub slope_top_radius: Length, // Edge fillet radii between top slope and slot side
+    pub top_side_radius: Length,
     #[cfg_attr(
         feature = "serde",
         serde(
@@ -1089,22 +1599,23 @@ pub struct SemiTrapezoidWithBottomHeightBuilder {
             serialize_with = "serialize_quantity"
         )
     )]
-    pub opening_radius: Length, // Edge fillet radii of the slot opening at the slot inside
-    pub consider_tooth_tip_leakage: bool, /* Whether to consider the tooth tip leakage according
-                                           * to
-                                           * diagram 3.7.2 of [MVP08] or not. */
+    pub opening_radius: Length,
+    pub consider_tooth_tip_leakage: bool,
 }
 
 impl TryFrom<SemiTrapezoidWithBottomHeightBuilder> for SemiTrapezoidSlot {
     type Error = crate::error::Error;
 
     fn try_from(builder: SemiTrapezoidWithBottomHeightBuilder) -> Result<Self, Self::Error> {
-        let alpha = bottom_slope_angle(builder.bottom_angle.value(), builder.slot_angle);
-        let side_bottom_width = builder.bottom_width + 2.0 * builder.bottom_height / alpha.tan();
+        let bottom_side_angle =
+            calculate_bottom_side_angle(builder.bottom_angle.value(), builder.slot_angle);
+        let bottom_side_width =
+            builder.bottom_width + 2.0 * builder.bottom_height / bottom_side_angle.tan();
 
         // Construct two line equations with incline and one point.
         // Then find the intersection, it equals point 4 (side to slope_top)
-        let beta = angle_top_slope(builder.angle_top.value(), builder.slot_angle);
+        let top_side_angle =
+            calculate_top_side_angle(builder.top_angle.value(), builder.slot_angle);
         let gamma = FRAC_PI_2 - builder.slot_angle / 2.0;
 
         let l1 = Line::from_point_angle(
@@ -1112,11 +1623,11 @@ impl TryFrom<SemiTrapezoidWithBottomHeightBuilder> for SemiTrapezoidSlot {
                 builder.top_width.get::<meter>() / 2.0,
                 builder.opening_height.get::<meter>(),
             ],
-            beta,
+            top_side_angle,
         );
         let l2 = Line::from_point_angle(
             [
-                side_bottom_width.get::<meter>() / 2.0,
+                bottom_side_width.get::<meter>() / 2.0,
                 (builder.height - builder.bottom_height).get::<meter>(),
             ],
             gamma,
@@ -1127,9 +1638,9 @@ impl TryFrom<SemiTrapezoidWithBottomHeightBuilder> for SemiTrapezoidSlot {
                 PrimitiveIntersections::One(p) => p,
                 _ => {
                     return Err(Comparison::new(
-                        ComparisonValue::new(alpha, Some("angle of slot bottom slope")),
+                        ComparisonValue::new(bottom_side_angle, Some("angle of slot bottom slope")),
                         ComparisonOperator::Equal,
-                        ComparisonValue::new(beta, Some("perpendicular to slot side")),
+                        ComparisonValue::new(top_side_angle, Some("perpendicular to slot side")),
                         ComparisonOperator::Equal,
                         None,
                     )
@@ -1150,11 +1661,11 @@ impl TryFrom<SemiTrapezoidWithBottomHeightBuilder> for SemiTrapezoidSlot {
             opening_height: builder.opening_height,
             slot_angle: builder.slot_angle,
             bottom_angle: builder.bottom_angle,
-            angle_top: builder.angle_top,
+            top_angle: builder.top_angle,
             bottom_radius: builder.bottom_radius,
-            slope_bottom_radius: builder.slope_bottom_radius,
+            bottom_side_radius: builder.bottom_side_radius,
             top_radius: builder.top_radius,
-            slope_top_radius: builder.slope_top_radius,
+            top_side_radius: builder.top_side_radius,
             opening_radius: builder.opening_radius,
             consider_tooth_tip_leakage: builder.consider_tooth_tip_leakage,
         }
@@ -1162,9 +1673,9 @@ impl TryFrom<SemiTrapezoidWithBottomHeightBuilder> for SemiTrapezoidSlot {
     }
 }
 
-#[cfg_attr(feature = "serde", derive(Deserialize))]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "serde", serde(deny_unknown_fields))]
-pub struct SemiTrapezoidWithSideTopWidthBuilder {
+pub struct SemiTrapezoidWithTopSideWidthBuilder {
     #[cfg_attr(
         feature = "serde",
         serde(
@@ -1172,7 +1683,7 @@ pub struct SemiTrapezoidWithSideTopWidthBuilder {
             serialize_with = "serialize_quantity"
         )
     )]
-    pub bottom_width: Length, // Slot width at the slot bottom (opposite side of the slot opening)
+    pub bottom_width: Length,
     #[cfg_attr(
         feature = "serde",
         serde(
@@ -1180,7 +1691,7 @@ pub struct SemiTrapezoidWithSideTopWidthBuilder {
             serialize_with = "serialize_quantity"
         )
     )]
-    pub top_width: Length, // Slot width at the slot top (side of the slot opening)
+    pub top_width: Length,
     #[cfg_attr(
         feature = "serde",
         serde(
@@ -1188,7 +1699,7 @@ pub struct SemiTrapezoidWithSideTopWidthBuilder {
             serialize_with = "serialize_quantity"
         )
     )]
-    pub opening_width: Length, // Width of the slot opening
+    pub opening_width: Length,
     #[cfg_attr(
         feature = "serde",
         serde(
@@ -1196,7 +1707,7 @@ pub struct SemiTrapezoidWithSideTopWidthBuilder {
             serialize_with = "serialize_quantity"
         )
     )]
-    pub height: Length, // Total slot height (including slot opening)
+    pub height: Length,
     #[cfg_attr(
         feature = "serde",
         serde(
@@ -1204,7 +1715,7 @@ pub struct SemiTrapezoidWithSideTopWidthBuilder {
             serialize_with = "serialize_quantity"
         )
     )]
-    pub side_top_width: Length,
+    pub top_side_width: Length,
     #[cfg_attr(
         feature = "serde",
         serde(
@@ -1212,13 +1723,11 @@ pub struct SemiTrapezoidWithSideTopWidthBuilder {
             serialize_with = "serialize_quantity"
         )
     )]
-    pub opening_height: Length, // Height of the slot opening
+    pub opening_height: Length,
     #[cfg_attr(feature = "serde", serde(deserialize_with = "deserialize_angle"))]
-    pub slot_angle: f64, // Angle between the slot sides
-    pub bottom_angle: BottomAngleFromWidthHeight, /* Angle between the slot sides and the slot
-                                                   * bottom in degree */
-    pub angle_top: TopAngleFromWidthHeight, /* Angle between the slot sides and the slot top in
-                                             * degree */
+    pub slot_angle: f64,
+    pub bottom_angle: BottomAngle,
+    pub top_angle: TopAngle,
     #[cfg_attr(
         feature = "serde",
         serde(
@@ -1226,9 +1735,7 @@ pub struct SemiTrapezoidWithSideTopWidthBuilder {
             serialize_with = "serialize_quantity"
         )
     )]
-    pub bottom_radius: Length, /* Edge fillet radii of the trapezoid at the slot bottom
-                                * (opposite side of the slot
-                                * opening) */
+    pub bottom_radius: Length,
     #[cfg_attr(
         feature = "serde",
         serde(
@@ -1236,7 +1743,7 @@ pub struct SemiTrapezoidWithSideTopWidthBuilder {
             serialize_with = "serialize_quantity"
         )
     )]
-    pub slope_bottom_radius: Length, // Edge fillet radii between bottom slope and slot side
+    pub bottom_side_radius: Length,
     #[cfg_attr(
         feature = "serde",
         serde(
@@ -1244,8 +1751,7 @@ pub struct SemiTrapezoidWithSideTopWidthBuilder {
             serialize_with = "serialize_quantity"
         )
     )]
-    pub top_radius: Length, /* Edge fillet radii of the trapezoid at the slot top (side of the
-                             * slot opening) */
+    pub top_radius: Length,
     #[cfg_attr(
         feature = "serde",
         serde(
@@ -1253,7 +1759,7 @@ pub struct SemiTrapezoidWithSideTopWidthBuilder {
             serialize_with = "serialize_quantity"
         )
     )]
-    pub slope_top_radius: Length, // Edge fillet radii between top slope and slot side
+    pub top_side_radius: Length,
     #[cfg_attr(
         feature = "serde",
         serde(
@@ -1261,23 +1767,23 @@ pub struct SemiTrapezoidWithSideTopWidthBuilder {
             serialize_with = "serialize_quantity"
         )
     )]
-    pub opening_radius: Length, // Edge fillet radii of the slot opening at the slot inside
-    pub consider_tooth_tip_leakage: bool, /* Whether to consider the tooth tip leakage according
-                                           * to
-                                           * diagram 3.7.2 of [MVP08] or not. */
+    pub opening_radius: Length,
+    pub consider_tooth_tip_leakage: bool,
 }
 
-impl TryFrom<SemiTrapezoidWithSideTopWidthBuilder> for SemiTrapezoidSlot {
+impl TryFrom<SemiTrapezoidWithTopSideWidthBuilder> for SemiTrapezoidSlot {
     type Error = crate::error::Error;
 
-    fn try_from(builder: SemiTrapezoidWithSideTopWidthBuilder) -> Result<Self, Self::Error> {
-        let delta = 0.5 * (builder.side_top_width - builder.top_width);
-        let beta = angle_top_slope(builder.angle_top.value(), builder.slot_angle);
-        let top_height = delta * beta.tan();
+    fn try_from(builder: SemiTrapezoidWithTopSideWidthBuilder) -> Result<Self, Self::Error> {
+        let delta = 0.5 * (builder.top_side_width - builder.top_width);
+        let top_side_angle =
+            calculate_top_side_angle(builder.top_angle.value(), builder.slot_angle);
+        let top_height = delta * (top_side_angle - FRAC_PI_2 - 0.5 * builder.slot_angle).tan();
 
         // Construct two line equations with incline and one point.
         // Then find the intersection, it equals point 5 (side to slope_bottom)
-        let alpha = -bottom_slope_angle(builder.bottom_angle.value(), builder.slot_angle);
+        let bottom_side_angle =
+            -calculate_bottom_side_angle(builder.bottom_angle.value(), builder.slot_angle);
         let gamma = FRAC_PI_2 - builder.slot_angle / 2.0;
 
         let l1 = Line::from_point_angle(
@@ -1285,11 +1791,11 @@ impl TryFrom<SemiTrapezoidWithSideTopWidthBuilder> for SemiTrapezoidSlot {
                 0.5 * builder.bottom_width.get::<meter>(),
                 builder.height.get::<meter>(),
             ],
-            alpha,
+            bottom_side_angle,
         );
         let l2 = Line::from_point_angle(
             [
-                0.5 * builder.side_top_width.get::<meter>(),
+                0.5 * builder.top_side_width.get::<meter>(),
                 (builder.opening_height + top_height).get::<meter>(),
             ],
             gamma,
@@ -1304,11 +1810,11 @@ impl TryFrom<SemiTrapezoidWithSideTopWidthBuilder> for SemiTrapezoidSlot {
                             builder.bottom_width.get::<meter>() / 2.0,
                             builder.height.get::<meter>(),
                         ],
-                        alpha,
+                        bottom_side_angle,
                     );
                     let l2 = Line::from_point_angle(
                         [
-                            builder.side_top_width.get::<meter>() / 2.0,
+                            builder.top_side_width.get::<meter>() / 2.0,
                             (builder.opening_height + top_height).get::<meter>(),
                         ],
                         gamma,
@@ -1318,9 +1824,15 @@ impl TryFrom<SemiTrapezoidWithSideTopWidthBuilder> for SemiTrapezoidSlot {
                         PrimitiveIntersections::One(p) => p,
                         _ => {
                             return Err(Comparison::new(
-                                ComparisonValue::new(alpha, Some("angle of slot bottom slope")),
+                                ComparisonValue::new(
+                                    bottom_side_angle,
+                                    Some("angle of slot bottom slope"),
+                                ),
                                 ComparisonOperator::Equal,
-                                ComparisonValue::new(beta, Some("perpendicular to slot side")),
+                                ComparisonValue::new(
+                                    top_side_angle,
+                                    Some("perpendicular to slot side"),
+                                ),
                                 ComparisonOperator::Equal,
                                 None,
                             )
@@ -1330,9 +1842,9 @@ impl TryFrom<SemiTrapezoidWithSideTopWidthBuilder> for SemiTrapezoidSlot {
                 }
                 _ => {
                     return Err(Comparison::new(
-                        ComparisonValue::new(alpha, Some("angle of slot bottom slope")),
+                        ComparisonValue::new(bottom_side_angle, Some("angle of slot bottom slope")),
                         ComparisonOperator::Equal,
-                        ComparisonValue::new(beta, Some("perpendicular to slot side")),
+                        ComparisonValue::new(top_side_angle, Some("perpendicular to slot side")),
                         ComparisonOperator::Equal,
                         None,
                     )
@@ -1352,11 +1864,11 @@ impl TryFrom<SemiTrapezoidWithSideTopWidthBuilder> for SemiTrapezoidSlot {
             opening_height: builder.opening_height,
             slot_angle: builder.slot_angle,
             bottom_angle: builder.bottom_angle,
-            angle_top: builder.angle_top,
+            top_angle: builder.top_angle,
             bottom_radius: builder.bottom_radius,
-            slope_bottom_radius: builder.slope_bottom_radius,
+            bottom_side_radius: builder.bottom_side_radius,
             top_radius: builder.top_radius,
-            slope_top_radius: builder.slope_top_radius,
+            top_side_radius: builder.top_side_radius,
             opening_radius: builder.opening_radius,
             consider_tooth_tip_leakage: builder.consider_tooth_tip_leakage,
         }
@@ -1364,9 +1876,9 @@ impl TryFrom<SemiTrapezoidWithSideTopWidthBuilder> for SemiTrapezoidSlot {
     }
 }
 
-#[cfg_attr(feature = "serde", derive(Deserialize))]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "serde", serde(deny_unknown_fields))]
-pub struct SemiTrapezoidWithSideBottomWidthBuilder {
+pub struct SemiTrapezoidWithBottomSideWidthBuilder {
     #[cfg_attr(
         feature = "serde",
         serde(
@@ -1374,7 +1886,7 @@ pub struct SemiTrapezoidWithSideBottomWidthBuilder {
             serialize_with = "serialize_quantity"
         )
     )]
-    pub bottom_width: Length, // Slot width at the slot bottom (opposite side of the slot opening)
+    pub bottom_width: Length,
     #[cfg_attr(
         feature = "serde",
         serde(
@@ -1382,7 +1894,7 @@ pub struct SemiTrapezoidWithSideBottomWidthBuilder {
             serialize_with = "serialize_quantity"
         )
     )]
-    pub top_width: Length, // Slot width at the slot top (side of the slot opening)
+    pub top_width: Length,
     #[cfg_attr(
         feature = "serde",
         serde(
@@ -1390,7 +1902,7 @@ pub struct SemiTrapezoidWithSideBottomWidthBuilder {
             serialize_with = "serialize_quantity"
         )
     )]
-    pub opening_width: Length, // Width of the slot opening
+    pub opening_width: Length,
     #[cfg_attr(
         feature = "serde",
         serde(
@@ -1398,7 +1910,7 @@ pub struct SemiTrapezoidWithSideBottomWidthBuilder {
             serialize_with = "serialize_quantity"
         )
     )]
-    pub height: Length, // Total slot height (including slot opening)
+    pub height: Length,
     #[cfg_attr(
         feature = "serde",
         serde(
@@ -1406,7 +1918,7 @@ pub struct SemiTrapezoidWithSideBottomWidthBuilder {
             serialize_with = "serialize_quantity"
         )
     )]
-    pub side_bottom_width: Length, // Bottom slope height
+    pub bottom_side_width: Length,
     #[cfg_attr(
         feature = "serde",
         serde(
@@ -1414,13 +1926,11 @@ pub struct SemiTrapezoidWithSideBottomWidthBuilder {
             serialize_with = "serialize_quantity"
         )
     )]
-    pub opening_height: Length, // Height of the slot opening
+    pub opening_height: Length,
     #[cfg_attr(feature = "serde", serde(deserialize_with = "deserialize_angle"))]
-    pub slot_angle: f64, // Angle between the slot sides
-    pub bottom_angle: BottomAngleFromWidthHeight, /* Angle between the slot sides and the slot
-                                                   * bottom in degree */
-    pub angle_top: TopAngleFromWidthHeight, /* Angle between the slot sides and the slot top in
-                                             * degree */
+    pub slot_angle: f64,
+    pub bottom_angle: BottomAngle,
+    pub top_angle: TopAngle,
     #[cfg_attr(
         feature = "serde",
         serde(
@@ -1428,9 +1938,7 @@ pub struct SemiTrapezoidWithSideBottomWidthBuilder {
             serialize_with = "serialize_quantity"
         )
     )]
-    pub bottom_radius: Length, /* Edge fillet radii of the trapezoid at the slot bottom
-                                * (opposite side of the slot
-                                * opening) */
+    pub bottom_radius: Length,
     #[cfg_attr(
         feature = "serde",
         serde(
@@ -1438,7 +1946,7 @@ pub struct SemiTrapezoidWithSideBottomWidthBuilder {
             serialize_with = "serialize_quantity"
         )
     )]
-    pub slope_bottom_radius: Length, // Edge fillet radii between bottom slope and slot side
+    pub bottom_side_radius: Length,
     #[cfg_attr(
         feature = "serde",
         serde(
@@ -1446,8 +1954,7 @@ pub struct SemiTrapezoidWithSideBottomWidthBuilder {
             serialize_with = "serialize_quantity"
         )
     )]
-    pub top_radius: Length, /* Edge fillet radii of the trapezoid at the slot top (side of the
-                             * slot opening) */
+    pub top_radius: Length,
     #[cfg_attr(
         feature = "serde",
         serde(
@@ -1455,7 +1962,7 @@ pub struct SemiTrapezoidWithSideBottomWidthBuilder {
             serialize_with = "serialize_quantity"
         )
     )]
-    pub slope_top_radius: Length, // Edge fillet radii between top slope and slot side
+    pub top_side_radius: Length,
     #[cfg_attr(
         feature = "serde",
         serde(
@@ -1463,28 +1970,28 @@ pub struct SemiTrapezoidWithSideBottomWidthBuilder {
             serialize_with = "serialize_quantity"
         )
     )]
-    pub opening_radius: Length, // Edge fillet radii of the slot opening at the slot inside
-    pub consider_tooth_tip_leakage: bool, /* Whether to consider the tooth tip leakage according
-                                           * to
-                                           * diagram 3.7.2 of [MVP08] or not. */
+    pub opening_radius: Length,
+    pub consider_tooth_tip_leakage: bool,
 }
 
-impl TryFrom<SemiTrapezoidWithSideBottomWidthBuilder> for SemiTrapezoidSlot {
+impl TryFrom<SemiTrapezoidWithBottomSideWidthBuilder> for SemiTrapezoidSlot {
     type Error = crate::error::Error;
 
-    fn try_from(builder: SemiTrapezoidWithSideBottomWidthBuilder) -> Result<Self, Self::Error> {
-        let delta = 0.5 * (builder.side_bottom_width - builder.bottom_width);
-        let alpha = bottom_slope_angle(builder.bottom_angle.value(), builder.slot_angle);
-        let bottom_height = delta * alpha.tan();
+    fn try_from(builder: SemiTrapezoidWithBottomSideWidthBuilder) -> Result<Self, Self::Error> {
+        let delta = 0.5 * (builder.bottom_side_width - builder.bottom_width);
+        let bottom_side_angle =
+            calculate_bottom_side_angle(builder.bottom_angle.value(), builder.slot_angle);
+        let bottom_height = delta * bottom_side_angle.tan();
 
         // Construct two line equations with incline and one point.
         // Then find the intersection, it equals point 5 (side to slope_bottom)
-        let beta = angle_top_slope(builder.angle_top.value(), builder.slot_angle);
+        let top_side_angle =
+            calculate_top_side_angle(builder.top_angle.value(), builder.slot_angle);
         let gamma = FRAC_PI_2 - builder.slot_angle / 2.0;
 
         let l1 = Line::from_point_angle(
             [
-                0.5 * builder.side_bottom_width.get::<meter>(),
+                0.5 * builder.bottom_side_width.get::<meter>(),
                 (builder.height - bottom_height).get::<meter>(),
             ],
             gamma,
@@ -1494,7 +2001,7 @@ impl TryFrom<SemiTrapezoidWithSideBottomWidthBuilder> for SemiTrapezoidSlot {
                 builder.top_width.get::<meter>() / 2.0,
                 builder.opening_height.get::<meter>(),
             ],
-            beta,
+            top_side_angle,
         );
 
         let intersection: [f64; 2] =
@@ -1502,9 +2009,9 @@ impl TryFrom<SemiTrapezoidWithSideBottomWidthBuilder> for SemiTrapezoidSlot {
                 PrimitiveIntersections::One(p) => p,
                 _ => {
                     return Err(Comparison::new(
-                        ComparisonValue::new(alpha, Some("angle of slot bottom slope")),
+                        ComparisonValue::new(bottom_side_angle, Some("angle of slot bottom slope")),
                         ComparisonOperator::Equal,
-                        ComparisonValue::new(beta, Some("perpendicular to slot side")),
+                        ComparisonValue::new(top_side_angle, Some("perpendicular to slot side")),
                         ComparisonOperator::Equal,
                         None,
                     )
@@ -1524,11 +2031,11 @@ impl TryFrom<SemiTrapezoidWithSideBottomWidthBuilder> for SemiTrapezoidSlot {
             opening_height: builder.opening_height,
             slot_angle: builder.slot_angle,
             bottom_angle: builder.bottom_angle,
-            angle_top: builder.angle_top,
+            top_angle: builder.top_angle,
             bottom_radius: builder.bottom_radius,
-            slope_bottom_radius: builder.slope_bottom_radius,
+            bottom_side_radius: builder.bottom_side_radius,
             top_radius: builder.top_radius,
-            slope_top_radius: builder.slope_top_radius,
+            top_side_radius: builder.top_side_radius,
             opening_radius: builder.opening_radius,
             consider_tooth_tip_leakage: builder.consider_tooth_tip_leakage,
         }
@@ -1536,7 +2043,7 @@ impl TryFrom<SemiTrapezoidWithSideBottomWidthBuilder> for SemiTrapezoidSlot {
     }
 }
 
-#[cfg_attr(feature = "serde", derive(Deserialize))]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "serde", serde(deny_unknown_fields))]
 pub struct SemiTrapezoidFromToothWidthRotBuilder {
     #[cfg_attr(
@@ -1635,7 +2142,7 @@ pub struct SemiTrapezoidFromToothWidthRotBuilder {
             serialize_with = "serialize_quantity"
         )
     )]
-    slope_bottom_radius: Length,
+    bottom_side_radius: Length,
     #[cfg_attr(
         feature = "serde",
         serde(
@@ -1651,7 +2158,7 @@ pub struct SemiTrapezoidFromToothWidthRotBuilder {
             serialize_with = "serialize_quantity"
         )
     )]
-    pub slope_top_radius: Length,
+    pub top_side_radius: Length,
     #[cfg_attr(
         feature = "serde",
         serde(
@@ -1668,7 +2175,7 @@ impl TryFrom<SemiTrapezoidFromToothWidthRotBuilder> for SemiTrapezoidSlot {
 
     fn try_from(builder: SemiTrapezoidFromToothWidthRotBuilder) -> Result<Self, Self::Error> {
         let side_height = builder.height - builder.bottom_height - builder.opening_height;
-        let [side_bottom_width, side_top_width] = slot_side_bottom_and_top_width_from_rot_core(
+        let [bottom_side_width, top_side_width] = slot_side_bottom_and_top_width_from_rot_core(
             builder.tooth_width,
             builder.air_gap_radius,
             builder.yoke_radius,
@@ -1680,16 +2187,16 @@ impl TryFrom<SemiTrapezoidFromToothWidthRotBuilder> for SemiTrapezoidSlot {
 
         let slot_angle = TAU / builder.slots as f64;
 
-        let bottom_angle = BottomAngleFromWidthHeight::Calculate {
+        let bottom_angle = BottomAngle::FromWidthAndHeight {
             bottom_width: builder.bottom_width,
-            side_bottom_width,
+            bottom_side_width,
             bottom_height: builder.bottom_height,
             slot_angle,
         };
 
-        let angle_top = TopAngleFromWidthHeight::Calculate {
+        let top_angle = TopAngle::FromWidthAndHeight {
             top_width: builder.top_width,
-            side_top_width,
+            top_side_width,
             top_height: builder.top_height,
             slot_angle,
         };
@@ -1703,11 +2210,11 @@ impl TryFrom<SemiTrapezoidFromToothWidthRotBuilder> for SemiTrapezoidSlot {
             opening_height: builder.opening_height,
             slot_angle,
             bottom_angle,
-            angle_top,
+            top_angle,
             bottom_radius: builder.bottom_radius,
-            slope_bottom_radius: builder.slope_bottom_radius,
+            bottom_side_radius: builder.bottom_side_radius,
             top_radius: builder.top_radius,
-            slope_top_radius: builder.slope_top_radius,
+            top_side_radius: builder.top_side_radius,
             opening_radius: builder.opening_radius,
             consider_tooth_tip_leakage: builder.consider_tooth_tip_leakage,
         }
@@ -1715,7 +2222,7 @@ impl TryFrom<SemiTrapezoidFromToothWidthRotBuilder> for SemiTrapezoidSlot {
     }
 }
 
-#[cfg_attr(feature = "serde", derive(Deserialize))]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "serde", serde(deny_unknown_fields))]
 pub struct SemiTrapezoidFromToothWidthRotWithoutSlopesBuilder {
     #[cfg_attr(
@@ -1812,8 +2319,8 @@ impl TryFrom<SemiTrapezoidFromToothWidthRotWithoutSlopesBuilder> for SemiTrapezo
         );
         let bottom_height = Length::new::<meter>(0.0);
         let top_height = Length::new::<meter>(0.0);
-        let slope_bottom_radius = Length::new::<meter>(0.0);
-        let slope_top_radius = Length::new::<meter>(0.0);
+        let bottom_side_radius = Length::new::<meter>(0.0);
+        let top_side_radius = Length::new::<meter>(0.0);
 
         return SemiTrapezoidFromToothWidthRotBuilder {
             tooth_width: builder.tooth_width,
@@ -1828,9 +2335,9 @@ impl TryFrom<SemiTrapezoidFromToothWidthRotWithoutSlopesBuilder> for SemiTrapezo
             top_height,
             opening_height: builder.opening_height,
             bottom_radius: builder.bottom_radius,
-            slope_bottom_radius,
+            bottom_side_radius,
             top_radius: builder.top_radius,
-            slope_top_radius,
+            top_side_radius,
             opening_radius: builder.opening_radius,
             consider_tooth_tip_leakage: builder.consider_tooth_tip_leakage,
         }
@@ -1850,8 +2357,8 @@ impl<'de> Deserialize<'de> for SemiTrapezoidSlot {
             SemiTrapezoidWithoutSlopesBuilder(SemiTrapezoidWithoutSlopesBuilder),
             SemiTrapezoidWithTopHeightBuilder(SemiTrapezoidWithTopHeightBuilder),
             SemiTrapezoidWithBottomHeightBuilder(SemiTrapezoidWithBottomHeightBuilder),
-            SemiTrapezoidWithSideTopWidthBuilder(SemiTrapezoidWithSideTopWidthBuilder),
-            SemiTrapezoidWithSideBottomWidthBuilder(SemiTrapezoidWithSideBottomWidthBuilder),
+            SemiTrapezoidWithTopSideWidthBuilder(SemiTrapezoidWithTopSideWidthBuilder),
+            SemiTrapezoidWithBottomSideWidthBuilder(SemiTrapezoidWithBottomSideWidthBuilder),
             SemiTrapezoidFromToothWidthRotBuilder(SemiTrapezoidFromToothWidthRotBuilder),
             SemiTrapezoidFromToothWidthRotWithoutSlopesBuilder(
                 SemiTrapezoidFromToothWidthRotWithoutSlopesBuilder,
@@ -1869,10 +2376,10 @@ impl<'de> Deserialize<'de> for SemiTrapezoidSlot {
             SlotEnum::SemiTrapezoidWithBottomHeightBuilder(s) => {
                 s.try_into().map_err(serde::de::Error::custom)
             }
-            SlotEnum::SemiTrapezoidWithSideTopWidthBuilder(s) => {
+            SlotEnum::SemiTrapezoidWithTopSideWidthBuilder(s) => {
                 s.try_into().map_err(serde::de::Error::custom)
             }
-            SlotEnum::SemiTrapezoidWithSideBottomWidthBuilder(s) => {
+            SlotEnum::SemiTrapezoidWithBottomSideWidthBuilder(s) => {
                 s.try_into().map_err(serde::de::Error::custom)
             }
             SlotEnum::SemiTrapezoidFromToothWidthRotBuilder(s) => {
