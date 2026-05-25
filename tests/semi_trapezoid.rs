@@ -991,33 +991,78 @@ fn test_semi_trapezoid_creation_no_slopes() {
 
 #[test]
 fn test_with_slopes() {
-    let slot = SemiTrapezoidSlot::new(
-        Length::new::<millimeter>(9.0),
-        Length::new::<millimeter>(7.0),
-        Length::new::<millimeter>(2.0),
-        Length::new::<millimeter>(17.75),
-        Length::new::<millimeter>(0.75),
-        Length::new::<millimeter>(14.0),
-        PI / 18.0,
-        PI * 0.7,
-        PI * 0.7,
-        Length::new::<millimeter>(1.0),
-        Length::new::<millimeter>(1.0),
-        Length::new::<millimeter>(1.0),
-        Length::new::<millimeter>(1.0),
-        Length::new::<millimeter>(0.5),
-        true,
-    )
-    .expect("valid parameters");
+    {
+        let slot = SemiTrapezoidSlot::new(
+            Length::new::<millimeter>(9.0),
+            Length::new::<millimeter>(7.0),
+            Length::new::<millimeter>(2.0),
+            Length::new::<millimeter>(17.75),
+            Length::new::<millimeter>(0.75),
+            Length::new::<millimeter>(14.0),
+            PI / 18.0,
+            PI * 0.7,
+            PI * 0.7,
+            Length::new::<millimeter>(1.0),
+            Length::new::<millimeter>(1.0),
+            Length::new::<millimeter>(1.0),
+            Length::new::<millimeter>(1.0),
+            Length::new::<millimeter>(0.5),
+            true,
+        )
+        .expect("valid parameters");
 
-    compare_to_reference(
-        slot.drawables(&CoilLayout::Single, true).as_slice(),
-        "tests/img/semi_trapezoid_with_slopes.png",
-        None,
-    );
-    approx::assert_abs_diff_eq!(
-        slot.area().get::<square_millimeter>(),
-        171.635,
-        epsilon = 1e-3
-    );
+        compare_to_reference(
+            slot.drawables(&CoilLayout::Single, true).as_slice(),
+            "tests/img/semi_trapezoid_with_slopes_1.png",
+            None,
+        );
+        approx::assert_abs_diff_eq!(
+            slot.area().get::<square_millimeter>(),
+            171.635,
+            epsilon = 1e-3
+        );
+    }
+    {
+        let slot: SemiTrapezoidSlot = SemiTrapezoidBuilder {
+            bottom_width: Length::new::<millimeter>(5.0),
+            top_width: Length::new::<millimeter>(8.0),
+            opening_width: Length::new::<millimeter>(2.0),
+            height: Length::new::<millimeter>(16.0),
+            side_height: Length::new::<millimeter>(10.0),
+            opening_height: Length::new::<millimeter>(2.0),
+            slot_angle: TAU / 36.0,
+            bottom_angle: (0.7 * PI).into(),
+            top_angle: (0.7 * PI).into(),
+            bottom_radius: Length::new::<millimeter>(0.5),
+            bottom_side_radius: Length::new::<millimeter>(3.0),
+            top_radius: Length::new::<millimeter>(1.0),
+            top_side_radius: Length::new::<millimeter>(3.0),
+            opening_radius: Length::new::<millimeter>(0.5),
+            consider_tooth_tip_leakage: true,
+        }
+        .try_into()
+        .expect("valid parameters");
+
+        compare_to_reference(
+            slot.drawables(&CoilLayout::Single, true).as_slice(),
+            "tests/img/semi_trapezoid_with_slopes_2.png",
+            None,
+        );
+        assert!(slot.bottom_side_width() > slot.top_side_width());
+        approx::assert_abs_diff_eq!(
+            slot.bottom_side_width().get::<millimeter>(),
+            171.635,
+            epsilon = 1e-3
+        );
+        approx::assert_abs_diff_eq!(
+            slot.top_side_width().get::<millimeter>(),
+            171.635,
+            epsilon = 1e-3
+        );
+        approx::assert_abs_diff_eq!(
+            slot.area().get::<square_millimeter>(),
+            171.635,
+            epsilon = 1e-3
+        );
+    }
 }
