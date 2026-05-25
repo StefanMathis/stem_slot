@@ -16,7 +16,7 @@ use stem_material::prelude::*;
 #[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
 
-use crate::{semi_trapezoid::BottomAngle, slot::Slot};
+use crate::slot::{BottomAngle, Slot};
 
 /**
 A trapezoid slot which is "open" (i.e. not closed or semi-closed towards the air

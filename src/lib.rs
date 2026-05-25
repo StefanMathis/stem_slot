@@ -39,7 +39,7 @@ pub mod prelude {
     pub use crate::open_trapezoid::OpenTrapezoidSlot;
     pub use crate::rectangular::RectangularSlot;
     pub use crate::semi_trapezoid::SemiTrapezoidSlot;
-    pub use crate::slot::Slot;
+    pub use crate::slot::{BottomAngle, Slot, TopAngle};
 
     pub use stem_material::prelude::*;
 }

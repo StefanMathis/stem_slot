@@ -2,7 +2,7 @@ use cairo_viewport::*;
 use indoc::indoc;
 use planar_geo::prelude::*;
 use std::f64::consts::PI;
-use stem_slot::{open_trapezoid::*, prelude::*, semi_trapezoid::BottomAngle};
+use stem_slot::{open_trapezoid::*, prelude::*};
 
 fn compare_to_reference<P: AsRef<std::path::Path>>(
     drawables: &[DrawableCow<'_>],
