@@ -759,12 +759,14 @@ pub trait Slot: Send + Sync + std::fmt::Debug + DynClone + Any + 'static {
     ```text
     Ls = μ0 * l_ax * w_sp² * lambda_s
     ```
-    according to eq (3.5.13) in [1] with `μ0` being the vacuum permeability,
+    according to eq (3.5.13) in /[1/] with `μ0` being the vacuum permeability,
     `l_ax` being the axial length of the magnetic core which contains the slot
     and `w_sp²` being the number of turns in the layer.
 
-    The self-inductance leakage coefficient `lambda_s` is given by eq. (3.5.12)
-    in [1]:
+    It is assumed that the material of the core is "superconducting" (i.e. its
+    permeability is much larger than that of air), which is usually the case for
+    ferromagnetic materials. In this case, the self-inductance leakage
+    coefficient `lambda_s` is given by eq. (3.5.12) in /[1/]:
 
     ```text
     lambda_s = int_0^h (A(x)/A)² / s(x) dx
@@ -774,7 +776,7 @@ pub trait Slot: Send + Sync + std::fmt::Debug + DynClone + Any + 'static {
     the slot bottom, `A` being the surface area of the layer, `A(x)` being the
     area below `x` and `s(x)` being the width of the layer at `x`.
 
-    For the full derivation, see section 3.5.2.1 of [1]. Section A.1 of [2]
+    For the full derivation, see section 3.5.2.1 of /[1/]. Section A.1 of /[2/]
     gives an example for a real slot geometry.
 
     Implementation-wise, this function calls
@@ -787,9 +789,9 @@ pub trait Slot: Send + Sync + std::fmt::Debug + DynClone + Any + 'static {
 
     # Literature
 
-    >[1] Müller, Germar; Vogt, Karl; Ponick, Bernd: Berechnung elektrischer
+    >/[1/] Müller, Germar; Vogt, Karl; Ponick, Bernd: Berechnung elektrischer
     Maschinen, 6th edition (2008), Wiley-VCH, Weinheim
-    >[2] Mathis, Stefan: Permanentmagneterregte Line-Start-Antriebe in
+    >/[2/] Mathis, Stefan: Permanentmagneterregte Line-Start-Antriebe in
     Ferrittechnik, Shaker-Verlag, Düren
 
     # Examples
@@ -835,15 +837,17 @@ pub trait Slot: Send + Sync + std::fmt::Debug + DynClone + Any + 'static {
     Lo = μ0 * l_ax * w_l * w_e * lambda_o
     ```
 
-    according to eq (3.5.22b) in [1] with `μ0` being the vacuum permeability,
+    according to eq (3.5.22b) in /[1/] with `μ0` being the vacuum permeability,
     `l_ax` being the axial length of the magnetic core which contains the slot,
     `w_l` being the number of turns of the `linked_layer` and `w_e` being the
     number of turns of the `excitation_layer`. If
     `linked_layer == excitation_layer`, this simplifies to the equation shown in
     the docstring of [`Slot::self_inductance_leakage_coefficient`].
 
-    Likewise, the inductance leakage coefficient `lambda_o` for the general case
-    can be found as
+    It is assumed that the material of the core is "superconducting" (i.e. its
+    permeability is much larger than that of air), which is usually the case for
+    ferromagnetic materials. Then, the inductance leakage coefficient `lambda_o` for
+    the general case can be found as
 
     ```text
     lambda_s = int_x0^h (A_l(x)/A_l) * (A_e(x)/A_e) / s(x) dx
@@ -857,7 +861,7 @@ pub trait Slot: Send + Sync + std::fmt::Debug + DynClone + Any + 'static {
 
     From these equations, it is obvious to see that the vertical positioning of
     the layers relative to each other plays a huge role, as shown in the
-    examples. See section 3.5.2.2 of [1] for more.
+    examples. See section 3.5.2.2 of /[1/] for more.
 
     # Panics
     Panics if `linked_layer` or `excitation_layer` is not smaller than the
@@ -865,7 +869,7 @@ pub trait Slot: Send + Sync + std::fmt::Debug + DynClone + Any + 'static {
 
     # Literature
 
-    >[1] Müller, Germar; Vogt, Karl; Ponick, Bernd: Berechnung elektrischer
+    >/[1/] Müller, Germar; Vogt, Karl; Ponick, Bernd: Berechnung elektrischer
     Maschinen, 6th edition (2008), Wiley-VCH, Weinheim
 
     # Examples

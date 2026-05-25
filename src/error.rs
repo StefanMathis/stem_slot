@@ -26,7 +26,10 @@ pub enum Error {
     /// Failed to create a slot geometry due to a self-intersection of its
     /// outline
     OutlineIntersection {
+        /// Indices of the intersecting segments of the
+        /// [`outline`](Error::OutlineIntersection::outline).
         intersection: Intersection,
+        /// Outline of the slot.
         outline: Polysegment,
     },
     /// Fallback variant for arbitrary other errors (e.g. from custom

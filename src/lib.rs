@@ -1,3 +1,10 @@
+/*!
+Winding slot definition for stem - a Simulation Toolbox for Electric Motors.
+
+ */
+#![doc = include_str!("../docs/main.md")]
+#![deny(missing_docs)]
+
 pub mod coil_layout;
 pub mod current_displacement;
 pub mod error;
@@ -5,8 +12,6 @@ pub mod open_trapezoid;
 pub mod rectangular;
 pub mod semi_trapezoid;
 pub mod slot;
-
-// #![deny(missing_docs)]
 
 /**
 Standard [`Color`](planar_geo::draw::Color) for drawing slots.

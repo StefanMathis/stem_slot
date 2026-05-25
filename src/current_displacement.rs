@@ -78,19 +78,19 @@ an increased resistance and reduced conductor leakage inductance.
 
 This effect can be modeled by factors for resistance and inductance which are
 multiplied with the DC resistance and inductance to get the effective values
-for the AC current as shown in [1], section 5.3.2.
+for the AC current as shown in /[1/], section 5.3.2.
 
->[1] Müller, Germar; Vogt, Karl; Ponick, Bernd: Berechnung elektrischer
+>/[1/] Müller, Germar; Vogt, Karl; Ponick, Bernd: Berechnung elektrischer
 Maschinen, 6th edition (2008), Wiley-VCH, Weinheim
  */
 #[derive(Clone, Debug)]
 pub struct CurrentDisplacementCoefficients {
     /// Multiply the DC resistance with this value to get the effective
-    /// AC resistance. Equals `krn` from equation (5.3.23) of [1].
+    /// AC resistance. Equals `krn` from equation (5.3.23) of /[1/].
     pub resistance: f64,
     /// Multiply the DC conductor leakage inductance with this value to get the
     /// effective AC leakage inductance. Equals `kxn` from equation (5.3.29) of
-    /// [1].
+    /// /[1/].
     pub inductance: f64,
 }
 
@@ -186,10 +186,12 @@ calculating the coefficients with [`CurrentDisplacementCalculator::eval`].
 
 # Physical background
 
-If a slot is completely filled by a single massive conductor (1 turn), the
-current displacement coefficients can be calculated numerically by separating
-the slot into vertically stacked [slices](Slot::slices), which are treated as
-parallel conductors.
+If a slot is completely filled by a single massive conductor (1 turn) and the
+core material can be treated as magnetically superconducting (permeability much
+higher than that of air, usually true for ferromagnetic materials), the current
+displacement coefficients can be calculated numerically by separating the slot
+into vertically stacked [slices](Slot::slices), which are treated as parallel
+conductors.
 */
 #[doc = ""]
 #[cfg_attr(

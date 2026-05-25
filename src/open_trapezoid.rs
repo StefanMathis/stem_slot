@@ -1169,7 +1169,7 @@ pub struct OpenTrapezoidWithBottomAngleBuilder {
     )]
     pub opening_width: Length,
     /// Height of the slot. Must not be smaller than
-    /// [`OpenTrapezoidWithBottomSideAngleBuilder::opening_height`] (`height >=
+    /// [`OpenTrapezoidWithBottomAngleBuilder::opening_height`] (`height >=
     /// opening_height`).
     #[cfg_attr(
         feature = "serde",
@@ -1180,8 +1180,8 @@ pub struct OpenTrapezoidWithBottomAngleBuilder {
     )]
     pub height: Length,
     /// Height of the slot. Must not be negative and not be larger than
-    /// [`OpenTrapezoidWithBottomSideAngleBuilder::height`] (`0 m <=
-    /// opening_height <= height`).
+    /// [`OpenTrapezoidWithBottomAngleBuilder::height`] (`0 m <= opening_height
+    /// <= height`).
     #[cfg_attr(
         feature = "serde",
         serde(
