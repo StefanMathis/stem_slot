@@ -31,10 +31,9 @@ pub const ORANGE: planar_geo::draw::Color = planar_geo::draw::Color {
 
 pub mod prelude {
     /*!
-    TODO
-    This module reexports all wire types defined in >TOFO, the
-    [`Magnet`] trait as well as the [`stem_material::prelude`]
-    module to simplify the usage of this crate.
+    This module reexports all slot types defined in this crate, the
+    [`Slot`] trait, the [`BottomAngle`] and [`TopAngle`] enums as well as the
+    [`stem_material::prelude`] module to simplify the usage of this crate.
      */
 
     pub use crate::coil_layout::CoilLayout;
