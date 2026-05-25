@@ -363,7 +363,7 @@ impl SemiTrapezoidSlot {
         let delta_side_width = self.side_height * (self.slot_angle / 2.0).tan();
 
         /*
-        Now the slope points 4 and 5 must fulfill two conditions:
+        Now the slope points must fulfill two conditions:
         Δb_side = (side_bottom_width - side_top_width)/2 (1)
         side_height + top_height + bottom_height = height (2)
 
