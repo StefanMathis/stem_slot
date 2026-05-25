@@ -2,6 +2,14 @@
 Winding slot definition for stem - a Simulation Toolbox for Electric Motors.
 
  */
+#![cfg_attr(feature = "doc-images",
+cfg_attr(all(),
+doc = ::embed_doc_image::embed_image!("current_displacement_coeffs_comp.svg", "docs/img/current_displacement_coeffs_comp.svg"),
+))]
+#![cfg_attr(
+    not(feature = "doc-images"),
+    doc = "**Doc images not enabled**. Compile docs with `cargo doc --features 'doc-images'` and Rust version >= 1.54."
+)]
 #![doc = include_str!("../docs/main.md")]
 #![deny(missing_docs)]
 
