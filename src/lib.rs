@@ -1,10 +1,15 @@
 /*!
+[`Slot`]: crate::slot::Slot
+[`Slot::leakage_coefficient_opening]: crate::slot::Slot::leakage_coefficient_opening
+[`Slot::current_displacement_coefficients]: crate::slot::Slot::current_displacement_coefficients
+
 Winding slot definition for stem - a Simulation Toolbox for Electric Motors.
 
  */
 #![cfg_attr(feature = "doc-images",
 cfg_attr(all(),
 doc = ::embed_doc_image::embed_image!("current_displacement_coeffs_comp.svg", "docs/img/current_displacement_coeffs_comp.svg"),
+doc = ::embed_doc_image::embed_image!("double_layer_coil_layout.svg", "docs/img/double_layer_coil_layout.svg"),
 ))]
 #![cfg_attr(
     not(feature = "doc-images"),

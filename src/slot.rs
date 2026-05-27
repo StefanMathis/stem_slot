@@ -15,7 +15,6 @@ use akima_spline::AkimaSpline;
 use approx::ulps_eq;
 use dyn_clone::DynClone;
 use gauss_quad;
-use nalgebra::DMatrix;
 use planar_geo::prelude::*;
 use rayon::prelude::*;
 use std::any::Any;
@@ -1015,10 +1014,10 @@ pub trait Slot: Send + Sync + std::fmt::Debug + DynClone + Any + 'static {
     );
     ```
      */
-    fn leakage_coefficient_matrix(&self, coil_layout: &CoilLayout) -> DMatrix<f64> {
+    fn leakage_coefficient_matrix(&self, coil_layout: &CoilLayout) -> CoefficientMatrix {
         let layers = coil_layout.layers();
-        let dimension = layers as usize;
-        let mut matrix = DMatrix::repeat(dimension, dimension, 0.0);
+        let dim = layers as usize;
+        let mut matrix = CoefficientMatrix::new(dim);
 
         /*
         Precalculate some shared values
@@ -1046,12 +1045,13 @@ pub trait Slot: Send + Sync + std::fmt::Debug + DynClone + Any + 'static {
         let all_layer_area: Vec<f64> = all_layer_contours.par_iter().map(Contour::area).collect();
 
         matrix
+            .data
             .as_mut_slice()
             .par_iter_mut()
             .enumerate()
             .for_each(|(lin_idx, coefficient)| {
                 let [excitation_layer, linked_layer] =
-                    cart_lin::lin_to_cart_unchecked(lin_idx, &[dimension, dimension]);
+                    cart_lin::lin_to_cart_unchecked(lin_idx, &[dim, dim]);
 
                 let ordering =
                     coil_layout.ordering_vertical(linked_layer as u16, excitation_layer as u16);
@@ -1107,7 +1107,7 @@ pub trait Slot: Send + Sync + std::fmt::Debug + DynClone + Any + 'static {
     /// > Müller, Germar; Vogt, Karl; Ponick, Bernd: Berechnung elektrischer
     /// Maschinen, 6th edition (2008), Wiley-VCH, Weinheim (section 3.7.1)
     ///
-    /// This method returns a dimensionless factor. To obtain the actual leakage
+    /// This method returns a dimless factor. To obtain the actual leakage
     /// inductance, multiply that factor with the main inductance of the winding
     /// in the slot. The leakage flux for a particular current can then be found
     /// by multiplying the leakage inductance with that current.
@@ -1311,7 +1311,7 @@ pub trait Slot: Send + Sync + std::fmt::Debug + DynClone + Any + 'static {
     /// [`CurrentDisplacementCoefficients`](crate::current_displacement::CurrentDisplacementCoefficients)
     /// of a conductor filling an arbitrary slot geometry can be found by
     /// separating the slot area in multiple parallel conductors and calculating
-    /// the currents through each one. This method delivers the dimensions of
+    /// the currents through each one. This method delivers the dims of
     /// each rectangular conductor.
     ///
     /// The default implementation makes the following assumptions:
@@ -1430,6 +1430,47 @@ pub trait Slot: Send + Sync + std::fmt::Debug + DynClone + Any + 'static {
 }
 
 dyn_clone::clone_trait_object!(Slot);
+
+/**
+A simple column-major square matrix used for the leakage coefficients returned
+by [`Slot::leakage_coefficent_matrix`]
+ */
+pub struct CoefficientMatrix {
+    /// dim of the matrix (number of rows / columns).
+    pub dim: usize,
+    /// Underlying data vector (column-major)
+    pub data: Vec<f64>,
+}
+
+impl CoefficientMatrix {
+    fn new(dim: usize) -> Self {
+        return Self {
+            dim,
+            data: vec![0.0; dim.pow(2)],
+        };
+    }
+
+    /**
+    Returns the leakage coefficient for the given `[layer_a, layer_b]` pair.
+
+    If `layer_a == layer_b`, the returned value is the self-inductance
+    coefficient of layer a / b, otherwise it is that of the mutual inductance.
+    If one of `layer_a/b` is equal to or larger than [`CoefficientMatrix::dim`],
+    this method returns `None`.
+     */
+    pub fn get(&self, index: (usize, usize)) -> Option<&f64> {
+        let linear_index = cart_lin::cart_to_lin(&[index.0, index.1], &[self.dim, self.dim])?;
+        return self.data.get(linear_index);
+    }
+}
+
+impl std::ops::Index<(usize, usize)> for CoefficientMatrix {
+    type Output = f64;
+
+    fn index(&self, index: (usize, usize)) -> &Self::Output {
+        return self.get(index).expect("index out of bounds");
+    }
+}
 
 /**
 An iterator returning all parts of an outline bordering a layer

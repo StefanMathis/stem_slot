@@ -396,8 +396,8 @@ impl SemiTrapezoidSlot {
             bottom_height = (2.0 * delta_side_width - self.bottom_width
                 + self.top_width
                 + 2.0 * (self.height - self.side_height - self.opening_height)
-                    / top_side_angle.tan())
-                / (2.0 / bottom_side_angle.tan() + 2.0 / top_side_angle.tan());
+                    / self.top_angle.tan())
+                / (2.0 / bottom_side_angle.tan() + 2.0 / self.top_angle.tan());
             bottom_side_width =
                 self.bottom_width + 2.0 * bottom_height * (self.bottom_angle - FRAC_PI_2).tan();
         }
