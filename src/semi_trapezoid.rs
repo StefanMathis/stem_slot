@@ -301,7 +301,7 @@ impl SemiTrapezoidSlot {
 
     /// Returns the angle between the slot side and the bottom slope.
     pub fn bottom_side_angle(&self) -> f64 {
-        return self.calculate_params().bottom_side_angle;
+        return calculate_bottom_side_angle(self.bottom_angle, self.slot_angle);
     }
 
     /// Returns the angle between the top slope and the slot top.
@@ -311,7 +311,7 @@ impl SemiTrapezoidSlot {
 
     /// Returns the angle between the slot side and the top slope.
     pub fn top_side_angle(&self) -> f64 {
-        return self.calculate_params().top_side_angle;
+        return calculate_top_side_angle(self.top_angle, self.slot_angle);
     }
 
     /// Returns the fillet radius between bottom and bottom slope (if one
@@ -356,65 +356,26 @@ impl SemiTrapezoidSlot {
         return self.opening_radius;
     }
 
-    /// Calculates some parameters of `self`.
+    /// Calculates some parameters of `self`. See cad_side_height_angles.svg.
     fn calculate_params(&self) -> CalculatedParams {
-        let bottom_side_angle = calculate_bottom_side_angle(self.bottom_angle, self.slot_angle);
-        let top_side_angle = calculate_top_side_angle(self.top_angle, self.slot_angle);
-        let delta_side_width = self.side_height * (self.slot_angle / 2.0).tan();
+        let dw = 0.5 * (self.bottom_width - self.top_width).get::<meter>();
+        let dh = (self.height - self.side_height - self.opening_height).get::<meter>();
+        let side_height = self.side_height.get::<meter>();
+        let bottom_height = (dh
+            - (dw - side_height * (0.5 * self.slot_angle).tan())
+                / (self.top_angle - FRAC_PI_2).tan())
+            / (1.0 + (self.bottom_angle - FRAC_PI_2).tan() / (self.top_angle - FRAC_PI_2).tan());
 
-        /*
-        Now the slope points must fulfill two conditions:
-        Δb_side = (side_bottom_width - side_top_width)/2 (1)
-        side_height + top_height + bottom_height = height (2)
-
-        To solve this, the following equations are used:
-        bottom_height = Δ_bottom*tand(α) (3)
-        top_height = Δ_top*tand(β) (4)
-        side_bottom_width = bottom_width + 2*Δ_bottom (5)
-        side_top_width = top_width + 2*Δ_top (6)
-
-        Solving by substitution:
-        (5) and (6) in (1)
-        Δb_side = (bottom_width + 2*Δ_bottom - top_width - 2*Δ_top)/2 (7)
-        (3) and (4) in (7)
-        Δb_side = (bottom_width + 2*bottom_height/tand(α) - top_width - 2*top_height/tand(β))/2 (8)
-
-        Solve (2) for top_height
-        top_height = height - side_height - bottom_height - opening_height (9)
-        (9) in (8)
-        Δb_side = (bottom_width + 2*bottom_height/tand(α) - top_width - 2*(height - side_height - bottom_height - opening_height)/tand(β))/2 (10)
-
-        # Now solve (10) for bottom_height
-        bottom_height = (2*Δb_side - bottom_width + top_width + 2*(height - side_height - opening_height)/tand(β))/(2/tand(α) + 2/tand(β))
-        */
-        let bottom_height: Length;
-        let bottom_side_width: Length;
-        if approx::abs_diff_eq!(bottom_side_angle, PI, epsilon = 1e-15) {
-            bottom_height = Length::new::<meter>(0.0);
-            bottom_side_width = self.bottom_width;
-        } else {
-            bottom_height = (2.0 * delta_side_width - self.bottom_width
-                + self.top_width
-                + 2.0 * (self.height - self.side_height - self.opening_height)
-                    / self.top_angle.tan())
-                / (2.0 / bottom_side_angle.tan() + 2.0 / self.top_angle.tan());
-            bottom_side_width =
-                self.bottom_width + 2.0 * bottom_height * (self.bottom_angle - FRAC_PI_2).tan();
-        }
-
-        let top_height = self.height - self.side_height - bottom_height - self.opening_height;
-        let top_side_width = if approx::abs_diff_eq!(top_side_angle, PI, epsilon = 1e-15) {
-            self.top_width
-        } else {
-            self.top_width + 2.0 * top_height * (self.top_angle - FRAC_PI_2).tan()
-        };
+        let top_height = dh - bottom_height;
+        let bottom_side_width = self.bottom_width.get::<meter>()
+            + 2.0 * bottom_height * (self.bottom_angle - FRAC_PI_2).tan();
+        let top_side_width =
+            self.top_width.get::<meter>() + 2.0 * top_height * (self.top_angle - FRAC_PI_2).tan();
 
         return CalculatedParams {
-            top_height,
-            bottom_side_width,
-            top_side_width,
-            bottom_side_angle,
-            top_side_angle,
+            top_height: Length::new::<meter>(top_height),
+            bottom_side_width: Length::new::<meter>(bottom_side_width),
+            top_side_width: Length::new::<meter>(top_side_width),
         };
     }
 }
@@ -458,8 +419,6 @@ struct CalculatedParams {
     top_height: Length,
     bottom_side_width: Length,
     top_side_width: Length,
-    bottom_side_angle: f64,
-    top_side_angle: f64,
 }
 
 /// Helper function for calculating the calculate_top_side_angle, not meant for
@@ -494,6 +453,30 @@ case this function will return an
 #[cfg_attr(
     feature = "doc-images",
     embed_doc_image::embed_doc_image("cad_semi_trapezoid", "docs/img/cad_semi_trapezoid.svg")
+)]
+#[cfg_attr(
+    not(feature = "doc-images"),
+    doc = "**Doc images not enabled**. Compile docs with
+    `cargo doc --features 'doc-images'` and Rust version >= 1.54."
+)]
+/**
+
+# Implementation
+
+TODO
+
+ */
+#[doc = ""]
+#[cfg_attr(
+    feature = "doc-images",
+    doc = "![Construction of the semi-trapezoid slot][cad_side_height_angles]"
+)]
+#[cfg_attr(
+    feature = "doc-images",
+    embed_doc_image::embed_doc_image(
+        "cad_side_height_angles",
+        "docs/img/cad_side_height_angles.svg"
+    )
 )]
 #[cfg_attr(
     not(feature = "doc-images"),
