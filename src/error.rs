@@ -14,17 +14,16 @@ use stem_material::uom::si::f64::Length;
 #[derive(Debug)]
 pub enum Error {
     /**
-    A given physical [`Length`] is not within its allowed value range (as
-    specified inside the [`Comparison`], usually a length needs to be
-    positive).
+    A given physical [`Length`] is not within its allowed value range.
      */
     InvalidLength(Comparison<Length>),
     /// A given [`f64`] is not within its allowed value range.
     InvalidF64(Comparison<f64>),
-    /// Failed to create a slot geometry due to the contained error.
+    /// Failed to create a slot geometry due to the contained error from the
+    /// [`planar_geo`] crate.
     GeometryError(planar_geo::error::Error),
     /// Failed to create a slot geometry due to a self-intersection of its
-    /// outline
+    /// outline.
     OutlineIntersection {
         /// Indices of the intersecting segments of the
         /// [`outline`](Error::OutlineIntersection::outline).

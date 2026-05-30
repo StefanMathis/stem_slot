@@ -86,9 +86,8 @@ pub enum CoilLayout {
     /**
     A variant representing a quadruple-layer winding, which is essentially a
     tooth-coil winding where the coils at the two slot sides are split in the
-    middle again. The individual coils / layers are placed as follows:
-    `0  3` <- slot bottom
-    `1  2` <- slot top
+    middle again. The individual coils / layers are placed in a clockwise order,
+    starting on the left side of the slot bottom.
      */
     Quadruple,
     /**
@@ -129,7 +128,7 @@ impl CoilLayout {
 
     /**
     Returns the vertical position of the `first_layer` relative to the
-    `second_layer` to another layer (viewed from the slot bottom)
+    `second_layer` (as seen from the slot bottom)
 
     # Panics
     Panics if one of the layers is equal to or larger than the total number of

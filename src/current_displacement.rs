@@ -76,19 +76,21 @@ an increased resistance and reduced conductor leakage inductance.
 
 This effect can be modeled by factors for resistance and inductance which are
 multiplied with the DC resistance and inductance to get the effective values
-for the AC current as shown in /[1/], section 5.3.2.
+for the AC current as shown in \[1\], section 5.3.2.
 
->/[1/] Müller, Germar; Vogt, Karl; Ponick, Bernd: Berechnung elektrischer
+# Literature
+
+1. Müller, Germar; Vogt, Karl; Ponick, Bernd: Berechnung elektrischer
 Maschinen, 6th edition (2008), Wiley-VCH, Weinheim
  */
 #[derive(Clone, Debug)]
 pub struct CurrentDisplacementCoefficients {
     /// Multiply the DC resistance with this value to get the effective
-    /// AC resistance. Equals `krn` from equation (5.3.23) of /[1/].
+    /// AC resistance. Equals `krn` from equation (5.3.23) of \[1\].
     pub resistance: f64,
     /// Multiply the DC conductor leakage inductance with this value to get the
     /// effective AC leakage inductance. Equals `kxn` from equation (5.3.29) of
-    /// /[1/].
+    /// \[1\].
     pub inductance: f64,
 }
 
@@ -101,8 +103,7 @@ impl CurrentDisplacementCoefficients {
     a single conductor with the specified `el_conductivity` and
     `rel_permeability`, the current displacement coefficients for a current with
     the given `frequency` can be calculated exactly, as shown in section 5.3.2
-    of _Müller, Germar; Vogt, Karl; Ponick, Bernd: Berechnung elektrischer
-    Maschinen, 6th edition (2008), Wiley-VCH, Weinheim_.
+    of \[1\].
 
     # Examples
 
@@ -211,7 +212,7 @@ as parallel conductors.
 /**
 
 By using the formulae in \[1\], section 5.3.2, the (complex) current in the nth
-conductor / slice can be calculated as
+conductor / slice can be found to be
 
 ```text
 I(n) = I(n-1) * R(n-1)/R(n) + j * ω * μ * slice_height[n] / (R(n) * slice_width[n]) * sum(I(0) ... I(n))
@@ -220,19 +221,19 @@ I(n) = I(n-1) * R(n-1)/R(n) + j * ω * μ * slice_height[n] / (R(n) * slice_widt
 The individual slice resistances `R(n)` can be calculated from the slice
 dimensions and the conductivity. By setting the current `I(1)` to an arbitrary
 value (e.g. 1 A + j 0 A), the current distribution across the entire stack of
-slices / across the conductor can be found.
+slices / across the conductor is determined.
 
-From that, it is possible to derive
-[`CurrentDisplacementCoefficients::resistance`] as the ratio between the sum
-of losses in the indivual conductors and the DC losses:
+Using the distribution, the [`CurrentDisplacementCoefficients::resistance`] is
+the ratio between the sum of losses in the individual conductors and the DC
+losses:
 
 ```text
 kr = (sum(R * I²)) / (sum(R) * sum(I)²)
 ```
 
-Correspondingly, [`CurrentDisplacementCoefficients::inductance`] can be found
-as the ratio between the sum of the magnetic energy in the slices and the DC
-magnetic energy. See \[1\], section 5.3.2 for details.
+Correspondingly, [`CurrentDisplacementCoefficients::inductance`] is the ratio
+between the sum of the magnetic energy in the slices and the DC magnetic energy.
+See \[1\], section 5.3.2 for details.
 
 As discussed in [`Slot::slices`](crate::slot::Slot::slices), it is evident that
 a higher number of slices offers a more granular calculation and therefore a
@@ -261,7 +262,7 @@ This allows for a comparison between the numeric and the analytic approach:
 /**
 # Literature
 
->\[1\] Müller, Germar; Vogt, Karl; Ponick, Bernd: Berechnung elektrischer
+1. Müller, Germar; Vogt, Karl; Ponick, Bernd: Berechnung elektrischer
 Maschinen, 6th edition (2008), Wiley-VCH, Weinheim
  */
 #[derive(Clone, Debug)]

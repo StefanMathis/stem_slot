@@ -24,9 +24,9 @@ A simple slot composed of two rectangles: winding area and slot opening area.
 
 This slot type is the standard for linear motors, because it results in teeth of
 constant thickness and can be easily wound. If the slot is open (opening width
-equals winding area width), it is even possible to prewind coils and then simply
-push them onto the teeth, which is especially useful for the efficient creation
-of tooth-coil windings. For rotary motors, a rectangular slot causes trapezoid
+equals total width), it is even possible to prewind coils and then simply push
+them onto the teeth, which is especially useful for the efficient creation of
+tooth-coil windings. For rotary motors, a rectangular slot results in trapezoid
 teeth and therefore wastes space, but retains the other advantages and therefore
 can also sometimes be found there.
 

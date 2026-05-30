@@ -29,25 +29,26 @@ use crate::coil_layout::CoilLayout;
 use crate::current_displacement::CurrentDisplacementCalculator;
 
 /**
-A trait for defining slots (grooves on the air gap side of magnetic cores).
+A trait for defining slots of electrical machines.
 
-This trait provides a simple interface for defining a slot: A groove on the air
-gap side of the magnetic core which holds one or multiple coils of a winding.
-The design of a slot typically strives to meet a compromise between maximizing
-the available space for copper (i.e. reducing ohmic losses) and allowing for
-enough space between them to not hinder the magnetic flux.
+This trait provides an interface for defining a slot: A groove on the air gap
+side of the magnetic core which holds one or multiple coils of a winding. The
+magnetic core material between two neighboring slots forms a tooth which carries
+the magnetic flux. The design of a slot typically strives to meet a compromise
+between maximizing the available space for the coils (i.e. reducing ohmic
+losses) and allowing for sufficient tooth width.
 
 This trait offers methods for calculating the slot leakage inductance for
-different [`CoilLayout`]s (see e.g.
-[`Slot::mutual_inductance_leakage_coefficient`]) or the current displacement
-coefficients via [`Slot::current_displacement_coefficients`].
+different [`CoilLayout`]s (e.g. [`Slot::mutual_inductance_leakage_coefficient`])
+or the current displacement coefficients via
+[`Slot::current_displacement_coefficients`].
 
 # Implementation
 
-Implementing the trait requires the definition of a couple simple methods
-like e.g. [`Slot::outline`] describing the geometry extents of the slot.
-The image below gives an overview over the definitions and conventions which
-need to be followed:
+Implementing the trait requires the definition of a couple methods like
+[`Slot::outline`] describing the geometric extents of the slot.
+The image below gives an overview over the conventions which need to be
+followed:
 */
 #[doc = ""]
 #[cfg_attr(
@@ -64,6 +65,9 @@ need to be followed:
     `cargo doc --features 'doc-images'` and Rust version >= 1.54."
 )]
 /**
+- Slots may have an "opening" space, where no coils are located. This space is
+defined by [`Slot::opening_height`] and [`Slot::opening_width`]. All other space
+which is enclosed by the slot outline (and the x-axis) is the "coil" space.
 - The air gap border of the core is on the x-axis. If the slot is "open", the
 start and end points of its [`outline`](Slot::outline) must therefore be on
 the x-axis as well. If the slot is closed, its start and end point must be
@@ -71,9 +75,6 @@ identical and must have a positive y-value. All segments of the outline must
 have positive y-values as well.
 - If the slot is open, the distance between the start and end points of the
 outline is the [`Slot::opening_width`].
-- Slots may have an "opening" space, where no coils are located. This space is
-defined by the [`Slot::opening_height`]. All other space which is enclosed by
-the slot outline (and the x-axis) is the "coil" space.
 - The total y-extent of the slot is the [`Slot::height`].
 - The area close to the air gap is called the "slot top", the area furthest away
 from it is the "slot bottom".
@@ -82,10 +83,10 @@ overwritten. See its docstring for more.
 
 # Example
 
-The following code snippet shows how a simple rectangular slot like the one used
-in the example image can implement [`Slot`] (this is in fact quite similar to
-how [`RectangularSlot`](crate::rectangular::RectangularSlot) is implemented). In
-the example, the `serde` feature is enabled, necessitating the implementation
+The following code snippet shows how [`Slot`] can be implemented for a simple
+rectangular slot (in fact, this implementation is quite similar to that of
+[`RectangularSlot`](crate::rectangular::RectangularSlot)).
+In the example, the `serde` feature is enabled, necessitating the implementation
 of `Deserialize` and `Serialize`.
 
 ```
@@ -103,7 +104,7 @@ struct MyRectangularSlot {
     opening_height: Length,
 }
 
-#[typetag::serde] // <-- Needed because of the trait definition
+#[typetag::serde] // <-- Needed if the serde feature is enabled
 impl Slot for MyRectangularSlot {
     fn opening_width(&self) -> Length {
         return self.opening_width;
@@ -235,7 +236,7 @@ pub trait Slot: Send + Sync + std::fmt::Debug + DynClone + Any + 'static {
     }
 
     /**
-    Return if the slot is open (to the air gap).
+    Returns if the slot is open.
 
     The slot is open if [`Slot::opening_width`] and [`Slot::opening_height`]
     are larger than zero.
@@ -279,6 +280,9 @@ pub trait Slot: Send + Sync + std::fmt::Debug + DynClone + Any + 'static {
     /**
     Returns the area covered by the slot.
 
+    This method converts the [`Slot::outline`] into a [`Contour`] and then
+    calculates the surface area of that contour.
+
     # Examples
 
     ```
@@ -305,8 +309,8 @@ pub trait Slot: Send + Sync + std::fmt::Debug + DynClone + Any + 'static {
     Returns [`Slot::outline`] with the slot opening being removed.
 
     This method "cuts off" the slot opening from [`Slot::outline`] and therefore
-    returns the part of the slot outline which touches the "winding area", i.e.
-    the space where the conductors / coils are located.
+    returns only the part of the slot outline which touches the "winding area",
+    i.e. the space where the conductors / coils are located.
 
     # Examples
 
@@ -485,17 +489,16 @@ pub trait Slot: Send + Sync + std::fmt::Debug + DynClone + Any + 'static {
         doc = "**Doc images not enabled**. Compile docs with
         `cargo doc --features 'doc-images'` and Rust version >= 1.54."
     )]
-    #[cfg_attr(
-        feature = "cairo",
-        doc = "
-    For convenience, [`Slot::drawables`] wraps this method and adds a
-    [`Style`] so the contours can be drawn directly."
-    )]
-    #[cfg_attr(feature = "cairo", doc = "")]
-    /// In case of [`CoilLayout::Single`], this method basically just converts
-    /// the [`Polysegment`] from [`Slot::outline`] or
+    ///
+    /// If `coil_layout` is a [`CoilLayout::Single`], this method basically just
+    /// converts the [`Polysegment`] from [`Slot::outline`] or
     /// [`Slot::outline_winding_area`] to a [`Contour`] and wraps it in a
     /// [`Vec`].
+    #[cfg_attr(feature = "cairo", doc = "")]
+    #[cfg_attr(
+        feature = "cairo",
+        doc = "For convenience, [`Slot::drawables`] wraps this method and adds a [`Style`] so the contours can be drawn directly."
+    )]
     ///
     /// # Examples
     ///
@@ -729,9 +732,9 @@ pub trait Slot: Send + Sync + std::fmt::Debug + DynClone + Any + 'static {
     /**
     Returns the contours of the winding layers as drawable objects.
 
-    This is a wrapper around [`Slot::layer_contours`] which adds a default
-    [`Style`] (with an [orange background](crate::ORANGE)) to the [`Contour`]s.
-    See its docstring for an example image.
+    This is a wrapper around [`Slot::layer_contours`] which adds a [`Style`]
+    with an [orange background](crate::ORANGE) to the [`Contour`]s.
+    The docstring of [`Slot::slices`] contain examples for this drawing style.
      */
     #[cfg(feature = "cairo")]
     fn drawables(
@@ -753,7 +756,7 @@ pub trait Slot: Send + Sync + std::fmt::Debug + DynClone + Any + 'static {
     Returns the self-inductance leakage coefficient of the `layer`.
 
     The conductors inside a slot are grouped into "layers", which are positioned
-    according to the given `coil_layout`. When an AC current passes through the
+    as specified in the `coil_layout`. When an AC current passes through the
     conductors of one of these layers, the resulting magnetic field acts as an
     inductance according to Lenz' rule. This so-called self-inductance can be
     calculates as:
@@ -761,24 +764,24 @@ pub trait Slot: Send + Sync + std::fmt::Debug + DynClone + Any + 'static {
     ```text
     Ls = μ0 * l_ax * w_sp² * lambda_s
     ```
-    according to eq (3.5.13) in /[1/] with `μ0` being the vacuum permeability,
+    according to eq. (3.5.13) in \[1\] with `μ0` being the vacuum permeability,
     `l_ax` being the axial length of the magnetic core which contains the slot
     and `w_sp²` being the number of turns in the layer.
 
     It is assumed that the material of the core is "superconducting" (i.e. its
     permeability is much larger than that of air), which is usually the case for
     ferromagnetic materials. In this case, the self-inductance leakage
-    coefficient `lambda_s` is given by eq. (3.5.12) in /[1/]:
+    coefficient `lambda_s` is given by eq. (3.5.12) in \[1\]:
 
     ```text
-    lambda_s = int_0^h (A(x)/A)² / s(x) dx
+    lambda_s = integral_0^h (A(x)/A)² / s(x) dx
     ```
 
     with `h` being the slot height, `x` being a vertical coordinate starting at
     the slot bottom, `A` being the surface area of the layer, `A(x)` being the
     area below `x` and `s(x)` being the width of the layer at `x`.
 
-    For the full derivation, see section 3.5.2.1 of /[1/]. Section A.1 of /[2/]
+    For the full derivation, see section 3.5.2.1 of \[1\]. Section A.1 of \[2\]
     gives an example for a real slot geometry.
 
     Implementation-wise, this function calls
@@ -791,9 +794,9 @@ pub trait Slot: Send + Sync + std::fmt::Debug + DynClone + Any + 'static {
 
     # Literature
 
-    >/[1/] Müller, Germar; Vogt, Karl; Ponick, Bernd: Berechnung elektrischer
+    1. Müller, Germar; Vogt, Karl; Ponick, Bernd: Berechnung elektrischer
     Maschinen, 6th edition (2008), Wiley-VCH, Weinheim
-    >/[2/] Mathis, Stefan: Permanentmagneterregte Line-Start-Antriebe in
+    2. Mathis, Stefan: Permanentmagneterregte Line-Start-Antriebe in
     Ferrittechnik, Shaker-Verlag, Düren
 
     # Examples
@@ -826,33 +829,34 @@ pub trait Slot: Send + Sync + std::fmt::Debug + DynClone + Any + 'static {
     }
 
     /**
-    Returns the inductance coefficient of `linked_layer` caused by the
-    `excitation_layer`.
+    Returns the inductance coefficient of the `linked_layer`-inductance which is
+    caused by the `excitation_layer`.
 
     The conductors inside a slot are grouped into "layers", which are positioned
     according to the given `coil_layout`. When an AC current passes through the
     conductors of one of these layers, the resulting magnetic field acts as an
     inductance according to Lenz' rule both for the layer itself as well as for
-    other layers in the slot. This inductance can be calculates as
+    other layers in the slot. This inductance can be calculated as
 
     ```text
     Lo = μ0 * l_ax * w_l * w_e * lambda_o
     ```
 
-    according to eq (3.5.22b) in /[1/] with `μ0` being the vacuum permeability,
+    according to eq (3.5.22b) in \[1\] with `μ0` being the vacuum permeability,
     `l_ax` being the axial length of the magnetic core which contains the slot,
     `w_l` being the number of turns of the `linked_layer` and `w_e` being the
     number of turns of the `excitation_layer`. If
-    `linked_layer == excitation_layer`, this simplifies to the equation shown in
-    the docstring of [`Slot::self_inductance_leakage_coefficient`].
+    `linked_layer == excitation_layer`, this expression simplifies to the
+    equation shown in the docstring of
+    [`Slot::self_inductance_leakage_coefficient`].
 
     It is assumed that the material of the core is "superconducting" (i.e. its
     permeability is much larger than that of air), which is usually the case for
-    ferromagnetic materials. Then, the inductance leakage coefficient `lambda_o` for
-    the general case can be found as
+    ferromagnetic materials. Then, the inductance leakage coefficient `lambda_o`
+    can analytically be calculated with:
 
     ```text
-    lambda_s = int_x0^h (A_l(x)/A_l) * (A_e(x)/A_e) / s(x) dx
+    lambda_s = integral_x0^h (A_l(x)/A_l) * (A_e(x)/A_e) / s(x) dx
     ```
 
     with `h` being the slot height, `x` being a vertical coordinate starting at
@@ -863,7 +867,7 @@ pub trait Slot: Send + Sync + std::fmt::Debug + DynClone + Any + 'static {
 
     From these equations, it is obvious to see that the vertical positioning of
     the layers relative to each other plays a huge role, as shown in the
-    examples. See section 3.5.2.2 of /[1/] for more.
+    examples. See section 3.5.2.2 of \[1\] for more.
 
     # Panics
     Panics if `linked_layer` or `excitation_layer` is not smaller than the
@@ -871,7 +875,7 @@ pub trait Slot: Send + Sync + std::fmt::Debug + DynClone + Any + 'static {
 
     # Literature
 
-    >/[1/] Müller, Germar; Vogt, Karl; Ponick, Bernd: Berechnung elektrischer
+    1. Müller, Germar; Vogt, Karl; Ponick, Bernd: Berechnung elektrischer
     Maschinen, 6th edition (2008), Wiley-VCH, Weinheim
 
     # Examples
@@ -962,7 +966,7 @@ pub trait Slot: Send + Sync + std::fmt::Debug + DynClone + Any + 'static {
 
     /**
     Returns the [`Slot::mutual_inductance_leakage_coefficient`] for all possible
-    layer combinations for the given `coil_layout`.
+    layer combinations in the `coil_layout`.
 
     The returned matrix is square and its numbers of rows / columns equals
     [`CoilLayout::layers`] of `coil_layout`. The row contains the layer with
@@ -973,8 +977,8 @@ pub trait Slot: Send + Sync + std::fmt::Debug + DynClone + Any + 'static {
     while the off-diagonals contain the
     [`mutual_inductance_leakage_coefficient`](Slot::mutual_inductance_leakage_coefficient).
 
-    This matrix does not consider either the slot opening leakage nor the tooth
-    tip leakage.
+    These coefficients do not cover either the slot opening leakage nor the
+    tooth tip leakage.
 
     # Examples
     ```
@@ -1102,8 +1106,8 @@ pub trait Slot: Send + Sync + std::fmt::Debug + DynClone + Any + 'static {
         `cargo doc --features 'doc-images'` and Rust version >= 1.54."
     )]
     ///
-    /// This flux is heavily influenced by the [`Slot::opening_width`] in
-    /// between the teeth and the magnetic air gap. Generally speaking, a
+    /// This flux is heavily influenced by the [`Slot::opening_width`]
+    /// between the teeth and by the magnetic air gap. Generally speaking, a
     /// smaller slot opening increases this flux, while a smaller
     /// `magnetic_air_gap` decreases it. For an in-depth description of the
     /// phenomen, see e.g.
@@ -1116,7 +1120,7 @@ pub trait Slot: Send + Sync + std::fmt::Debug + DynClone + Any + 'static {
     /// by multiplying the leakage inductance with that current.
     ///
     /// The default implementation of this method uses the free function
-    /// [`leakage_coefficient_tooth_tip`], see its docstring for details. This
+    /// [`leakage_coefficient_tooth_tip`], see its docstring for details. The
     /// separation between interface (this method) and implementation allows
     /// using the underlying function as part of a custom implementation.
     /// For an example of this pattern, see the source code of the [`Slot`]
@@ -1160,7 +1164,9 @@ pub trait Slot: Send + Sync + std::fmt::Debug + DynClone + Any + 'static {
     /// \[1\], p. 325). In case the slot is closed, this method simply returns
     /// zero.
     ///
-    /// >\[1\]: Müller, Germar; Vogt, Karl; Ponick, Bernd: Berechnung
+    /// # Literature
+    ///
+    /// 1. Müller, Germar; Vogt, Karl; Ponick, Bernd: Berechnung
     /// elektrischer Maschinen, 6th edition (2008), Wiley-VCH, Weinheim
     ///
     /// # Examples
@@ -1202,9 +1208,7 @@ pub trait Slot: Send + Sync + std::fmt::Debug + DynClone + Any + 'static {
     /// [`CurrentDisplacementCoefficients`](crate::current_displacement::CurrentDisplacementCoefficients)
     /// for the slot geometry of `self`. The slot surface is separated into
     /// multiple/ rectangular [`slices`](Slot::slices) and the coefficients are
-    /// calculated piece-wise. For more information, see
-    /// >Müller, Germar; Vogt, Karl; Ponick, Bernd: Berechnung elektrischer
-    /// Maschinen, 6th edition (2008), Wiley-VCH, Weinheim (section 5.3)
+    /// calculated piece-wise, see \[1\], section 5.3.
     ///
     /// The minimum number of slices is specified by `min_num_slices`, see the
     /// docstring of [`Slot::slices`]. Generally speaking, the higher this
@@ -1231,6 +1235,11 @@ pub trait Slot: Send + Sync + std::fmt::Debug + DynClone + Any + 'static {
         doc = "**Doc images not enabled**. Compile docs with
         `cargo doc --features 'doc-images'` and Rust version >= 1.54."
     )]
+    ///
+    /// # Literatur
+    ///
+    /// 1. Müller, Germar; Vogt, Karl; Ponick, Bernd: Berechnung elektrischer
+    /// Maschinen, 6th edition (2008), Wiley-VCH, Weinheim (section 5.3)
     ///
     /// # Examples
     /// ```
@@ -1292,7 +1301,7 @@ pub trait Slot: Send + Sync + std::fmt::Debug + DynClone + Any + 'static {
     /// boxes, starting at the slot bottom.
     ///
     /// This method is used by [`Slot::current_displacement_coefficients`] to
-    /// approximate the slot area by multiple stacked rectangles. The
+    /// approximate the slot area with multiple stacked rectangles. The
     /// `min_num_slices` defines the maximum height of a single rectangle as
     /// `self.height() / min_num_slices`. As the name suggests, the actual
     /// number of generated slices can be (much) higher, because e.g. arc
@@ -1325,7 +1334,7 @@ pub trait Slot: Send + Sync + std::fmt::Debug + DynClone + Any + 'static {
     ///
     /// The image below shows two examples where these assumptions are not
     /// fulfilled. In such a case, this method must be overwritten. The order
-    /// of the returned [`BoundingBox`]es must be slot-bottom-to-opening.
+    /// of the returned [`BoundingBox`]es must be "slot bottom to slot opening".
     #[doc = ""]
     #[cfg_attr(
         feature = "doc-images",
@@ -1436,7 +1445,7 @@ dyn_clone::clone_trait_object!(Slot);
 
 /**
 A simple column-major square matrix used for the leakage coefficients returned
-by [`Slot::leakage_coefficient_matrix`]
+by [`Slot::leakage_coefficient_matrix`].
  */
 pub struct CoefficientMatrix {
     /// dim of the matrix (number of rows / columns).
@@ -1476,7 +1485,7 @@ impl std::ops::Index<(usize, usize)> for CoefficientMatrix {
 }
 
 /**
-An iterator returning all parts of an outline bordering a layer
+An iterator returning all parts of an outline bordering a layer.
 
 This struct is created by [`Slot::layer_outlines`].
  */
@@ -1487,7 +1496,10 @@ pub struct LayerOutlines {
 }
 
 impl LayerOutlines {
-    /// Returns the total length of all outlines.
+    /// Returns the sum of the lengths of all [`Polysegment`]s returned by this
+    /// iterator.
+    ///
+    /// Consumes the iterator in the process.
     pub fn length(self) -> Length {
         Length::new::<meter>(self.into_iter().map(|ps| ps.length()).sum::<f64>())
     }
@@ -1563,6 +1575,11 @@ lazy_static::lazy_static! {
 /// opening flux calculation](Slot::leakage_coefficient_opening) does not factor
 /// this in, the negative tooth tip leakage flux is used as a "compensation".
 ///
+/// # Literature
+///
+/// 1. Müller, Germar; Vogt, Karl; Ponick, Bernd: Berechnung elektrischer
+/// Maschinen, 6th edition (2008), Wiley-VCH, Weinheim (section 3.7.1)
+///
 /// # Examples
 ///
 /// ```
@@ -1580,11 +1597,6 @@ lazy_static::lazy_static! {
 /// let ag_b = Length::new::<millimeter>(0.5);
 /// assert_abs_diff_eq!(leakage_coefficient_tooth_tip(ow, ag_b), -0.05, epsilon=1e-3);
 /// ```
-///
-/// # Literature
-///
-/// 1. Müller, Germar; Vogt, Karl; Ponick, Bernd: Berechnung elektrischer
-/// Maschinen, 6th edition (2008), Wiley-VCH, Weinheim (section 3.7.1)
 pub fn leakage_coefficient_tooth_tip(opening_width: Length, magnetic_air_gap: Length) -> f64 {
     LEAKAGE_COEFFICIENT_TOOTH_TIP
         .eval(f64::from(opening_width / magnetic_air_gap))
@@ -1675,10 +1687,10 @@ between the slot sides and the slot bottom to improve the magnetic flux.
     `cargo doc --features 'doc-images'` and Rust version >= 1.54."
 )]
 /**
- *
+
 When defining such a slot, the `bottom_angle` between the slot bottom and the
 slope can be either given directly or be calculated from other parameters using
-variants of this enum. The explicit angle value can be retrieved via
+variants of this enum. The explicit angle value can be read via
 [`BottomAngle::value`].
 
 This enum can be created via [`From`] from a [`f64`] (wrapping the float in
@@ -1818,14 +1830,14 @@ impl BottomAngle {
     /**
     Returns the `bottom_angle` if there is no slope.
 
-    The formula is: `PI/2 - slot_angle/2`
+    The formula is: `PI/2 - slot_angle/2`.
      */
     pub fn new_no_slope(slot_angle: f64) -> Self {
         return Self::Value(FRAC_PI_2 - 0.5 * slot_angle);
     }
 
     /**
-    Calculates the value of the `bottom_angle` from the variants.
+    Calculates the value of the `bottom_angle` from `self`.
 
     # Examples
 
@@ -1909,10 +1921,10 @@ between the slot sides and the slot top to improve the magnetic flux.
     `cargo doc --features 'doc-images'` and Rust version >= 1.54."
 )]
 /**
- *
+
 When defining such a slot, the `top_angle` between the slot top and the slope
 can be either given directly or be calculated from other parameters using
-variants of this enum. The explicit angle value can be retrieved via
+variants of this enum. The resulting angle value can be read via
 [`TopAngle::value`].
 
 This enum can be created via [`From`] from a [`f64`] (wrapping the float in
@@ -2052,14 +2064,14 @@ impl TopAngle {
     /**
     Returns the `bottom_angle` if there is no slope.
 
-    The formula is: `PI/2 + slot_angle/2`
+    The formula is: `PI/2 + slot_angle/2`.
      */
     pub fn new_no_slope(slot_angle: f64) -> Self {
         return Self::Value(FRAC_PI_2 + slot_angle / 2.0);
     }
 
     /**
-    Calculates the value of the `top_angle` from the variants.
+    Calculates the value of the `top_angle` from `self`.
 
     # Examples
 
@@ -2126,8 +2138,9 @@ impl CurrentDisplacementCalculator {
     Creates a new instance of `Self` by dividing the `slot` into multiple slices
     using [`Slot::slices`] with the specified `min_num_slices`.
 
-    This is essentially a convenience wrapper around
-    [`CurrentDisplacementCalculator::from_slice_dims`].
+    This is a convenience wrapper around
+    [`CurrentDisplacementCalculator::from_slice_dims`] which calls
+    [`Slot::slices`] to get the slice dimensions.
      */
     pub fn new<S: Slot + ?Sized>(slot: &S, min_num_slices: usize) -> Self {
         let bbs = slot.slices(min_num_slices);
