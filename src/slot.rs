@@ -1531,12 +1531,10 @@ lazy_static::lazy_static! {
 ///
 /// For a general introduction to the tooth tip leakage coefficient, see the
 /// docstring of [`Slot::leakage_coefficient_tooth_tip`]. This function serves
-/// as the default implementation of the method and uses the heuristic graph
-/// 3.7.2 of
-/// > Müller, Germar; Vogt, Karl; Ponick, Bernd: Berechnung elektrischer
-/// Maschinen, 6th edition (2008), Wiley-VCH, Weinheim (section 3.7.1)
+/// as the default implementation of the method and uses the graph 3.7.2 of
+/// \[1\].
 ///
-/// The image below shows the resulting coefficient as a function of the
+/// The image below shows the coefficient as a function of the
 /// ratio `opening_width / magnetic_air_gap`.
 #[doc = ""]
 #[cfg_attr(
@@ -1555,14 +1553,15 @@ lazy_static::lazy_static! {
     doc = "**Doc images not enabled**. Compile docs with
     `cargo doc --features 'doc-images'` and Rust version >= 1.54."
 )]
+///
 /// In this approximation, the coefficient becomes negative for large ratios
-/// `opening_width / magnetic_air_gap`as some of the slot opening leakage flux
-/// gets "pulled out" of the opening and instead crosses
-/// the air gap, leading to a net reduction of the overall leakage flux. This is
-/// due to the fact that the path crossing the air gap (twice) starts to have a
-/// lower magnetic resistance than the path accross the slot opening. Since
-/// the analytic slot opening flux calculation does not factor this in, the
-/// negative tooth tip leakage flux is used as a "compensation".
+/// `opening_width / magnetic_air_gap` as some of the slot opening leakage flux
+/// gets "pulled out" of the opening and instead crosses the air gap, leading to
+/// a net reduction of the overall leakage flux. This is due to the fact that
+/// the path crossing the air gap (twice) starts to have a lower magnetic
+/// resistance than the path accross the slot opening. Since the [analytic slot
+/// opening flux calculation](Slot::leakage_coefficient_opening) does not factor
+/// this in, the negative tooth tip leakage flux is used as a "compensation".
 ///
 /// # Examples
 ///
@@ -1581,6 +1580,11 @@ lazy_static::lazy_static! {
 /// let ag_b = Length::new::<millimeter>(0.5);
 /// assert_abs_diff_eq!(leakage_coefficient_tooth_tip(ow, ag_b), -0.05, epsilon=1e-3);
 /// ```
+///
+/// # Literature
+///
+/// 1. Müller, Germar; Vogt, Karl; Ponick, Bernd: Berechnung elektrischer
+/// Maschinen, 6th edition (2008), Wiley-VCH, Weinheim (section 3.7.1)
 pub fn leakage_coefficient_tooth_tip(opening_width: Length, magnetic_air_gap: Length) -> f64 {
     LEAKAGE_COEFFICIENT_TOOTH_TIP
         .eval(f64::from(opening_width / magnetic_air_gap))
@@ -1621,7 +1625,7 @@ pub fn leakage_coefficient_tooth_tip(opening_width: Length, magnetic_air_gap: Le
 /// the tooth width, `radius` is the air gap radius and `number_of_sides` is two
 /// times the number of teeth.
 ///
-/// Examples
+/// # Examples
 ///
 /// ```
 /// use approx::assert_abs_diff_eq;
