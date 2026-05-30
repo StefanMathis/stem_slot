@@ -1,7 +1,7 @@
 /*!
 [`Slot`]: crate::slot::Slot
-[`Slot::leakage_coefficient_opening]: crate::slot::Slot::leakage_coefficient_opening
-[`Slot::current_displacement_coefficients]: crate::slot::Slot::current_displacement_coefficients
+[`Slot::leakage_coefficient_opening`]: crate::slot::Slot::leakage_coefficient_opening
+[`Slot::current_displacement_coefficients`]: crate::slot::Slot::current_displacement_coefficients
 
 Winding slot definition for stem - a Simulation Toolbox for Electric Motors.
 
@@ -29,12 +29,13 @@ pub mod slot;
 /**
 Standard [`Color`](planar_geo::draw::Color) for drawing slots.
 
-This color is used as the background color in the
-[`Style`](planar_geo::draw::Style)s of the
+This color is used as the
+[`Style::background_color`](planar_geo::draw::Style::background_color)s of the
 [`DrawableCow`](planar_geo::draw::DrawableCow)s returned by
 [`Slot::drawables`](crate::slot::Slot::drawables). The images of the different
 slot types use this color.
  */
+#[cfg(feature = "cairo")]
 pub const ORANGE: planar_geo::draw::Color = planar_geo::draw::Color {
     r: 1.0,
     g: 0.55,
@@ -46,7 +47,8 @@ pub mod prelude {
     /*!
     This module reexports all slot types defined in this crate, the
     [`Slot`] trait, the [`BottomAngle`] and [`TopAngle`] enums as well as the
-    [`stem_material::prelude`] module to simplify the usage of this crate.
+    [`stem_material::prelude`](https://docs.rs/stem_material/0.3.4/stem_material/prelude/index.html)
+    module to simplify the usage of this crate.
      */
 
     pub use crate::coil_layout::CoilLayout;
@@ -58,5 +60,7 @@ pub mod prelude {
     pub use crate::semi_trapezoid::SemiTrapezoidSlot;
     pub use crate::slot::{BottomAngle, Slot, TopAngle};
 
+    // Prevent rustdoc from documenting the stem_material dependency
+    #[doc(hidden)]
     pub use stem_material::prelude::*;
 }

@@ -21,8 +21,6 @@ use rayon::prelude::*;
 use std::f64::consts::{PI, TAU};
 use stem_material::prelude::*;
 
-use crate::slot::Slot;
-
 /**
 Returns the phase velocity `α` at which a magnetic field enters a conductor
 carrying an AC current.
@@ -190,8 +188,8 @@ If a slot is completely filled by a single massive conductor (1 turn) and the
 core material can be treated as magnetically superconducting (permeability much
 higher than that of air, usually true for ferromagnetic materials), the current
 displacement coefficients can be calculated numerically by separating the slot
-into vertically stacked [slices](Slot::slices), which are treated as parallel
-conductors.
+into vertically stacked [slices](crate::slot::Slot::slices), which are treated
+as parallel conductors.
 */
 #[doc = ""]
 #[cfg_attr(
@@ -211,7 +209,8 @@ conductors.
     `cargo doc --features 'doc-images'` and Rust version >= 1.54."
 )]
 /**
-By using the formulae in [1], section 5.3.2, the (complex) current in the nth
+
+By using the formulae in \[1\], section 5.3.2, the (complex) current in the nth
 conductor / slice can be calculated as
 
 ```text
@@ -233,17 +232,14 @@ kr = (sum(R * I²)) / (sum(R) * sum(I)²)
 
 Correspondingly, [`CurrentDisplacementCoefficients::inductance`] can be found
 as the ratio between the sum of the magnetic energy in the slices and the DC
-magnetic energy. See [1], section 5.3.2 for details.
+magnetic energy. See \[1\], section 5.3.2 for details.
 
->[1] Müller, Germar; Vogt, Karl; Ponick, Bernd: Berechnung elektrischer
-Maschinen, 6th edition (2008), Wiley-VCH, Weinheim
-
-As discussed in [`Slot::slices`], it is evident that a higher number of slices
-offers a more granular calculation and therefore a higher precision at the cost
-of more CPU operations. For the special case of a rectangular bar conductor,
-it is also possible to find a closed analytic solution (see
-[`CurrentDisplacementCoefficients::from_rectangular_open_slot`]). This allows
-for a comparison between the numeric and the analytic approach:
+As discussed in [`Slot::slices`](crate::slot::Slot::slices), it is evident that
+a higher number of slices offers a more granular calculation and therefore a
+higher precision at the cost of more CPU operations. For the special case of a
+rectangular bar conductor, it is also possible to find a closed analytic
+solution (see [`CurrentDisplacementCoefficients::from_rectangular_open_slot`]).
+This allows for a comparison between the numeric and the analytic approach:
  */
 #[doc = ""]
 #[cfg_attr(
@@ -262,6 +258,12 @@ for a comparison between the numeric and the analytic approach:
     doc = "**Doc images not enabled**. Compile docs with
     `cargo doc --features 'doc-images'` and Rust version >= 1.54."
 )]
+/**
+# Literature
+
+>\[1\] Müller, Germar; Vogt, Karl; Ponick, Bernd: Berechnung elektrischer
+Maschinen, 6th edition (2008), Wiley-VCH, Weinheim
+ */
 #[derive(Clone, Debug)]
 pub struct CurrentDisplacementCalculator {
     area: Area,
@@ -269,22 +271,6 @@ pub struct CurrentDisplacementCalculator {
 }
 
 impl CurrentDisplacementCalculator {
-    /**
-    Creates a new instance of `Self` by dividing the `slot` into multiple slices
-    using [`Slot::slices`] with the specified `min_num_slices`.
-
-    This is essentially a convenience wrapper around
-    [`CurrentDisplacementCalculator::from_slice_dims`].
-     */
-    pub fn new<S: Slot + ?Sized>(slot: &S, min_num_slices: usize) -> Self {
-        let bbs = slot.slices(min_num_slices);
-        return Self::from_slice_dims(bbs.into_iter().map(|bb| {
-            let height = Length::new::<meter>(bb.height());
-            let width = Length::new::<meter>(bb.width());
-            [height, width]
-        }));
-    }
-
     /**
     Creates a new instance of `Self` from the given slice dimensions
     `[height, width]`.

@@ -60,7 +60,7 @@ Not all the parameters shown in the image are needed to unequivocally describe
 the slot geometry. For example, defining four of the five height parameters
 directly sets the value of the fifth. Therefore, this module defines a couple
 of "builder" structs which represent different possible parameter sets. These
-can be fallibly converted to an [`OpenTrapezoidSlot`] via their [`TryFrom`]
+can be fallibly converted to an [`SemiTrapezoidSlot`] via their [`TryFrom`]
 implementations:
 - [`SemiTrapezoidBuilder`] (builder version of [`new`](SemiTrapezoidSlot::new))
 - [`SemiTrapezoidWithoutSlopesBuilder`]

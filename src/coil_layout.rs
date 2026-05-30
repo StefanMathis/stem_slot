@@ -7,20 +7,24 @@ use std::cmp::Ordering;
 #[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
 
-/// Index of the layer on the slot bottom, left side of a quadruple layer
-/// winding. Is used in the definition of that winding and hence exposed here.
+/// Index of the layer in the slot bottom, left side quadrant of a quadruple
+/// layer winding. Is used in the definition of that winding and hence exposed
+/// here. See [`CoilLayout`].
 pub const QUADRUPLE_LAYER_BOTTOM_LEFT: u16 = 0;
 
-/// Index of the layer on the slot top, left side of a quadruple layer
+/// Index of the layer in the slot top, left side quadrant of a quadruple layer
 /// winding. Is used in the definition of that winding and hence exposed here.
+/// See [`CoilLayout`].
 pub const QUADRUPLE_LAYER_TOP_LEFT: u16 = 1;
 
-/// Index of the layer on the slot top, right side of a quadruple layer
+/// Index of the layer in the slot top, right side quadrant of a quadruple layer
 /// winding. Is used in the definition of that winding and hence exposed here.
+/// See [`CoilLayout`].
 pub const QUADRUPLE_LAYER_TOP_RIGHT: u16 = 2;
 
-/// Index of the layer on the slot bottom, right side of a quadruple layer
-/// winding. Is used in the definition of that winding and hence exposed here.
+/// Index of the layer in the slot bottom, right side quadrant of a quadruple
+/// layer winding. Is used in the definition of that winding and hence exposed
+/// here. See [`CoilLayout`].
 pub const QUADRUPLE_LAYER_BOTTOM_RIGHT: u16 = 3;
 
 /**

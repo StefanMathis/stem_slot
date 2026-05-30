@@ -485,10 +485,13 @@ pub trait Slot: Send + Sync + std::fmt::Debug + DynClone + Any + 'static {
         doc = "**Doc images not enabled**. Compile docs with
         `cargo doc --features 'doc-images'` and Rust version >= 1.54."
     )]
-    ///
-    /// For convenience, [`Slot::drawables`] wraps this method and adds a
-    /// [`Style`] so the contours can be drawn directly.
-    ///
+    #[cfg_attr(
+        feature = "cairo",
+        doc = "
+    For convenience, [`Slot::drawables`] wraps this method and adds a
+    [`Style`] so the contours can be drawn directly."
+    )]
+    #[cfg_attr(feature = "cairo", doc = "")]
     /// In case of [`CoilLayout::Single`], this method basically just converts
     /// the [`Polysegment`] from [`Slot::outline`] or
     /// [`Slot::outline_winding_area`] to a [`Contour`] and wraps it in a
@@ -1130,7 +1133,7 @@ pub trait Slot: Send + Sync + std::fmt::Debug + DynClone + Any + 'static {
     /// by multiplying the slot opening leakage inductance with the current
     /// going through the coil(s). The slot opening leakage inductance itself
     /// is the product of the main winding inductance and the slot opening
-    /// factor which is provided by this method.
+    /// factor returned by this method.
     #[doc = ""]
     #[cfg_attr(
         feature = "doc-images",
@@ -1151,14 +1154,14 @@ pub trait Slot: Send + Sync + std::fmt::Debug + DynClone + Any + 'static {
     ///
     /// The default implementation of the method assumes that the slot opening
     /// is parallel-sided. In that case, the coefficient becomes the quotient
-    /// `opening_height / opening_width`, see eq. (3.7.1f) in [1]. Even if the
+    /// `opening_height / opening_width`, see eq. (3.7.1f) in \[1\]. Even if the
     /// slot opening is not parallel sided, it is usually sufficient to
     /// approximate it as such by using a mean value for the opening width (see
-    /// [1], p. 325). In case the slot is closed, this method simply returns
+    /// \[1\], p. 325). In case the slot is closed, this method simply returns
     /// zero.
     ///
-    /// >[1]: Müller, Germar; Vogt, Karl; Ponick, Bernd: Berechnung elektrischer
-    /// Maschinen, 6th edition (2008), Wiley-VCH, Weinheim
+    /// >\[1\]: Müller, Germar; Vogt, Karl; Ponick, Bernd: Berechnung
+    /// elektrischer Maschinen, 6th edition (2008), Wiley-VCH, Weinheim
     ///
     /// # Examples
     ///
@@ -1433,7 +1436,7 @@ dyn_clone::clone_trait_object!(Slot);
 
 /**
 A simple column-major square matrix used for the leakage coefficients returned
-by [`Slot::leakage_coefficent_matrix`]
+by [`Slot::leakage_coefficient_matrix`]
  */
 pub struct CoefficientMatrix {
     /// dim of the matrix (number of rows / columns).
@@ -2111,6 +2114,24 @@ impl From<f64> for TopAngle {
 impl From<TopAngle> for f64 {
     fn from(value: TopAngle) -> Self {
         value.value()
+    }
+}
+
+impl CurrentDisplacementCalculator {
+    /**
+    Creates a new instance of `Self` by dividing the `slot` into multiple slices
+    using [`Slot::slices`] with the specified `min_num_slices`.
+
+    This is essentially a convenience wrapper around
+    [`CurrentDisplacementCalculator::from_slice_dims`].
+     */
+    pub fn new<S: Slot + ?Sized>(slot: &S, min_num_slices: usize) -> Self {
+        let bbs = slot.slices(min_num_slices);
+        return Self::from_slice_dims(bbs.into_iter().map(|bb| {
+            let height = Length::new::<meter>(bb.height());
+            let width = Length::new::<meter>(bb.width());
+            [height, width]
+        }));
     }
 }
 

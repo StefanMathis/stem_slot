@@ -8,6 +8,13 @@ stem
 (Simulation Toolbox for Electric Motors) framework (see the
 [stem book](https://stefanmathis.github.io/stem_book/)).
 
+Slot defined by geometry (user input), following info is derived from geometry:
+- Available space for winding
+- Slot fits into a magnet core (collision check)
+- In case of AC currents:
+    - Current displacement
+    - Slot leakage coefficients for resulting inductance
+
 
 Outside of stem, this crate can be used to calculate some properties:
 
@@ -18,7 +25,7 @@ END TODO
 When an alternating current flows through the conductors in a slot, it creates
 an alternating magnetic field which influences the operating behaviour of the
 motor. The [`Slot`] trait offers fast analytical calculation routines taken from
-standard literature for electrical machines such as e.g. /[1/] for some of these
+standard literature for electrical machines such as e.g. \[1\] for some of these
 effects. These methods usually assume that the core material surrounding the
 slot is magnetically "superconducting", i.e. made out of ferromagnetic material
 whose magnetic resistance / reluctance can be neglected compared to that of the
@@ -29,10 +36,12 @@ air / conductors.
 Parts of the magnetic field created by the slot conductors closes over the slot
 instead of passing over the air gap. These magnetic fluxes create no magnetic
 force or torque, but still induce voltages into the conductors. Mathematically,
-this influence can be expressed as "leakage" inductances. Their values obviously
-depend heavily on the slot geometry and can be analytically calculated with
-[`Slot`] trait methods such as [`Slot::leakage_coefficient_opening`]. It is also
-possible to calculate the self- and mutual inductance for individual layers in a
+this influence can be expressed as "leakage" inductances which are the product
+of a slot-geometry dependent dimensionless coefficient and a slot-independent
+inductance derived from the winding. These coefficients can be analytically
+calculated with [`Slot`] trait methods such as
+[`Slot::leakage_coefficient_opening`]. The following example shows how to get
+the self- and mutual inductance coefficients for individual layers in a
 multi-layered winding:
 
 ![Double-layered coil-layout][double_layer_coil_layout.svg]
@@ -77,7 +86,7 @@ assert_abs_diff_eq!(coeffs_toco[(1, 1)], 0.3188, epsilon=1e-3);
 If an conductor fills the entire slot (usually the case for squirrel-cage
 windings), the current distribution along the conductor cross section becomes
 uneven due to the self-inductance, resulting in an effective higher resistance
-and lower inductance. The [`Slot::current_displacement_coefficients] method
+and lower inductance. The [`Slot::current_displacement_coefficients`] method
 uses a semi-numerical approach to calculate coefficients for resistance and
 inductance which separates the slot into multiple stacked "slices". As the graph
 below shows, the higher the number of slices, the more precise the result
