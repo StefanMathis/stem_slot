@@ -38,18 +38,18 @@ fn test_shrunk_fillet_radii() {
         },
         slot_angle: 10.0 * PI / 180.0,
         bottom_radius: Length::new::<millimeter>(20.0),
-        bottom_side_radius: Length::new::<millimeter>(20.0),
+        bottom_side_radius: Length::new::<millimeter>(0.5),
         consider_tooth_tip_leakage: true,
     };
     let slot = OpenTrapezoidSlot::try_from(builder).unwrap();
     approx::assert_abs_diff_eq!(
         slot.bottom_radius().get::<millimeter>(),
-        6.3837,
+        5.4681,
         epsilon = 1e-3
     );
     approx::assert_abs_diff_eq!(
         slot.bottom_side_radius().get::<millimeter>(),
-        3.4862297,
+        0.5,
         epsilon = 1e-6
     );
 }

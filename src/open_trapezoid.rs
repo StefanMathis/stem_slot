@@ -151,13 +151,6 @@ pub struct OpenTrapezoidSlot {
     outline: Polysegment,
 }
 
-/// A helper struct for calculating some parameters of the slot.
-struct CalculatedParams {
-    bottom_side_width: Length,
-    bottom_angle: f64,
-    bottom_side_angle: f64,
-}
-
 impl OpenTrapezoidSlot {
     /**
     Creates a new [`OpenTrapezoidSlot`].
@@ -216,7 +209,7 @@ impl OpenTrapezoidSlot {
     /// Returns the width of the winding area at the intersection of the bottom
     /// slope and the slot side.
     pub fn bottom_side_width(&self) -> Length {
-        return self.calculate_params().bottom_side_width;
+        return CalculatedParams::new(self).bottom_side_width;
     }
 
     /// Returns the slot bottom width.
@@ -246,12 +239,12 @@ impl OpenTrapezoidSlot {
 
     /// Returns the angle between the bottom slope and the slot bottom.
     pub fn bottom_angle(&self) -> f64 {
-        return self.calculate_params().bottom_angle;
+        return CalculatedParams::new(self).bottom_angle;
     }
 
     /// Returns the angle between the slot side and the bottom slope.
     pub fn bottom_side_angle(&self) -> f64 {
-        return self.calculate_params().bottom_side_angle;
+        return CalculatedParams::new(self).bottom_side_angle;
     }
 
     /// Returns the fillet radius between bottom and bottom slope (if one
@@ -276,19 +269,14 @@ impl OpenTrapezoidSlot {
     ///     bottom_angle: (120.0 * PI / 180.0).into(),
     ///     slot_angle: 10.0 * PI / 180.0,
     ///     bottom_radius: Length::new::<millimeter>(20.0),
-    ///     bottom_side_radius: Length::new::<millimeter>(20.0),
+    ///     bottom_side_radius: Length::new::<millimeter>(0.0),
     ///     consider_tooth_tip_leakage: true,
     /// };
     /// let slot = OpenTrapezoidSlot::try_from(builder).unwrap();
     /// assert_abs_diff_eq!(
     ///     slot.bottom_radius().get::<millimeter>(),
-    ///     5.2637,
+    ///     4.3301,
     ///     epsilon = 1e-3
-    /// ); // Input value was 20 mm
-    /// assert_abs_diff_eq!(
-    ///     slot.bottom_side_radius().get::<millimeter>(),
-    ///     9.6385654,
-    ///     epsilon = 1e-6
     /// ); // Input value was 20 mm
     /// ```
     pub fn bottom_radius(&self) -> Length {
@@ -315,16 +303,11 @@ impl OpenTrapezoidSlot {
     ///     bottom_width: Length::new::<millimeter>(5.0),
     ///     bottom_angle: (120.0 * PI / 180.0).into(),
     ///     slot_angle: 10.0 * PI / 180.0,
-    ///     bottom_radius: Length::new::<millimeter>(20.0),
+    ///     bottom_radius: Length::new::<millimeter>(0.0),
     ///     bottom_side_radius: Length::new::<millimeter>(20.0),
     ///     consider_tooth_tip_leakage: true,
     /// };
     /// let slot = OpenTrapezoidSlot::try_from(builder).unwrap();
-    /// assert_abs_diff_eq!(
-    ///     slot.bottom_radius().get::<millimeter>(),
-    ///     5.2637,
-    ///     epsilon = 1e-3
-    /// ); // Input value was 20 mm
     /// assert_abs_diff_eq!(
     ///     slot.bottom_side_radius().get::<millimeter>(),
     ///     9.6385654,
@@ -334,22 +317,30 @@ impl OpenTrapezoidSlot {
     pub fn bottom_side_radius(&self) -> Length {
         return self.bottom_side_radius;
     }
+}
 
-    /// Calculates some parameters of `self`.
-    fn calculate_params(&self) -> CalculatedParams {
-        let bottom_height = self.bottom_height();
-        let bottom_side_width = self.opening_width
-            + 2.0 * (self.height - bottom_height) / (FRAC_PI_2 - self.slot_angle / 2.0).tan();
+/// A helper struct for calculating some parameters of the slot.
+struct CalculatedParams {
+    bottom_side_width: Length,
+    bottom_angle: f64,
+    bottom_side_angle: f64,
+}
+
+impl CalculatedParams {
+    fn new(slot: &OpenTrapezoidSlot) -> Self {
+        let bottom_height = slot.bottom_height();
+        let bottom_side_width = slot.opening_width
+            + 2.0 * (slot.height - bottom_height) / (FRAC_PI_2 - slot.slot_angle / 2.0).tan();
         let bottom_angle = BottomAngle::FromWidthAndHeight {
-            bottom_width: self.bottom_width,
+            bottom_width: slot.bottom_width,
             bottom_side_width,
             bottom_height,
-            slot_angle: self.slot_angle,
+            slot_angle: slot.slot_angle,
         }
         .value();
-        let bottom_side_angle = 3.0 * FRAC_PI_2 - bottom_angle - 0.5 * self.slot_angle;
+        let bottom_side_angle = 3.0 * FRAC_PI_2 - bottom_angle - 0.5 * slot.slot_angle;
 
-        return CalculatedParams {
+        return Self {
             bottom_side_width,
             bottom_angle,
             bottom_side_angle,
@@ -571,26 +562,14 @@ impl TryFrom<OpenTrapezoidBuilder> for OpenTrapezoidSlot {
         ];
         let v3 = [bottom_width.get::<meter>() / 2.0, height.get::<meter>()];
 
-        let outline = if (side_height + opening_height) == height {
-            Polysegment::from_fillet_chain(
-                &[v1, v3, [-v3[0], v3[1]], [-v1[0], v1[1]]],
-                &[bottom_radius.get::<meter>(), bottom_radius.get::<meter>()],
-            )
+        let mut right_outline_half = if (side_height + opening_height) == height {
+            Polysegment::from_fillet_chain(&[v1, v3, [0.0, v3[1]]], &[bottom_radius.get::<meter>()])
         } else {
             Polysegment::from_fillet_chain(
-                &[
-                    v1,
-                    v2,
-                    v3,
-                    [-v3[0], v3[1]],
-                    [-v2[0], v2[1]],
-                    [-v1[0], v1[1]],
-                ],
+                &[v1, v2, v3, [0.0, v3[1]]],
                 &[
                     bottom_side_radius.get::<meter>(),
                     bottom_radius.get::<meter>(),
-                    bottom_radius.get::<meter>(),
-                    bottom_side_radius.get::<meter>(),
                 ],
             )
         };
@@ -604,23 +583,28 @@ impl TryFrom<OpenTrapezoidBuilder> for OpenTrapezoidSlot {
             }
         }
         let mut i = 0;
-        for segment in outline.segments() {
+        for segment in right_outline_half.segments() {
             if let Segment::ArcSegment(arc_segment) = segment {
                 let current_param = &mut nonzero_radii[i];
-                if approx::ulps_ne!(
-                    arc_segment.radius(),
-                    (*current_param).get::<meter>(),
-                    epsilon = DEFAULT_EPSILON,
-                    max_ulps = DEFAULT_MAX_ULPS
-                ) {
-                    **current_param = Length::new::<meter>(arc_segment.radius());
-                }
+                **current_param = Length::new::<meter>(arc_segment.radius());
                 i += 1;
                 if i == nonzero_radii.len() {
                     break;
                 }
             }
         }
+
+        // Remove the bottom line segment, it will be recreated when connecting
+        // the two halfes
+        if bottom_width.get::<meter>() > 0.0 {
+            right_outline_half.pop_back();
+        }
+
+        let mut left_outline_half = right_outline_half.clone();
+        left_outline_half.reverse();
+        left_outline_half.line_reflection([0.0, 0.0], [0.0, 1.0]);
+        right_outline_half.append(&mut left_outline_half);
+        let outline = right_outline_half;
 
         // Assert that the outline does not intersect itself
         if let Some(intersection) = outline
