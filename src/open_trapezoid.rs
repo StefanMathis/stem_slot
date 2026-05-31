@@ -52,7 +52,7 @@ directly sets the value of the fourth. Therefore, this module defines a couple
 of "builder" structs which represent different possible parameter sets. These
 can be fallibly converted to an [`OpenTrapezoidSlot`] via their [`TryFrom`]
 implementations:
-- [`OpenTrapezoidBuilder`] (builder version of [`new`](OpenTrapezoidSlot::new))
+- [`OpenTrapezoidBuilder`] (builder version of [`OpenTrapezoidSlot::new`])
 - [`OpenTrapezoidWithoutSlopesBuilder`]
 - [`OpenTrapezoidWithBottomHeightBuilder`]
 - [`OpenTrapezoidWithBottomSideWidthBuilder`]
@@ -78,13 +78,14 @@ approx::assert_abs_diff_eq!(slot.opening_width().get::<millimeter>(), 5.0, epsil
 ```
 
 The conversion fails if a parameter is out of bounds or if the resulting slot
-outline intersects itself. The bounds of a parameter is specified in the field
+outline intersects itself. The bounds of a parameter are specified in the field
 docstring of the respective builder struct.
 
 Using structs instead of constructor functions makes it less likely to confuse
 arguments, since the parameter name needs to be specified explicitly. For
 convenience, there exists a constructor function [`OpenTrapezoidSlot::new`]
-which internally creates an [`OpenTrapezoidBuilder`] and then converts it.
+which internally creates an [`OpenTrapezoidBuilder`] and then converts it into
+an [`OpenTrapezoidSlot`].
 
 # Serialization and deserialization
 
@@ -156,9 +157,8 @@ impl OpenTrapezoidSlot {
     Creates a new [`OpenTrapezoidSlot`].
 
     This is the function equivalent for the [`OpenTrapezoidBuilder`] (and in
-    fact creates a builder under the hood which is then converted to the final
-    slot type). See the docstring of the builder struct for parameter
-    descriptions.
+    fact creates that struct under the hood which is then converted). See the
+    docstring of [`OpenTrapezoidBuilder`] for parameter descriptions.
 
     # Examples
 
@@ -251,7 +251,7 @@ impl OpenTrapezoidSlot {
     /// exists) or the sides.
     ///
     /// This value can be smaller than the provided radius, because the radius
-    /// is shrunk to fit the slot geometry.
+    /// is shrunken to fit the slot geometry.
     ///
     /// # Examples
     ///
@@ -286,7 +286,7 @@ impl OpenTrapezoidSlot {
     /// Returns the fillet radius between bottom slope and sides.
     ///
     /// This value can be smaller than the provided radius, because the radius
-    /// is shrunk to fit the slot geometry.
+    /// is shrunken to fit the slot geometry.
     ///
     /// # Examples
     ///
@@ -385,7 +385,7 @@ parameters shown in the drawing below. See the field docstrings for the valid
 value ranges.
 
 Even with all parameters being inside the value ranges, some parameter
-combinations might still result in invalid slot outlines, in which case the
+combinations might still result in intersecting slot outlines, in which case the
 conversion attempt will return an
 [`Error::OutlineIntersection`](crate::error::Error::OutlineIntersection).
  */
@@ -490,7 +490,7 @@ pub struct OpenTrapezoidBuilder {
     pub slot_angle: f64,
     /// Radius of the fillet between the slot bottom and bottom slope (if one
     /// exists) or the slot sides. Must not be negative (`bottom_radius >= 0
-    /// m`). Is shrunk to the maximum possible value if required by the slot
+    /// m`). is shrunken to the maximum possible value if required by the slot
     /// geometry, see [`OpenTrapezoidSlot::bottom_radius`].
     #[cfg_attr(
         feature = "serde",
@@ -501,8 +501,8 @@ pub struct OpenTrapezoidBuilder {
     )]
     pub bottom_radius: Length,
     /// Radius of the fillet between the bottom slope and the slot sides. Must
-    /// not be negative (`bottom_side_radius >= 0 m`). Is shrunk to the maximum
-    /// possible value if required by the slot geometry, see
+    /// not be negative (`bottom_side_radius >= 0 m`). is shrunken to the
+    /// maximum possible value if required by the slot geometry, see
     /// [`OpenTrapezoidSlot::bottom_side_radius`].
     #[cfg_attr(
         feature = "serde",
@@ -643,7 +643,7 @@ parameters shown in the drawing below. See the field docstrings for the valid
 value ranges.
 
 Even with all parameters being inside the value ranges, some parameter
-combinations might still result in invalid slot outlines, in which case the
+combinations might still result in intersecting slot outlines, in which case the
 conversion attempt will return an
 [`Error::OutlineIntersection`](crate::error::Error::OutlineIntersection).
  */
@@ -768,7 +768,7 @@ parameters shown in the drawing below. See the field docstrings for the valid
 value ranges.
 
 Even with all parameters being inside the value ranges, some parameter
-combinations might still result in invalid slot outlines, in which case the
+combinations might still result in intersecting slot outlines, in which case the
 conversion attempt will return an
 [`Error::OutlineIntersection`](crate::error::Error::OutlineIntersection).
  */
@@ -873,7 +873,7 @@ pub struct OpenTrapezoidWithBottomHeightBuilder {
     pub slot_angle: f64,
     /// Radius of the fillet between the slot bottom and bottom slope (if one
     /// exists) or the slot sides. Must not be negative (`bottom_radius >= 0
-    /// m`). Is shrunk to the maximum possible value if required by the slot
+    /// m`). is shrunken to the maximum possible value if required by the slot
     /// geometry, see [`OpenTrapezoidSlot::bottom_radius`].
     #[cfg_attr(
         feature = "serde",
@@ -884,8 +884,8 @@ pub struct OpenTrapezoidWithBottomHeightBuilder {
     )]
     pub bottom_radius: Length,
     /// Radius of the fillet between the bottom slope and the slot sides. Must
-    /// not be negative (`bottom_side_radius >= 0 m`). Is shrunk to the maximum
-    /// possible value if required by the slot geometry, see
+    /// not be negative (`bottom_side_radius >= 0 m`). is shrunken to the
+    /// maximum possible value if required by the slot geometry, see
     /// [`OpenTrapezoidSlot::bottom_side_radius`].
     #[cfg_attr(
         feature = "serde",
@@ -930,7 +930,7 @@ parameters shown in the drawing below. See the field docstrings for the valid
 value ranges.
 
 Even with all parameters being inside the value ranges, some parameter
-combinations might still result in invalid slot outlines, in which case the
+combinations might still result in intersecting slot outlines, in which case the
 conversion attempt will return an
 [`Error::OutlineIntersection`](crate::error::Error::OutlineIntersection).
  */
@@ -1035,7 +1035,7 @@ pub struct OpenTrapezoidWithBottomSideWidthBuilder {
     pub slot_angle: f64,
     /// Radius of the fillet between the slot bottom and bottom slope (if one
     /// exists) or the slot sides. Must not be negative (`bottom_radius >= 0
-    /// m`). Is shrunk to the maximum possible value if required by the slot
+    /// m`). is shrunken to the maximum possible value if required by the slot
     /// geometry, see [`OpenTrapezoidSlot::bottom_radius`].
     #[cfg_attr(
         feature = "serde",
@@ -1046,8 +1046,8 @@ pub struct OpenTrapezoidWithBottomSideWidthBuilder {
     )]
     pub bottom_radius: Length,
     /// Radius of the fillet between the bottom slope and the slot sides. Must
-    /// not be negative (`bottom_side_radius >= 0 m`). Is shrunk to the maximum
-    /// possible value if required by the slot geometry, see
+    /// not be negative (`bottom_side_radius >= 0 m`). is shrunken to the
+    /// maximum possible value if required by the slot geometry, see
     /// [`OpenTrapezoidSlot::bottom_side_radius`].
     #[cfg_attr(
         feature = "serde",
@@ -1098,7 +1098,7 @@ parameters shown in the drawing below. See the field docstrings for the valid
 value ranges.
 
 Even with all parameters being inside the value ranges, some parameter
-combinations might still result in invalid slot outlines, in which case the
+combinations might still result in intersecting slot outlines, in which case the
 conversion attempt will return an
 [`Error::OutlineIntersection`](crate::error::Error::OutlineIntersection).
  */
@@ -1193,7 +1193,7 @@ pub struct OpenTrapezoidWithBottomAngleBuilder {
     pub slot_angle: f64,
     /// Radius of the fillet between the slot bottom and bottom slope (if one
     /// exists) or the slot sides. Must not be negative (`bottom_radius >= 0
-    /// m`). Is shrunk to the maximum possible value if required by the slot
+    /// m`). is shrunken to the maximum possible value if required by the slot
     /// geometry, see [`OpenTrapezoidSlot::bottom_radius`].
     #[cfg_attr(
         feature = "serde",
@@ -1204,8 +1204,8 @@ pub struct OpenTrapezoidWithBottomAngleBuilder {
     )]
     pub bottom_radius: Length,
     /// Radius of the fillet between the bottom slope and the slot sides. Must
-    /// not be negative (`bottom_side_radius >= 0 m`). Is shrunk to the maximum
-    /// possible value if required by the slot geometry, see
+    /// not be negative (`bottom_side_radius >= 0 m`). is shrunken to the
+    /// maximum possible value if required by the slot geometry, see
     /// [`OpenTrapezoidSlot::bottom_side_radius`].
     #[cfg_attr(
         feature = "serde",
@@ -1280,7 +1280,7 @@ parameters shown in the drawing below. See the field docstrings for the valid
 value ranges.
 
 Even with all parameters being inside the value ranges, some parameter
-combinations might still result in invalid slot outlines, in which case the
+combinations might still result in intersecting slot outlines, in which case the
 conversion attempt will return an
 [`Error::OutlineIntersection`](crate::error::Error::OutlineIntersection).
  */
@@ -1352,7 +1352,7 @@ pub struct OpenTrapezoidFromToothWidthRotBuilder {
     /// Yoke radius of the magnetic core. If smaller than
     /// [`OpenTrapezoidFromToothWidthRotBuilder::air_gap_radius`], the slots are
     /// created for an inner core, otherwise for an outer core. Must be positive
-    /// (`air_gap_radius > 0 m`).
+    /// (`yoke_radius > 0 m`).
     #[cfg_attr(
         feature = "serde",
         serde(
@@ -1410,7 +1410,7 @@ pub struct OpenTrapezoidFromToothWidthRotBuilder {
     pub opening_height: Length,
     /// Radius of the fillet between the slot bottom and bottom slope (if one
     /// exists) or the slot sides. Must not be negative (`bottom_radius >= 0
-    /// m`). Is shrunk to the maximum possible value if required by the slot
+    /// m`). is shrunken to the maximum possible value if required by the slot
     /// geometry, see [`OpenTrapezoidSlot::bottom_radius`].
     #[cfg_attr(
         feature = "serde",
@@ -1421,8 +1421,8 @@ pub struct OpenTrapezoidFromToothWidthRotBuilder {
     )]
     pub bottom_radius: Length,
     /// Radius of the fillet between the bottom slope and the slot sides. Must
-    /// not be negative (`bottom_side_radius >= 0 m`). Is shrunk to the maximum
-    /// possible value if required by the slot geometry, see
+    /// not be negative (`bottom_side_radius >= 0 m`). is shrunken to the
+    /// maximum possible value if required by the slot geometry, see
     /// [`OpenTrapezoidSlot::bottom_side_radius`].
     #[cfg_attr(
         feature = "serde",
