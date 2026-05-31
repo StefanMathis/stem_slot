@@ -52,7 +52,7 @@ pub mod prelude {
     /*!
     This module reexports all slot types defined in this crate, the
     [`Slot`] trait, the [`BottomAngle`] and [`TopAngle`] enums as well as the
-    [`stem_material::prelude`](https://docs.rs/stem_material/0.3.4/stem_material/prelude/index.html)
+    [`stem_material::prelude`](https://docs.rs/stem_material/latest/stem_material/prelude/index.html)
     module.
      */
 
