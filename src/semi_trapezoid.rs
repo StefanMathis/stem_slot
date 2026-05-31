@@ -475,9 +475,11 @@ to [`SemiTrapezoidSlot::new`].
 This struct can be (fallibly) converted into an [`SemiTrapezoidSlot`] via its
 [`TryFrom`] / [`TryInto`] implementation. It is composed from some of the
 parameters shown in the drawing below. See the field docstrings for the valid
-value ranges. Even with all parameters being inside the value ranges, some
-parameter combinations might still result in invalid slot outlines, in which
-case this function will return an
+value ranges.
+
+Even with all parameters being inside the value ranges, some parameter
+combinations might still result in invalid slot outlines, in which case the
+conversion attempt will return an
 [`Error::OutlineIntersection`](crate::error::Error::OutlineIntersection).
  */
 #[doc = ""]
@@ -755,12 +757,10 @@ impl TryFrom<SemiTrapezoidBuilder> for SemiTrapezoidSlot {
 
         let is_open = builder.opening_width.get::<meter>() > 0.0;
 
-        // Vertex 1
         if is_open {
             points.push([builder.opening_width.get::<meter>() / 2.0, 0.0]);
         }
 
-        // Vertex 2
         points.push([
             builder.opening_width.get::<meter>() / 2.0,
             builder.opening_height.get::<meter>(),
@@ -769,14 +769,12 @@ impl TryFrom<SemiTrapezoidBuilder> for SemiTrapezoidSlot {
             radii.push(builder.opening_radius.get::<meter>());
         }
 
-        // Vertex 3
         points.push([
             builder.top_width.get::<meter>() / 2.0,
             builder.opening_height.get::<meter>(),
         ]);
         radii.push(builder.top_radius.get::<meter>());
 
-        // Vertex 4
         if approx::ulps_ne!(
             params.top_side_width.get::<meter>(),
             builder.top_width.get::<meter>(),
@@ -790,7 +788,6 @@ impl TryFrom<SemiTrapezoidBuilder> for SemiTrapezoidSlot {
             radii.push(builder.top_side_radius.get::<meter>());
         }
 
-        // Vertex 5
         if params.bottom_side_width > builder.bottom_width {
             points.push([
                 params.bottom_side_width.get::<meter>() / 2.0,
@@ -799,43 +796,45 @@ impl TryFrom<SemiTrapezoidBuilder> for SemiTrapezoidSlot {
             radii.push(builder.bottom_side_radius.get::<meter>());
         }
 
-        // Vertex 6
         points.push([
             builder.bottom_width.get::<meter>() / 2.0,
             builder.height.get::<meter>(),
         ]);
         radii.push(builder.bottom_radius.get::<meter>());
 
-        // Mirror the points along the y-axis
-        let n_points_half = points.len();
-        for i in 0..n_points_half {
-            let i_rev = n_points_half - i - 1;
-            let pt = points[i_rev];
-            points.push([-pt[0], pt[1]]);
+        points.push([0.0, builder.height.get::<meter>()]);
+
+        let mut right_outline_half = Polysegment::from_fillet_chain(&points, &radii);
+
+        // Remove the bottom line segment, it will be recreated when connecting
+        // the two halfes
+        if bottom_width.get::<meter>() > 0.0 {
+            right_outline_half.pop_back();
         }
 
-        let n_radii_half = radii.len();
-        for i in 0..n_radii_half {
-            let i_rev = n_radii_half - i - 1;
-            radii.push(radii[i_rev]);
-        }
+        let mut left_outline_half = right_outline_half.clone();
+        left_outline_half.reverse();
+        left_outline_half.line_reflection([0.0, 0.0], [0.0, 1.0]);
+        right_outline_half.append(&mut left_outline_half);
 
         let outline = if is_open {
-            let outline = Polysegment::from_fillet_chain(&points, &radii);
-
             // Assert that the outline does not intersect itself
-            if let Some(intersection) = outline
-                .intersections_polysegment_par(&outline, DEFAULT_EPSILON, DEFAULT_MAX_ULPS)
+            if let Some(intersection) = right_outline_half
+                .intersections_polysegment_par(
+                    &right_outline_half,
+                    DEFAULT_EPSILON,
+                    DEFAULT_MAX_ULPS,
+                )
                 .find_map_any(|v| Some(v))
             {
                 return Err(crate::error::Error::OutlineIntersection {
                     intersection,
-                    outline,
+                    outline: right_outline_half,
                 });
             }
-            outline
+            right_outline_half
         } else {
-            let contour = Contour::new(Polysegment::from_fillet_chain(&points, &radii));
+            let contour = Contour::new(right_outline_half);
 
             // Assert that the contour does not intersect itself
             if let Some(intersection) = contour
@@ -894,9 +893,11 @@ A builder struct for an [`SemiTrapezoidSlot`] without slopes.
 This struct can be (fallibly) converted into an [`SemiTrapezoidSlot`] via its
 [`TryFrom`] / [`TryInto`] implementation. It is composed from some of the
 parameters shown in the drawing below. See the field docstrings for the valid
-value ranges. Even with all parameters being inside the value ranges, some
-parameter combinations might still result in invalid slot outlines, in which
-case this function will return an
+value ranges.
+
+Even with all parameters being inside the value ranges, some parameter
+combinations might still result in invalid slot outlines, in which case the
+conversion attempt will return an
 [`Error::OutlineIntersection`](crate::error::Error::OutlineIntersection).
  */
 #[doc = ""]
@@ -1064,9 +1065,11 @@ A builder struct for an [`SemiTrapezoidSlot`] where the top height is specified.
 This struct can be (fallibly) converted into an [`SemiTrapezoidSlot`] via its
 [`TryFrom`] / [`TryInto`] implementation. It is composed from some of the
 parameters shown in the drawing below. See the field docstrings for the valid
-value ranges. Even with all parameters being inside the value ranges, some
-parameter combinations might still result in invalid slot outlines, in which
-case this function will return an
+value ranges.
+
+Even with all parameters being inside the value ranges, some parameter
+combinations might still result in invalid slot outlines, in which case the
+conversion attempt will return an
 [`Error::OutlineIntersection`](crate::error::Error::OutlineIntersection).
  */
 #[doc = ""]
@@ -1343,9 +1346,11 @@ specified.
 This struct can be (fallibly) converted into an [`SemiTrapezoidSlot`] via its
 [`TryFrom`] / [`TryInto`] implementation. It is composed from some of the
 parameters shown in the drawing below. See the field docstrings for the valid
-value ranges. Even with all parameters being inside the value ranges, some
-parameter combinations might still result in invalid slot outlines, in which
-case this function will return an
+value ranges.
+
+Even with all parameters being inside the value ranges, some parameter
+combinations might still result in invalid slot outlines, in which case the
+conversion attempt will return an
 [`Error::OutlineIntersection`](crate::error::Error::OutlineIntersection).
  */
 #[doc = ""]
@@ -1622,9 +1627,11 @@ specified.
 This struct can be (fallibly) converted into an [`SemiTrapezoidSlot`] via its
 [`TryFrom`] / [`TryInto`] implementation. It is composed from some of the
 parameters shown in the drawing below. See the field docstrings for the valid
-value ranges. Even with all parameters being inside the value ranges, some
-parameter combinations might still result in invalid slot outlines, in which
-case this function will return an
+value ranges.
+
+Even with all parameters being inside the value ranges, some parameter
+combinations might still result in invalid slot outlines, in which case the
+conversion attempt will return an
 [`Error::OutlineIntersection`](crate::error::Error::OutlineIntersection).
  */
 #[doc = ""]
@@ -1849,9 +1856,11 @@ specified.
 This struct can be (fallibly) converted into an [`SemiTrapezoidSlot`] via its
 [`TryFrom`] / [`TryInto`] implementation. It is composed from some of the
 parameters shown in the drawing below. See the field docstrings for the valid
-value ranges. Even with all parameters being inside the value ranges, some
-parameter combinations might still result in invalid slot outlines, in which
-case this function will return an
+value ranges.
+
+Even with all parameters being inside the value ranges, some parameter
+combinations might still result in invalid slot outlines, in which case the
+conversion attempt will return an
 [`Error::OutlineIntersection`](crate::error::Error::OutlineIntersection).
  */
 #[doc = ""]
@@ -2077,9 +2086,11 @@ tooth width.
 This struct can be (fallibly) converted into an [`SemiTrapezoidSlot`] via its
 [`TryFrom`] / [`TryInto`] implementation. It is composed from some of the
 parameters shown in the drawing below. See the field docstrings for the valid
-value ranges. Even with all parameters being inside the value ranges, some
-parameter combinations might still result in invalid slot outlines, in which
-case this function will return an
+value ranges.
+
+Even with all parameters being inside the value ranges, some parameter
+combinations might still result in invalid slot outlines, in which case the
+conversion attempt will return an
 [`Error::OutlineIntersection`](crate::error::Error::OutlineIntersection).
  */
 #[doc = ""]
@@ -2126,7 +2137,7 @@ let builder = SemiTrapezoidFromToothWidthRotBuilder {
     consider_tooth_tip_leakage: true,
 };
 let slot = SemiTrapezoidSlot::try_from(builder).expect("valid parameters");
-assert_abs_diff_eq!(slot.area().get::<square_millimeter>(), 73.1971, epsilon=1e-3);
+assert_abs_diff_eq!(slot.area().get::<square_millimeter>(), 73.2420, epsilon=1e-3);
 ```
  */
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
@@ -2389,9 +2400,11 @@ tooth width and without slopes.
 This struct can be (fallibly) converted into an [`SemiTrapezoidSlot`] via its
 [`TryFrom`] / [`TryInto`] implementation. It is composed from some of the
 parameters shown in the drawing below. See the field docstrings for the valid
-value ranges. Even with all parameters being inside the value ranges, some
-parameter combinations might still result in invalid slot outlines, in which
-case this function will return an
+value ranges.
+
+Even with all parameters being inside the value ranges, some parameter
+combinations might still result in invalid slot outlines, in which case the
+conversion attempt will return an
 [`Error::OutlineIntersection`](crate::error::Error::OutlineIntersection).
  */
 #[doc = ""]
@@ -2432,7 +2445,7 @@ let builder = SemiTrapezoidFromToothWidthRotWithoutSlopesBuilder {
     consider_tooth_tip_leakage: true,
 };
 let slot = SemiTrapezoidSlot::try_from(builder).expect("valid parameters");
-assert_abs_diff_eq!(slot.area().get::<square_millimeter>(), 73.1971, epsilon=1e-3);
+assert_abs_diff_eq!(slot.area().get::<square_millimeter>(), 73.2420, epsilon=1e-3);
 ```
  */
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]

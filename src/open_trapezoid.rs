@@ -640,9 +640,11 @@ A builder struct for an [`OpenTrapezoidSlot`] without slopes at the slot bottom.
 This struct can be (fallibly) converted into an [`OpenTrapezoidSlot`] via its
 [`TryFrom`] / [`TryInto`] implementation. It is composed from some of the
 parameters shown in the drawing below. See the field docstrings for the valid
-value ranges. Even with all parameters being inside the value ranges, some
-parameter combinations might still result in invalid slot outlines, in which
-case this function will return an
+value ranges.
+
+Even with all parameters being inside the value ranges, some parameter
+combinations might still result in invalid slot outlines, in which case the
+conversion attempt will return an
 [`Error::OutlineIntersection`](crate::error::Error::OutlineIntersection).
  */
 #[doc = ""]
@@ -763,9 +765,11 @@ side height.
 This struct can be (fallibly) converted into an [`OpenTrapezoidSlot`] via its
 [`TryFrom`] / [`TryInto`] implementation. It is composed from some of the
 parameters shown in the drawing below. See the field docstrings for the valid
-value ranges. Even with all parameters being inside the value ranges, some
-parameter combinations might still result in invalid slot outlines, in which
-case this function will return an
+value ranges.
+
+Even with all parameters being inside the value ranges, some parameter
+combinations might still result in invalid slot outlines, in which case the
+conversion attempt will return an
 [`Error::OutlineIntersection`](crate::error::Error::OutlineIntersection).
  */
 #[doc = ""]
@@ -923,9 +927,11 @@ instead of the side height.
 This struct can be (fallibly) converted into an [`OpenTrapezoidSlot`] via its
 [`TryFrom`] / [`TryInto`] implementation. It is composed from some of the
 parameters shown in the drawing below. See the field docstrings for the valid
-value ranges. Even with all parameters being inside the value ranges, some
-parameter combinations might still result in invalid slot outlines, in which
-case this function will return an
+value ranges.
+
+Even with all parameters being inside the value ranges, some parameter
+combinations might still result in invalid slot outlines, in which case the
+conversion attempt will return an
 [`Error::OutlineIntersection`](crate::error::Error::OutlineIntersection).
  */
 #[doc = ""]
@@ -1089,9 +1095,11 @@ the side height.
 This struct can be (fallibly) converted into an [`OpenTrapezoidSlot`] via its
 [`TryFrom`] / [`TryInto`] implementation. It is composed from some of the
 parameters shown in the drawing below. See the field docstrings for the valid
-value ranges. Even with all parameters being inside the value ranges, some
-parameter combinations might still result in invalid slot outlines, in which
-case this function will return an
+value ranges.
+
+Even with all parameters being inside the value ranges, some parameter
+combinations might still result in invalid slot outlines, in which case the
+conversion attempt will return an
 [`Error::OutlineIntersection`](crate::error::Error::OutlineIntersection).
  */
 #[doc = ""]
@@ -1269,9 +1277,11 @@ tooth width.
 This struct can be (fallibly) converted into an [`OpenTrapezoidSlot`] via its
 [`TryFrom`] / [`TryInto`] implementation. It is composed from some of the
 parameters shown in the drawing below. See the field docstrings for the valid
-value ranges. Even with all parameters being inside the value ranges, some
-parameter combinations might still result in invalid slot outlines, in which
-case this function will return an
+value ranges.
+
+Even with all parameters being inside the value ranges, some parameter
+combinations might still result in invalid slot outlines, in which case the
+conversion attempt will return an
 [`Error::OutlineIntersection`](crate::error::Error::OutlineIntersection).
  */
 #[doc = ""]

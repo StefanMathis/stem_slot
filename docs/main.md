@@ -2,34 +2,55 @@
 > Found a bug, missing docs, or have a feature request?  
 > Please open an issue on [GitHub](https://github.com/StefanMathis/stem_slot.git).
 
-TODO: What is a slot and what is its task in an electric motor and in stem?
+Magnetic cores of electric motor often feature "grooves" along the air gap where
+the coils of electric windings are located. These grooves are typically called
+"slots". The image below shows the rotor core of an asynchronous machine with
+long and thin slots meant for a cast squirrel-cage winding:
 
-stem
-(Simulation Toolbox for Electric Motors) framework (see the
-[stem book](https://stefanmathis.github.io/stem_book/)).
+![Magnetic core][magnetic_core.png]
 
-Slot defined by geometry (user input), following info is derived from geometry:
-- Available space for winding
-- Slot fits into a magnet core (collision check)
-- In case of AC currents:
-    - Current displacement
-    - Slot leakage coefficients for resulting inductance
+This crate provides the [`Slot`] trait, which requires the definition of the
+geometric slot extents from the implementor. From that information, it can
+derive various physical properties which influence the operating behaviour of
+an electric motor:
+- Space available for the coils and by extent the ohmic resistance of the
+winding
+- Leakage inductance coefficients for the tooth tip, slot opening, self- and
+mutual inductance etc.
+- Current displacement factors for massive conductors filling the entire slot
+(usually the case for cast squirrel-cage windings).
 
+The [Physical property calculation](#physical-property-calculation) section
+discusses these features in-depth.
 
-Outside of stem, this crate can be used to calculate some properties:
+This crate is part of the stem (Simulation Toolbox for Electric Motors)
+framework, where those properites are used in higher-level crates to calculate
+the operational behaviour of a motor. See the
+[stem book](https://stefanmathis.github.io/stem_book/) for an introduction.
 
-END TODO
+# Predefined slot types
 
-# Effects of alternating currents
+Besides the [`Slot`] trait, this crate also provides a bunch of predefined slot
+types:
+
+![Slot type showcase][slot_types_showcase.svg]
+
+- Rectangular slot: [`RectangularSlot`]
+- Open trapezoid slot: [`OpenTrapezoidSlot`]
+- Semi-closed trapezoid slot: [`SemiTrapezoidSlot`]
+
+These slots are highly customizable, see their respective docstring for details.
+
+# Physical property calculation
 
 When an alternating current flows through the conductors in a slot, it creates
 an alternating magnetic field which influences the operating behaviour of the
 motor. The [`Slot`] trait offers fast analytical calculation routines taken from
-standard literature for electrical machines such as e.g. \[1\] for some of these
-effects. These methods usually assume that the core material surrounding the
-slot is magnetically "superconducting", i.e. made out of ferromagnetic material
-whose magnetic resistance / reluctance can be neglected compared to that of the
-air / conductors.
+standard literature for electrical machines such as e.g. [\[1\]](#1) for some of
+these effects. These methods usually assume that the core material surrounding
+the slot is magnetically "superconducting", i.e. made out of ferromagnetic
+material whose magnetic resistance / reluctance can be neglected compared to
+that of the air / conductors.
 
 ## Slot leakage factors
 
@@ -119,5 +140,6 @@ LibreCAD (<https://librecad.org/>).
 
 # Literature
 
-1. Müller, Germar; Vogt, Karl; Ponick, Bernd: Berechnung elektrischer
+<a id="1">\[1\]</a> 
+Müller, Germar; Vogt, Karl; Ponick, Bernd: Berechnung elektrischer
 Maschinen, 6th edition (2008), Wiley-VCH, Weinheim

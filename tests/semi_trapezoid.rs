@@ -1467,7 +1467,7 @@ fn compare_builders_from_tooth_width() {
         let slot = SemiTrapezoidSlot::try_from(builder).expect("valid parameters");
         approx::assert_abs_diff_eq!(
             slot.area().get::<square_millimeter>(),
-            73.1971,
+            73.2420,
             epsilon = 1e-3
         );
     }
@@ -1488,7 +1488,7 @@ fn compare_builders_from_tooth_width() {
         let slot = SemiTrapezoidSlot::try_from(builder).expect("valid parameters");
         approx::assert_abs_diff_eq!(
             slot.area().get::<square_millimeter>(),
-            73.1971,
+            73.2420,
             epsilon = 1e-3
         );
     }

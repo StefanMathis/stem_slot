@@ -37,7 +37,7 @@ doc-images = ["dep:embed-doc-image"]
 indoc = "1.0"
 serde_yaml = "0.8"
 cairo_viewport = { version = "0.2.5", features = ["image-compare"]}
-stem_slot = { path = ".", features = ["serde", "cairo"] } # Solution from https://stackoverflow.com/questions/68618789/is-it-possible-to-enable-a-rust-feature-only-in-test to enable feature during integration test
+stem_slot = { path = ".", features = ["serde", "cairo"] }
 
 [package.metadata.docs.rs]
 features = ["serde", "cairo", "doc-images"]

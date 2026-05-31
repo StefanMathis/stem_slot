@@ -34,18 +34,18 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let semi_trapezoid_slot_1: SemiTrapezoidSlot = SemiTrapezoidBuilder {
         bottom_width: Length::new::<meter>(5.0),
-        top_width: Length::new::<meter>(8.0),
+        top_width: Length::new::<meter>(6.0),
         opening_width: Length::new::<meter>(2.0),
         height: Length::new::<meter>(16.0),
         side_height: Length::new::<meter>(10.0),
         opening_height: Length::new::<meter>(2.0),
         slot_angle: TAU / 36.0,
         bottom_angle: (0.7 * PI).into(),
-        top_angle: (0.7 * PI).into(),
+        top_angle: (0.8 * PI).into(),
         bottom_radius: Length::new::<meter>(0.5),
         bottom_side_radius: Length::new::<meter>(3.0),
-        top_radius: Length::new::<meter>(1.0),
-        top_side_radius: Length::new::<meter>(3.0),
+        top_radius: Length::new::<meter>(0.5),
+        top_side_radius: Length::new::<meter>(0.5),
         opening_radius: Length::new::<meter>(0.5),
         consider_tooth_tip_leakage: true,
     }
@@ -114,7 +114,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     bb.try_set_ymin(bb.ymin() - 0.1);
     bb.try_set_ymax(bb.ymax() + 3.0);
     bb.try_set_xmin(bb.xmin() - 0.2);
-    bb.try_set_xmax(bb.xmax() + 0.4);
+    bb.try_set_xmax(bb.xmax() + 0.8);
 
     let mut texts: Vec<Text> = Vec::new();
     texts.push(Text::new(
@@ -136,7 +136,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         0.0,
     ));
     texts.push(Text::new(
-        "Semi-open trapezoid".into(),
+        "Semi-closed trapezoid".into(),
         Anchor::Center,
         [0.0, 0.0],
         [2.0 * offset, bb.ymax() - 2.0],
@@ -154,7 +154,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         0.0,
     ));
     texts.push(Text::new(
-        "Semi-open trapezoid".into(),
+        "Semi-closed trapezoid".into(),
         Anchor::Center,
         [0.0, 0.0],
         [3.0 * offset, bb.ymax() - 2.0],
