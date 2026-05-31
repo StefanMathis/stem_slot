@@ -76,11 +76,12 @@ an increased resistance and reduced conductor leakage inductance.
 
 This effect can be modeled by factors for resistance and inductance which are
 multiplied with the DC resistance and inductance to get the effective values
-for the AC current as shown in \[1\], section 5.3.2.
+for the AC current as shown in [\[1\]](#1), section 5.3.2.
 
 # Literature
 
-1. Müller, Germar; Vogt, Karl; Ponick, Bernd: Berechnung elektrischer
+<a id="1">\[1\]</a>
+Müller, Germar; Vogt, Karl; Ponick, Bernd: Berechnung elektrischer
 Maschinen, 6th edition (2008), Wiley-VCH, Weinheim
  */
 #[derive(Clone, Debug)]
@@ -211,7 +212,7 @@ as parallel conductors.
 )]
 /**
 
-By using the formulae in \[1\], section 5.3.2, the (complex) current in the nth
+By using the formulae in [\[1\]](#1), section 5.3.2, the (complex) current in the nth
 conductor / slice can be found to be
 
 ```text
@@ -233,7 +234,7 @@ kr = (sum(R * I²)) / (sum(R) * sum(I)²)
 
 Correspondingly, [`CurrentDisplacementCoefficients::inductance`] is the ratio
 between the sum of the magnetic energy in the slices and the DC magnetic energy.
-See \[1\], section 5.3.2 for details.
+See [\[1\]](#1), section 5.3.2 for details.
 
 As discussed in [`Slot::slices`](crate::slot::Slot::slices), it is evident that
 a higher number of slices offers a more granular calculation and therefore a
@@ -262,7 +263,8 @@ This allows for a comparison between the numeric and the analytic approach:
 /**
 # Literature
 
-1. Müller, Germar; Vogt, Karl; Ponick, Bernd: Berechnung elektrischer
+<a id="1">\[1\]</a>
+Müller, Germar; Vogt, Karl; Ponick, Bernd: Berechnung elektrischer
 Maschinen, 6th edition (2008), Wiley-VCH, Weinheim
  */
 #[derive(Clone, Debug)]

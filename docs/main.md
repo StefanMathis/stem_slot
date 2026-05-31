@@ -140,6 +140,6 @@ LibreCAD (<https://librecad.org/>).
 
 # Literature
 
-<a id="1">\[1\]</a> 
+<a id="1">\[1\]</a>
 Müller, Germar; Vogt, Karl; Ponick, Bernd: Berechnung elektrischer
 Maschinen, 6th edition (2008), Wiley-VCH, Weinheim

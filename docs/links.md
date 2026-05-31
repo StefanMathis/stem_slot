@@ -12,6 +12,7 @@ modify the components. -->
 [`OpenTrapezoidSlot`]: https://docs.rs/stem_slot/{{VERSION}}/stem_slot/open_trapezoid/struct.OpenTrapezoidSlot.html
 [`SemiTrapezoidSlot`]: https://docs.rs/stem_slot/{{VERSION}}/stem_slot/semi_trapezoid/struct.SemiTrapezoidSlot.html
 
+[double_layer_coil_layout.svg]: https://raw.githubusercontent.com/StefanMathis/stem_slot/refs/heads/main/docs/img/double_layer_coil_layout.svg
 [slot_types_showcase.svg]: https://raw.githubusercontent.com/StefanMathis/stem_slot/refs/heads/main/docs/img/slot_types_showcase.svg
 [current_displacement_coeffs_comp.svg]: https://raw.githubusercontent.com/StefanMathis/stem_slot/refs/heads/main/docs/img/current_displacement_coeffs_comp.svg
 [magnetic_core.png]: https://raw.githubusercontent.com/StefanMathis/stem_slot/refs/heads/main/docs/img/magnetic_core.png

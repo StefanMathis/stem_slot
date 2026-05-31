@@ -764,14 +764,14 @@ pub trait Slot: Send + Sync + std::fmt::Debug + DynClone + Any + 'static {
     ```text
     Ls = μ0 * l_ax * w_sp² * lambda_s
     ```
-    according to eq. (3.5.13) in \[1\] with `μ0` being the vacuum permeability,
+    according to eq. (3.5.13) in [\[1\]](#1) with `μ0` being the vacuum permeability,
     `l_ax` being the axial length of the magnetic core which contains the slot
     and `w_sp²` being the number of turns in the layer.
 
     It is assumed that the material of the core is "superconducting" (i.e. its
     permeability is much larger than that of air), which is usually the case for
     ferromagnetic materials. In this case, the self-inductance leakage
-    coefficient `lambda_s` is given by eq. (3.5.12) in \[1\]:
+    coefficient `lambda_s` is given by eq. (3.5.12) in [\[1\]](#1):
 
     ```text
     lambda_s = integral_0^h (A(x)/A)² / s(x) dx
@@ -781,8 +781,8 @@ pub trait Slot: Send + Sync + std::fmt::Debug + DynClone + Any + 'static {
     the slot bottom, `A` being the surface area of the layer, `A(x)` being the
     area below `x` and `s(x)` being the width of the layer at `x`.
 
-    For the full derivation, see section 3.5.2.1 of \[1\]. Section A.1 of \[2\]
-    gives an example for a real slot geometry.
+    For the full derivation, see section 3.5.2.1 of [\[1\]](#1). Section A.1 of
+    [\[2\]](#2) gives an example for a real slot geometry.
 
     Implementation-wise, this function calls
     [`Slot::mutual_inductance_leakage_coefficient`] with both `linked_layer` and
@@ -794,9 +794,12 @@ pub trait Slot: Send + Sync + std::fmt::Debug + DynClone + Any + 'static {
 
     # Literature
 
-    1. Müller, Germar; Vogt, Karl; Ponick, Bernd: Berechnung elektrischer
+    <a id="1">\[1\]</a>
+    Müller, Germar; Vogt, Karl; Ponick, Bernd: Berechnung elektrischer
     Maschinen, 6th edition (2008), Wiley-VCH, Weinheim
-    2. Mathis, Stefan: Permanentmagneterregte Line-Start-Antriebe in
+
+    <a id="2">\[2\]</a>
+    Mathis, Stefan: Permanentmagneterregte Line-Start-Antriebe in
     Ferrittechnik, Shaker-Verlag, Düren
 
     # Examples
@@ -842,10 +845,10 @@ pub trait Slot: Send + Sync + std::fmt::Debug + DynClone + Any + 'static {
     Lo = μ0 * l_ax * w_l * w_e * lambda_o
     ```
 
-    according to eq (3.5.22b) in \[1\] with `μ0` being the vacuum permeability,
-    `l_ax` being the axial length of the magnetic core which contains the slot,
-    `w_l` being the number of turns of the `linked_layer` and `w_e` being the
-    number of turns of the `excitation_layer`. If
+    according to eq (3.5.22b) in [\[1\]](#1) with `μ0` being the vacuum
+    permeability, `l_ax` being the axial length of the magnetic core which
+    contains the slot, `w_l` being the number of turns of the `linked_layer` and
+    `w_e` being the number of turns of the `excitation_layer`. If
     `linked_layer == excitation_layer`, this expression simplifies to the
     equation shown in the docstring of
     [`Slot::self_inductance_leakage_coefficient`].
@@ -867,7 +870,7 @@ pub trait Slot: Send + Sync + std::fmt::Debug + DynClone + Any + 'static {
 
     From these equations, it is obvious to see that the vertical positioning of
     the layers relative to each other plays a huge role, as shown in the
-    examples. See section 3.5.2.2 of \[1\] for more.
+    examples. See section 3.5.2.2 of [\[1\]](#1) for more.
 
     # Panics
     Panics if `linked_layer` or `excitation_layer` is not smaller than the
@@ -875,7 +878,8 @@ pub trait Slot: Send + Sync + std::fmt::Debug + DynClone + Any + 'static {
 
     # Literature
 
-    1. Müller, Germar; Vogt, Karl; Ponick, Bernd: Berechnung elektrischer
+    <a id="1">\[1\]</a>
+    Müller, Germar; Vogt, Karl; Ponick, Bernd: Berechnung elektrischer
     Maschinen, 6th edition (2008), Wiley-VCH, Weinheim
 
     # Examples
@@ -1158,15 +1162,16 @@ pub trait Slot: Send + Sync + std::fmt::Debug + DynClone + Any + 'static {
     ///
     /// The default implementation of the method assumes that the slot opening
     /// is parallel-sided. In that case, the coefficient becomes the quotient
-    /// `opening_height / opening_width`, see eq. (3.7.1f) in \[1\]. Even if the
-    /// slot opening is not parallel sided, it is usually sufficient to
+    /// `opening_height / opening_width`, see eq. (3.7.1f) in [\[1\]](#1). Even
+    /// if the slot opening is not parallel sided, it is usually sufficient to
     /// approximate it as such by using a mean value for the opening width (see
-    /// \[1\], p. 325). In case the slot is closed, this method simply returns
-    /// zero.
+    /// [\[1\]](#1), p. 325). In case the slot is closed, this method simply
+    /// returns zero.
     ///
     /// # Literature
     ///
-    /// 1. Müller, Germar; Vogt, Karl; Ponick, Bernd: Berechnung
+    /// <a id="1">\[1\]</a>
+    /// Müller, Germar; Vogt, Karl; Ponick, Bernd: Berechnung
     /// elektrischer Maschinen, 6th edition (2008), Wiley-VCH, Weinheim
     ///
     /// # Examples
@@ -1208,7 +1213,7 @@ pub trait Slot: Send + Sync + std::fmt::Debug + DynClone + Any + 'static {
     /// [`CurrentDisplacementCoefficients`](crate::current_displacement::CurrentDisplacementCoefficients)
     /// for the slot geometry of `self`. The slot surface is separated into
     /// multiple/ rectangular [`slices`](Slot::slices) and the coefficients are
-    /// calculated piece-wise, see \[1\], section 5.3.
+    /// calculated piece-wise, see [\[1\]](#1), section 5.3.
     ///
     /// The minimum number of slices is specified by `min_num_slices`, see the
     /// docstring of [`Slot::slices`]. Generally speaking, the higher this
@@ -1236,9 +1241,10 @@ pub trait Slot: Send + Sync + std::fmt::Debug + DynClone + Any + 'static {
         `cargo doc --features 'doc-images'` and Rust version >= 1.54."
     )]
     ///
-    /// # Literatur
+    /// # Literature
     ///
-    /// 1. Müller, Germar; Vogt, Karl; Ponick, Bernd: Berechnung elektrischer
+    /// <a id="1">\[1\]</a>
+    /// Müller, Germar; Vogt, Karl; Ponick, Bernd: Berechnung elektrischer
     /// Maschinen, 6th edition (2008), Wiley-VCH, Weinheim (section 5.3)
     ///
     /// # Examples
@@ -1544,7 +1550,7 @@ lazy_static::lazy_static! {
 /// For a general introduction to the tooth tip leakage coefficient, see the
 /// docstring of [`Slot::leakage_coefficient_tooth_tip`]. This function serves
 /// as the default implementation of the method and uses the graph 3.7.2 of
-/// \[1\].
+/// [\[1\]](#1).
 ///
 /// The image below shows the coefficient as a function of the
 /// ratio `opening_width / magnetic_air_gap`.
@@ -1577,7 +1583,8 @@ lazy_static::lazy_static! {
 ///
 /// # Literature
 ///
-/// 1. Müller, Germar; Vogt, Karl; Ponick, Bernd: Berechnung elektrischer
+/// <a id="1">\[1\]</a>
+/// Müller, Germar; Vogt, Karl; Ponick, Bernd: Berechnung elektrischer
 /// Maschinen, 6th edition (2008), Wiley-VCH, Weinheim (section 3.7.1)
 ///
 /// # Examples
