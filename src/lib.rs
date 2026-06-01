@@ -67,5 +67,7 @@ pub mod prelude {
 
     // Prevent rustdoc from documenting the stem_material dependency
     #[doc(hidden)]
+    pub use stem_material;
+    #[doc(hidden)]
     pub use stem_material::prelude::*;
 }
