@@ -16,9 +16,6 @@ fn non_conform_slices() -> Result<(), Box<dyn std::error::Error>> {
     // Manually draw two "illegal" slot geometries which require a custom impl
     // of Slot::slices.
 
-    let mut style = Style::default();
-    style.background_color = stem_slot::ORANGE;
-
     let non_symmetric: Contour = Polysegment::from_points(&[
         [1.0, 0.0],
         [1.0, -1.0],
@@ -74,8 +71,8 @@ fn non_conform_slices() -> Result<(), Box<dyn std::error::Error>> {
         cr.set_source_rgb(1.0, 1.0, 1.0);
         cr.paint()?;
 
-        non_symmetric.draw(&style, cr)?;
-        non_concave.draw(&style, cr)?;
+        non_symmetric.draw(&stem_slot::SLOT_STYLE, cr)?;
+        non_concave.draw(&stem_slot::SLOT_STYLE, cr)?;
 
         non_symmetric_text.draw(cr)?;
         non_concave_text.draw(cr)?;
@@ -111,9 +108,6 @@ fn slices_comp() -> Result<(), Box<dyn std::error::Error>> {
     }
     .try_into()?;
 
-    let mut style = Style::default();
-    style.background_color = stem_slot::ORANGE;
-
     // Drawables of the regular slot
     let mut drawables = slot.drawables(&CoilLayout::Single, true);
 
@@ -122,14 +116,14 @@ fn slices_comp() -> Result<(), Box<dyn std::error::Error>> {
     let bbs = slot.slices(10);
     drawables.extend(bbs.into_iter().map(|mut bb| {
         bb.translate([offset, 0.0]);
-        DrawableCow::new(Contour::from(bb), style.clone())
+        DrawableCow::new(Contour::from(bb), stem_slot::SLOT_STYLE.clone())
     }));
 
     // Slices b
     let bbs = slot.slices(20);
     drawables.extend(bbs.into_iter().map(|mut bb| {
         bb.translate([2.0 * offset, 0.0]);
-        DrawableCow::new(Contour::from(bb), style.clone())
+        DrawableCow::new(Contour::from(bb), stem_slot::SLOT_STYLE.clone())
     }));
 
     // Mirror the drawables

@@ -22,6 +22,9 @@ use std::borrow::Cow;
 use std::f64::consts::{FRAC_PI_2, TAU};
 use stem_material::prelude::*;
 
+#[cfg(feature = "cairo")]
+use crate::SLOT_STYLE;
+
 #[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
 
@@ -732,8 +735,8 @@ pub trait Slot: Send + Sync + std::fmt::Debug + DynClone + Any + 'static {
     /**
     Returns the contours of the winding layers as drawable objects.
 
-    This is a wrapper around [`Slot::layer_contours`] which adds a [`Style`]
-    with an [orange background](crate::ORANGE) to the [`Contour`]s.
+    This is a wrapper around [`Slot::layer_contours`] which adds the
+    [`SLOT_STYLE`] to the [`Contour`]s.
     The docstring of [`Slot::slices`] contain examples for this drawing style.
      */
     #[cfg(feature = "cairo")]
@@ -742,13 +745,10 @@ pub trait Slot: Send + Sync + std::fmt::Debug + DynClone + Any + 'static {
         coil_layout: &CoilLayout,
         include_slot_opening: bool,
     ) -> Vec<DrawableCow<'_>> {
-        let mut style = Style::default();
-        style.background_color = crate::ORANGE;
-
         return self
             .layer_contours(coil_layout, include_slot_opening)
             .into_iter()
-            .map(|c| DrawableCow::new(c, style.clone()))
+            .map(|c| DrawableCow::new(c, SLOT_STYLE.clone()))
             .collect();
     }
 

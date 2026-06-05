@@ -1,6 +1,6 @@
 [package]
 name = "stem_slot"
-version = "0.1.1"
+version = "0.1.2"
 edition = "2024"
 description = "Slot definition for stem - a Simulation Toolbox for Electric Motors."
 readme = "README.md"
@@ -14,7 +14,7 @@ approx = { package = "approxim", version = "0.6" }
 compare_variables = { version = "0.3.0", features = ["proc_macro"] }
 gauss-quad = "0.1.8"
 akima_spline = "0.1.7"
-planar_geo = { version = "0.4.6", features = ["cairo"] }
+planar_geo = { version = "0.4.7", features = ["cairo"] }
 stem_material = "0.3.4"
 cart_lin = "0.2.1"
 num = "0.4.0"

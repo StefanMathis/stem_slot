@@ -30,6 +30,8 @@ pub mod open_trapezoid;
 pub mod rectangular;
 pub mod semi_trapezoid;
 pub mod slot;
+pub use planar_geo;
+pub use stem_material;
 
 /**
 Standard [`Color`](planar_geo::draw::Color) for drawing slots.
@@ -48,6 +50,23 @@ pub const ORANGE: planar_geo::draw::Color = planar_geo::draw::Color {
     a: 1.0,
 };
 
+/// Default style for a slot contour.
+#[cfg(feature = "cairo")]
+pub const SLOT_STYLE: planar_geo::draw::Style = planar_geo::draw::Style {
+    line_color: planar_geo::draw::Color {
+        r: 0.0,
+        g: 0.0,
+        b: 0.0,
+        a: 1.0,
+    },
+    background_color: ORANGE,
+    line_width: 0.5,
+    line_style: planar_geo::draw::LineStyle::Solid,
+    line_cap: planar_geo::draw::LineCap::Round,
+    line_join: planar_geo::draw::LineJoin::Miter,
+    text: None,
+};
+
 pub mod prelude {
     /*!
     This module reexports all slot types defined in this crate, the
@@ -64,10 +83,10 @@ pub mod prelude {
     pub use crate::rectangular::RectangularSlot;
     pub use crate::semi_trapezoid::SemiTrapezoidSlot;
     pub use crate::slot::{BottomAngle, Slot, TopAngle};
+    pub use planar_geo;
+    pub use stem_material;
 
     // Prevent rustdoc from documenting the stem_material dependency
-    #[doc(hidden)]
-    pub use stem_material;
     #[doc(hidden)]
     pub use stem_material::prelude::*;
 }
