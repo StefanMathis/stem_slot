@@ -1,6 +1,6 @@
 use cairo_viewport::{SideLength, Viewport};
 use planar_geo::{
-    draw::{Drawable, DrawableCow, Style},
+    draw::{Drawable, DrawableCow},
     prelude::*,
 };
 use std::{f64::consts::PI, path::PathBuf};
