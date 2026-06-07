@@ -116,7 +116,7 @@ impl CoilLayout {
     assert_eq!(CoilLayout::MultiVertical(5).layers(), 5);
     ```
      */
-    pub fn layers(&self) -> u16 {
+    pub const fn layers(&self) -> u16 {
         return match self {
             CoilLayout::Single => 1,
             CoilLayout::DoubleVertical => 2,
