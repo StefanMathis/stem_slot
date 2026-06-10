@@ -67,14 +67,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let offset = 15.0;
 
     let mut drawables: Vec<Drawable> = rectangular_slot
-        .drawables(&CoilLayout::Single, true)
+        .drawables(&CoilLayout::SingleFilled)
         .into_iter()
         .map(From::from)
         .collect();
 
     drawables.extend(
         open_trapezoid_slot
-            .drawables(&CoilLayout::Single, true)
+            .drawables(&CoilLayout::SingleFilled)
             .into_iter()
             .map(|d| {
                 let mut d = Drawable::from(d);
@@ -85,7 +85,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     drawables.extend(
         semi_trapezoid_slot_1
-            .drawables(&CoilLayout::Single, true)
+            .drawables(&CoilLayout::SingleFilled)
             .into_iter()
             .map(|d| {
                 let mut d = Drawable::from(d);
@@ -96,7 +96,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     drawables.extend(
         semi_trapezoid_slot_2
-            .drawables(&CoilLayout::Single, true)
+            .drawables(&CoilLayout::SingleFilled)
             .into_iter()
             .map(|d| {
                 let mut d = Drawable::from(d);

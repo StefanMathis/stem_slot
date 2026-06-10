@@ -104,7 +104,7 @@ assert_abs_diff_eq!(coeffs_toco[(1, 1)], 0.3188, epsilon=1e-3);
 
 ## Current displacement coefficients
 
-If an conductor fills the entire slot (usually the case for squirrel-cage
+If a conductor fills the entire slot (usually the case for squirrel-cage
 windings), the current distribution along the conductor cross section becomes
 uneven due to the self-inductance, resulting in an effective higher resistance
 and lower inductance. The [`Slot::current_displacement_coefficients`] method

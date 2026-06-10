@@ -76,6 +76,10 @@ start and end points of its [`outline`](Slot::outline) must therefore be on
 the x-axis as well. If the slot is closed, its start and end point must be
 identical and must have a positive y-value. All segments of the outline must
 have positive y-values as well.
+- The slot outline must not intersect itself.
+- The slot outline is defined in counter-clockwise fashion: starting on the
+right side of the y-axis and ending on its left side as shown in the image
+above.
 - If the slot is open, the distance between the start and end points of the
 outline is the [`Slot::opening_width`].
 - The total y-extent of the slot is the [`Slot::height`].
@@ -313,7 +317,7 @@ pub trait Slot: Send + Sync + std::fmt::Debug + DynClone + Any + 'static {
 
     This method "cuts off" the slot opening from [`Slot::outline`] and therefore
     returns only the part of the slot outline which touches the "winding area",
-    i.e. the space where the conductors / coils are located.
+    i.e. the space where the conductors / coils are located.[^note]
 
     # Examples
 
@@ -336,6 +340,9 @@ pub trait Slot: Send + Sync + std::fmt::Debug + DynClone + Any + 'static {
     let outline_winding_area = slot.outline_winding_area();
     assert_abs_diff_eq!(outline_winding_area.bounding_box().height(), 0.018);
     ```
+
+    [^note]: For [`CoilLayout`]s where [`CoilLayout::includes_slot_opening`] is
+    true, conductors are also inside the slot opening!
      */
     fn outline_winding_area(&self) -> Polysegment {
         if !self.is_open() {
@@ -473,14 +480,11 @@ pub trait Slot: Send + Sync + std::fmt::Debug + DynClone + Any + 'static {
 
     /// Returns the contours for all layers defined by the `coil_layout`.
     ///
-    /// This method derives the contour of the entire slot from
-    /// [`Slot::outline`] if `include_slot_opening` is true, otherwise from
-    /// [`Slot::outline_winding_area`]. This contour is then separated into
-    /// multiple sections (one per layer), which are returned in the order of
+    /// This method separates the winding area of the slot into multiple
+    /// sections (one per layer), which are returned in the order of
     /// the layers: `slot.layer_contours(...)[0]` corresponds to layer 0,
     /// `slot.layer_contours(...)[1]` corresponds to layer 1 and so on. The
-    /// following image shows this separation using a [`CoilLayout::Quadruple`]
-    /// with `include_slot_opening = true`:
+    /// following image shows this separation using a [`CoilLayout::Quadruple`]:
     #[doc = ""]
     #[cfg_attr(feature = "doc-images", doc = "![Layer contours][layer_contours]")]
     #[cfg_attr(
@@ -493,10 +497,9 @@ pub trait Slot: Send + Sync + std::fmt::Debug + DynClone + Any + 'static {
         `cargo doc --features 'doc-images'` and Rust version >= 1.54."
     )]
     ///
-    /// If `coil_layout` is a [`CoilLayout::Single`], this method basically just
-    /// converts the [`Polysegment`] from [`Slot::outline`] or
-    /// [`Slot::outline_winding_area`] to a [`Contour`] and wraps it in a
-    /// [`Vec`].
+    /// A special case is [`CoilLayout::SingleFilled`]: Since its winding area
+    /// consists of the entire slot, this method basically just converts the
+    /// [`Polysegment`] from [`Slot::outline`] and wraps it in a [`Vec`].
     #[cfg_attr(feature = "cairo", doc = "")]
     #[cfg_attr(
         feature = "cairo",
@@ -525,23 +528,21 @@ pub trait Slot: Send + Sync + std::fmt::Debug + DynClone + Any + 'static {
     /// .try_into()
     /// .expect("valid inputs");
     ///
-    /// let contours = slot.layer_contours(&CoilLayout::Quadruple, true);
+    /// let contours = slot.layer_contours(&CoilLayout::Quadruple);
     /// assert_eq!(contours.len(), 4);
     /// assert_abs_diff_eq!(&contours[0].area(), &contours[3].area());
     /// assert_abs_diff_eq!(&contours[1].area(), &contours[2].area());
     /// ```
-    fn layer_contours(&self, coil_layout: &CoilLayout, include_slot_opening: bool) -> Vec<Contour> {
-        let contour = if include_slot_opening {
-            self.outline().into_owned().into()
-        } else {
-            self.outline_winding_area().into()
-        };
-
+    fn layer_contours(&self, coil_layout: &CoilLayout) -> Vec<Contour> {
         match coil_layout {
             CoilLayout::Single => {
-                return vec![contour];
+                return vec![self.outline_winding_area().into()];
+            }
+            CoilLayout::SingleFilled => {
+                return vec![self.outline().into_owned().into()];
             }
             CoilLayout::DoubleHorizontal => {
+                let contour: Contour = self.outline_winding_area().into();
                 let bb = contour.bounding_box();
 
                 let verts_par = [[0.0, bb.ymin() - 1.0], [0.0, bb.ymax() + 1.0]];
@@ -567,6 +568,7 @@ pub trait Slot: Send + Sync + std::fmt::Debug + DynClone + Any + 'static {
             }
 
             CoilLayout::DoubleVertical => {
+                let contour: Contour = self.outline_winding_area().into();
                 let bb = contour.bounding_box();
 
                 // Separate the vertices along the y-coordinate of the contour centroid
@@ -595,6 +597,8 @@ pub trait Slot: Send + Sync + std::fmt::Debug + DynClone + Any + 'static {
                 }
             }
             CoilLayout::Quadruple => {
+                let contour: Contour = self.outline_winding_area().into();
+
                 // ==========================================================================
                 // Split the path both horizontally and vertically
 
@@ -679,6 +683,7 @@ pub trait Slot: Send + Sync + std::fmt::Debug + DynClone + Any + 'static {
                 return contours;
             }
             CoilLayout::MultiVertical(layers) => {
+                let contour: Contour = self.outline_winding_area().into();
                 let layers = layers.clone();
                 let mut contours: Vec<Contour> = Vec::with_capacity(layers as usize);
                 let mut shape_contour = contour;
@@ -686,11 +691,7 @@ pub trait Slot: Send + Sync + std::fmt::Debug + DynClone + Any + 'static {
                 if layers > 1 {
                     let bb = shape_contour.bounding_box();
                     let slot_height = bb.height();
-                    let offset = if include_slot_opening {
-                        0.0
-                    } else {
-                        self.opening_height().get::<meter>()
-                    };
+                    let offset = self.opening_height().get::<meter>();
                     let x_start = 2.0 * bb.xmin();
                     let x_stop = 2.0 * bb.xmax();
 
@@ -740,13 +741,9 @@ pub trait Slot: Send + Sync + std::fmt::Debug + DynClone + Any + 'static {
     The docstring of [`Slot::slices`] contain examples for this drawing style.
      */
     #[cfg(feature = "cairo")]
-    fn drawables(
-        &self,
-        coil_layout: &CoilLayout,
-        include_slot_opening: bool,
-    ) -> Vec<DrawableCow<'_>> {
+    fn drawables(&self, coil_layout: &CoilLayout) -> Vec<DrawableCow<'_>> {
         return self
-            .layer_contours(coil_layout, include_slot_opening)
+            .layer_contours(coil_layout)
             .into_iter()
             .map(|c| DrawableCow::new(c, SLOT_STYLE.clone()))
             .collect();
@@ -945,21 +942,26 @@ pub trait Slot: Send + Sync + std::fmt::Debug + DynClone + Any + 'static {
             }
         };
 
-        let layer_contour = &self.layer_contours(&coil_layout, false)[layer as usize];
-        let slot_contour_no_opening = Contour::from(self.outline_winding_area());
-        let slot_bounds_no_opening = slot_contour_no_opening.bounding_box();
+        let layer_contour = &self.layer_contours(&coil_layout)[layer as usize];
+        let winding_area_contour: Contour = if coil_layout.includes_slot_opening() {
+            self.outline().into_owned()
+        } else {
+            self.outline_winding_area()
+        }
+        .into();
+        let winding_area_bounds = winding_area_contour.bounding_box();
 
         return inductance_leakage_coefficient(
             self,
-            &slot_contour_no_opening,
-            &slot_bounds_no_opening,
+            &winding_area_contour,
+            &winding_area_bounds,
             layer_contour,
             &layer_bounds(
                 self,
                 layer,
                 coil_layout,
-                slot_contour_no_opening.centroid(),
-                &slot_bounds_no_opening,
+                winding_area_contour.centroid(),
+                &winding_area_bounds,
                 1.0,
                 0.0,
             ),
@@ -1033,9 +1035,14 @@ pub trait Slot: Send + Sync + std::fmt::Debug + DynClone + Any + 'static {
         /*
         Precalculate some shared values
         */
-        let slot_contour_no_opening = Contour::from(self.outline_winding_area());
-        let slot_bounds_no_opening = slot_contour_no_opening.bounding_box();
-        let slot_body_centroid = slot_contour_no_opening.centroid();
+        let winding_area_contour: Contour = if coil_layout.includes_slot_opening() {
+            self.outline().into_owned()
+        } else {
+            self.outline_winding_area()
+        }
+        .into();
+        let winding_area_bounds = winding_area_contour.bounding_box();
+        let winding_area_centroid = winding_area_contour.centroid();
 
         let all_layer_bounds: Vec<BoundingBox> = (0..layers)
             .into_par_iter()
@@ -1044,15 +1051,15 @@ pub trait Slot: Send + Sync + std::fmt::Debug + DynClone + Any + 'static {
                     self,
                     layer as u16,
                     coil_layout,
-                    slot_body_centroid,
-                    &slot_bounds_no_opening,
+                    winding_area_centroid,
+                    &winding_area_bounds,
                     1.0,
                     0.0,
                 );
             })
             .collect();
 
-        let all_layer_contours = self.layer_contours(coil_layout, false);
+        let all_layer_contours = self.layer_contours(coil_layout);
         let all_layer_area: Vec<f64> = all_layer_contours.par_iter().map(Contour::area).collect();
 
         matrix
@@ -1074,8 +1081,8 @@ pub trait Slot: Send + Sync + std::fmt::Debug + DynClone + Any + 'static {
 
                 *coefficient = inductance_leakage_coefficient(
                     self,
-                    &slot_contour_no_opening,
-                    &slot_bounds_no_opening,
+                    &winding_area_contour,
+                    &winding_area_bounds,
                     &all_layer_contours[layer_index],
                     &all_layer_bounds[layer_index],
                     all_layer_area[layer_index],
@@ -2222,6 +2229,14 @@ fn layer_bounds<S: Slot + ?Sized>(
                 slot.height().get::<meter>(),
             );
         }
+        CoilLayout::SingleFilled => {
+            return BoundingBox::new(
+                slot_bounds_no_opening.xmin() - x_offset,
+                slot_bounds_no_opening.xmax() + x_offset,
+                0.0,
+                slot.height().get::<meter>(),
+            );
+        }
         CoilLayout::DoubleVertical => {
             if layer == 0 {
                 // First layer is at the slot bottom => See documentation of CoilLayout
@@ -2326,8 +2341,8 @@ fn layer_bounds<S: Slot + ?Sized>(
 /// Internal function which is not meant to be called directly.
 fn inductance_leakage_coefficient<S: Slot + ?Sized>(
     slot: &S,
-    slot_contour: &Contour,
-    slot_bounds: &BoundingBox,
+    winding_area_contour: &Contour,
+    winding_area_bounds: &BoundingBox,
     linked_layer_contour: &Contour,
     linked_layer_bounds: &BoundingBox,
     linked_layer_area: f64,
@@ -2339,8 +2354,8 @@ fn inductance_leakage_coefficient<S: Slot + ?Sized>(
         let width = width(
             slot,
             Length::new::<meter>(vertical_coord),
-            slot_contour,
-            slot_bounds,
+            winding_area_contour,
+            winding_area_bounds,
         );
         if width.get::<meter>() <= 0.0 {
             return 0.0;
@@ -2366,8 +2381,8 @@ fn inductance_leakage_coefficient<S: Slot + ?Sized>(
         let width = width(
             slot,
             Length::new::<meter>(vertical_coord),
-            slot_contour,
-            slot_bounds,
+            winding_area_contour,
+            winding_area_bounds,
         );
         if width.get::<meter>() <= 0.0 {
             return 0.0;
@@ -2387,8 +2402,8 @@ fn inductance_leakage_coefficient<S: Slot + ?Sized>(
         let width = width(
             slot,
             Length::new::<meter>(vertical_coord),
-            slot_contour,
-            slot_bounds,
+            winding_area_contour,
+            winding_area_bounds,
         );
         if width.get::<meter>() <= 0.0 {
             return 0.0;
@@ -2398,7 +2413,7 @@ fn inductance_leakage_coefficient<S: Slot + ?Sized>(
     };
 
     // Initialize the quadrature rule
-    let quad = gauss_quad::GaussLegendre::init(16); // polynomial degree 16 was determined empirically
+    let quad = gauss_quad::GaussLegendre::new(16.try_into().expect("is not zero")); // polynomial degree 16 was determined empirically
 
     /*
     The parts of the integration function are separated to avoid numerical errors.

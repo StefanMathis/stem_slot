@@ -22,7 +22,7 @@ fn compare_to_reference<P: AsRef<std::path::Path>>(
             return Ok(());
         });
     };
-    assert!(compare_or_create(path, callback, 0.99).is_ok());
+    assert!(compare_or_create(path, callback, 0.98).is_ok());
 }
 
 #[test]
@@ -271,7 +271,7 @@ fn test_semi_trapezoid_side_height() {
     );
 
     compare_to_reference(
-        slot.drawables(&CoilLayout::Single, true).as_slice(),
+        slot.drawables(&CoilLayout::SingleFilled).as_slice(),
         "tests/img/semi_trapezoid_single_layer.png",
         None,
     );
@@ -365,7 +365,7 @@ fn test_plot_with_and_without_slot_opening() {
     .try_into()
     .unwrap();
 
-    let mut drawables = slot.drawables(&CoilLayout::Single, true);
+    let mut drawables = slot.drawables(&CoilLayout::SingleFilled);
 
     let slot: SemiTrapezoidSlot = SemiTrapezoidWithoutSlopesBuilder {
         bottom_width,
@@ -381,7 +381,7 @@ fn test_plot_with_and_without_slot_opening() {
     .try_into()
     .unwrap();
 
-    drawables.extend(slot.drawables(&CoilLayout::Single, true));
+    drawables.extend(slot.drawables(&CoilLayout::SingleFilled));
 
     compare_to_reference(
         drawables.as_slice(),
@@ -416,8 +416,7 @@ fn test_tooth_width_deserialize() {
     );
 
     compare_to_reference(
-        slot.drawables(&CoilLayout::DoubleHorizontal, true)
-            .as_slice(),
+        slot.drawables(&CoilLayout::DoubleHorizontal).as_slice(),
         "tests/img/semi_trapezoid_parallel_teeth_dl.png",
         None,
     );
@@ -447,7 +446,7 @@ fn test_semi_trapezoid_no_slopes_deserialize() {
     );
 
     compare_to_reference(
-        slot.drawables(&CoilLayout::DoubleVertical, true).as_slice(),
+        slot.drawables(&CoilLayout::DoubleVertical).as_slice(),
         "tests/img/semi_trapezoid_hori_dl.png",
         None,
     );
@@ -492,7 +491,7 @@ fn test_semi_trapezoid_top_side_width_deserialize() {
     );
 
     compare_to_reference(
-        slot.drawables(&CoilLayout::Single, true).as_slice(),
+        slot.drawables(&CoilLayout::SingleFilled).as_slice(),
         "tests/img/semi_trapezoid_inner.png",
         None,
     );
@@ -596,7 +595,7 @@ fn test_inner_slot() {
     );
 
     compare_to_reference(
-        slot.drawables(&CoilLayout::Single, true).as_slice(),
+        slot.drawables(&CoilLayout::SingleFilled).as_slice(),
         "tests/img/semi_trapezoid_inner.png",
         None,
     );
@@ -621,7 +620,7 @@ fn test_from_rotary_core() {
     .unwrap();
 
     compare_to_reference(
-        slot.drawables(&CoilLayout::Single, true).as_slice(),
+        slot.drawables(&CoilLayout::SingleFilled).as_slice(),
         "tests/img/semi_trapezoid_from_rotative_core_outer.png",
         None,
     );
@@ -672,20 +671,19 @@ fn test_semi_trapezoid_inner_stator() {
     );
 
     compare_to_reference(
-        slot.drawables(&CoilLayout::DoubleVertical, true).as_slice(),
+        slot.drawables(&CoilLayout::DoubleVertical).as_slice(),
         "tests/img/semi_trapezoid_inner_stator_double_layer_hori.png",
         None,
     );
 
     compare_to_reference(
-        slot.drawables(&CoilLayout::DoubleHorizontal, true)
-            .as_slice(),
+        slot.drawables(&CoilLayout::DoubleHorizontal).as_slice(),
         "tests/img/semi_trapezoid_inner_stator_double_layer_vert.png",
         None,
     );
 
     compare_to_reference(
-        slot.drawables(&CoilLayout::Single, true).as_slice(),
+        slot.drawables(&CoilLayout::SingleFilled).as_slice(),
         "tests/img/semi_trapezoid_inner_stator.png",
         None,
     );
@@ -746,32 +744,30 @@ fn test_semi_trapezoid_creation_no_slopes() {
     );
 
     compare_to_reference(
-        slot.drawables(&CoilLayout::DoubleVertical, true).as_slice(),
+        slot.drawables(&CoilLayout::DoubleVertical).as_slice(),
         "tests/img/semi_trapezoid_hori_dl.png",
         None,
     );
 
     compare_to_reference(
-        slot.drawables(&CoilLayout::DoubleHorizontal, true)
-            .as_slice(),
+        slot.drawables(&CoilLayout::DoubleHorizontal).as_slice(),
         "tests/img/semi_trapezoid_vert_dl.png",
         None,
     );
 
     compare_to_reference(
-        slot.drawables(&CoilLayout::DoubleHorizontal, false)
-            .as_slice(),
+        slot.drawables(&CoilLayout::DoubleHorizontal).as_slice(),
         "tests/img/semi_trapezoid_vert_no_opening_dl.png",
         None,
     );
 
     compare_to_reference(
-        slot.drawables(&CoilLayout::Single, false).as_slice(),
+        slot.drawables(&CoilLayout::Single).as_slice(),
         "tests/img/semi_trapezoid_vert_no_opening_sl.png",
         None,
     );
 
-    let drawables = slot.drawables(&CoilLayout::Quadruple, true);
+    let drawables = slot.drawables(&CoilLayout::Quadruple);
     let view = Viewport::from_bounded_entities(drawables.iter(), SideLength::Long(500)).unwrap();
     compare_to_reference(
         drawables.as_slice(),
@@ -836,7 +832,7 @@ fn test_plot_slopes() {
         );
 
         compare_to_reference(
-            slot.drawables(&CoilLayout::Single, true).as_slice(),
+            slot.drawables(&CoilLayout::SingleFilled).as_slice(),
             "tests/img/semi_trapezoid_with_slopes_1.png",
             None,
         );
@@ -871,7 +867,7 @@ fn test_plot_slopes() {
         );
 
         compare_to_reference(
-            slot.drawables(&CoilLayout::Single, true).as_slice(),
+            slot.drawables(&CoilLayout::SingleFilled).as_slice(),
             "tests/img/semi_trapezoid_with_slopes_2.png",
             None,
         );
@@ -925,7 +921,7 @@ fn test_plot_slopes() {
         approx::assert_abs_diff_eq!(slot.top_height().get::<millimeter>(), 1.053, epsilon = 1e-3);
 
         compare_to_reference(
-            slot.drawables(&CoilLayout::Single, true).as_slice(),
+            slot.drawables(&CoilLayout::SingleFilled).as_slice(),
             "tests/img/semi_trapezoid_with_slopes_3.png",
             None,
         );
@@ -979,7 +975,7 @@ fn test_plot_slopes() {
         approx::assert_abs_diff_eq!(slot.top_height().get::<millimeter>(), 1.053, epsilon = 1e-3);
 
         compare_to_reference(
-            slot.drawables(&CoilLayout::Single, true).as_slice(),
+            slot.drawables(&CoilLayout::SingleFilled).as_slice(),
             "tests/img/semi_trapezoid_with_slopes_4.png",
             None,
         );

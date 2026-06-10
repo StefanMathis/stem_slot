@@ -11,6 +11,8 @@ modify the components. -->
 [`RectangularSlot`]: https://docs.rs/stem_slot/{{VERSION}}/stem_slot/rectangular/struct.RectangularSlot.html
 [`OpenTrapezoidSlot`]: https://docs.rs/stem_slot/{{VERSION}}/stem_slot/open_trapezoid/struct.OpenTrapezoidSlot.html
 [`SemiTrapezoidSlot`]: https://docs.rs/stem_slot/{{VERSION}}/stem_slot/semi_trapezoid/struct.SemiTrapezoidSlot.html
+[`Slot::leakage_coefficient_opening`]: https://docs.rs/stem_slot/{{VERSION}}/stem_slot/slot/trait.Slot.html#method.leakage_coefficient_opening
+[`Slot::current_displacement_coefficients`]: https://docs.rs/stem_slot/{{VERSION}}/stem_slot/slot/trait.Slot.html#method.current_displacement_coefficients
 
 [double_layer_coil_layout.svg]: https://raw.githubusercontent.com/StefanMathis/stem_slot/refs/heads/main/docs/img/double_layer_coil_layout.svg
 [slot_types_showcase.svg]: https://raw.githubusercontent.com/StefanMathis/stem_slot/refs/heads/main/docs/img/slot_types_showcase.svg

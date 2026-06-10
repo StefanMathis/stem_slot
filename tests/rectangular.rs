@@ -66,13 +66,13 @@ fn test_plot() {
             RectangularSlot::new(width, opening_width, height, opening_height, true).unwrap();
 
         compare_to_reference(
-            slot.drawables(&CoilLayout::Single, true).as_slice(),
+            slot.drawables(&CoilLayout::SingleFilled).as_slice(),
             "tests/img/rectangular_w_opening.png",
             None,
         );
 
         compare_to_reference(
-            slot.drawables(&CoilLayout::Single, false).as_slice(),
+            slot.drawables(&CoilLayout::Single).as_slice(),
             "tests/img/rectangular_wo_opening.png",
             None,
         );
@@ -86,13 +86,13 @@ fn test_plot() {
             RectangularSlot::new(width, opening_width, height, opening_height, true).unwrap();
 
         compare_to_reference(
-            slot.drawables(&CoilLayout::Single, true).as_slice(),
+            slot.drawables(&CoilLayout::SingleFilled).as_slice(),
             "tests/img/rectangular_wo_opening.png",
             None,
         );
 
         compare_to_reference(
-            slot.drawables(&CoilLayout::Single, false).as_slice(),
+            slot.drawables(&CoilLayout::Single).as_slice(),
             "tests/img/rectangular_wo_opening.png",
             None,
         );

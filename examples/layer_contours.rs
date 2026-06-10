@@ -18,7 +18,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     .try_into()
     .unwrap();
 
-    let mut entire_slot = slot.drawables(&CoilLayout::Single, true)[0].clone();
+    let mut entire_slot = slot.drawables(&CoilLayout::SingleFilled)[0].clone();
     entire_slot.style.background_color.a = 0.4;
     let mut drawables = vec![
         entire_slot.clone(),
@@ -26,7 +26,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         entire_slot.clone(),
         entire_slot.clone(),
     ];
-    drawables.extend(slot.drawables(&CoilLayout::Quadruple, true));
+    drawables.extend(slot.drawables(&CoilLayout::Quadruple));
 
     // Mirror the drawables
     let offset = 0.015;

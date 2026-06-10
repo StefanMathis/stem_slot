@@ -22,7 +22,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let radius = 0.001;
 
     let hori: Vec<Drawable> = slot
-        .drawables(&CoilLayout::DoubleHorizontal, false)
+        .drawables(&CoilLayout::DoubleHorizontal)
         .into_iter()
         .map(Drawable::from)
         .map(|mut d| {
@@ -32,7 +32,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .collect();
 
     let vert: Vec<Drawable> = slot
-        .drawables(&CoilLayout::DoubleVertical, false)
+        .drawables(&CoilLayout::DoubleVertical)
         .into_iter()
         .map(Drawable::from)
         .map(|mut d| {

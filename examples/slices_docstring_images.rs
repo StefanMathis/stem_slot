@@ -109,7 +109,7 @@ fn slices_comp() -> Result<(), Box<dyn std::error::Error>> {
     .try_into()?;
 
     // Drawables of the regular slot
-    let mut drawables = slot.drawables(&CoilLayout::Single, true);
+    let mut drawables = slot.drawables(&CoilLayout::SingleFilled);
 
     // Slices a
     let offset = 0.015;

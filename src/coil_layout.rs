@@ -68,9 +68,15 @@ inductance for motors.
 pub enum CoilLayout {
     /**
     A variant representing single-layer windings. The single coil / layer fills
-    the slot completely.
+    the entire winding area of the slot (but not the slot opening).
      */
     Single,
+    /**
+    A variant representing single-layer windings, usually casted squirrel-cage
+    windings. The single coil / layer fills the slot completely (including the
+    slot opening)
+     */
+    SingleFilled,
     /**
     A variant representing double layer windings (e.g. distributed windings).
     The coil in the first layer is placed at the slot bottom, the one in the
@@ -110,6 +116,7 @@ impl CoilLayout {
     use stem_slot::coil_layout::CoilLayout;
 
     assert_eq!(CoilLayout::Single.layers(), 1);
+    assert_eq!(CoilLayout::SingleFilled.layers(), 1);
     assert_eq!(CoilLayout::DoubleVertical.layers(), 2);
     assert_eq!(CoilLayout::DoubleHorizontal.layers(), 2);
     assert_eq!(CoilLayout::Quadruple.layers(), 4);
@@ -119,6 +126,7 @@ impl CoilLayout {
     pub const fn layers(&self) -> u16 {
         return match self {
             CoilLayout::Single => 1,
+            CoilLayout::SingleFilled => 1,
             CoilLayout::DoubleVertical => 2,
             CoilLayout::DoubleHorizontal => 2,
             CoilLayout::Quadruple => 4,
@@ -202,16 +210,17 @@ impl CoilLayout {
     ```
      */
     pub fn ordering_vertical(&self, first_layer: u16, second_layer: u16) -> Ordering {
-        if first_layer == second_layer {
-            return Ordering::Equal; // Holds true for all coil layouts
-        }
         assert!(first_layer < self.layers());
         assert!(second_layer < self.layers());
         match self {
-            CoilLayout::Single => unreachable!(), // Caught by first_layer == second_layer
+            CoilLayout::Single => return Ordering::Equal,
+            CoilLayout::SingleFilled => return Ordering::Equal,
             CoilLayout::DoubleVertical => return first_layer.cmp(&second_layer),
             CoilLayout::DoubleHorizontal => return Ordering::Equal,
             CoilLayout::Quadruple => {
+                if first_layer == second_layer {
+                    return Ordering::Equal;
+                }
                 if first_layer == QUADRUPLE_LAYER_BOTTOM_LEFT
                     || first_layer == QUADRUPLE_LAYER_BOTTOM_RIGHT
                 {
@@ -233,6 +242,33 @@ impl CoilLayout {
                 }
             }
             CoilLayout::MultiVertical(_) => return first_layer.cmp(&second_layer),
+        }
+    }
+
+    /**
+    Returns true if this [`CoilLayout`] variant uses the slot opening as space
+    for conductors and false otherwise.
+
+    # Examples
+
+    ```
+    use stem_slot::coil_layout::CoilLayout;
+
+    // True for these coil layouts:
+    assert!(CoilLayout::SingleFilled.includes_slot_opening());
+
+    // False for all of these:
+    assert!(!CoilLayout::Single.includes_slot_opening());
+    assert!(!CoilLayout::DoubleHorizontal.includes_slot_opening());
+    assert!(!CoilLayout::DoubleVertical.includes_slot_opening());
+    assert!(!CoilLayout::Quadruple.includes_slot_opening());
+    assert!(!CoilLayout::MultiVertical(5).includes_slot_opening());
+    ```
+     */
+    pub fn includes_slot_opening(&self) -> bool {
+        match self {
+            CoilLayout::SingleFilled => true,
+            _ => false,
         }
     }
 }
