@@ -242,6 +242,80 @@ pub trait Slot: Send + Sync + std::fmt::Debug + DynClone + Any + 'static {
         return Length::new::<meter>(bb.height());
     }
 
+    /// Returns the slot width at the given height `h`.
+    ///
+    /// This function basically puts a horizontal line segment between both
+    /// sides of the slot outline at the height `h` and returns its length.
+    /// Therefore, it is the `s(x)` function in the leakage coefficient formulae
+    /// of [`Slot::self_inductance_leakage_coefficient`] and
+    /// [`Slot::mutual_inductance_leakage_coefficient`].
+    ///
+    /// The image below shows how the output changes based on the height.
+    #[doc = ""]
+    #[cfg_attr(
+        feature = "doc-images",
+        doc = "![Slot width at given heights][cad_width_at]"
+    )]
+    #[cfg_attr(
+        feature = "doc-images",
+        embed_doc_image::embed_doc_image("cad_width_at", "docs/img/cad_width_at.svg")
+    )]
+    #[cfg_attr(
+        not(feature = "doc-images"),
+        doc = "**Doc images not enabled**. Compile docs with
+        `cargo doc --features 'doc-images'` and Rust version >= 1.54."
+    )]
+    ///
+    /// # Examples
+    ///
+    /// This example uses the slot shown above as well as `h1`, `h2` and `h3`:
+    ///
+    /// ```
+    /// use std::f64::consts::FRAC_PI_2;
+    ///
+    /// use stem_slot::prelude::*;
+    /// use stem_slot::semi_trapezoid::SemiTrapezoidWithBottomHeightBuilder;
+    ///
+    /// // Slot shown in the image
+    /// let slot_angle = 2.0 * (FRAC_PI_2 - (16.0f64).atan2(4.0));
+    /// let slot: SemiTrapezoidSlot = SemiTrapezoidWithBottomHeightBuilder {
+    ///     bottom_width: Length::new::<millimeter>(16.0),
+    ///     top_width: Length::new::<millimeter>(16.0),
+    ///     opening_width: Length::new::<millimeter>(8.0),
+    ///     height: Length::new::<millimeter>(27.0),
+    ///     bottom_height: Length::new::<millimeter>(7.0),
+    ///     opening_height: Length::new::<millimeter>(4.0),
+    ///     slot_angle,
+    ///     bottom_angle: BottomAngle::FromWidthAndHeight {
+    ///         bottom_width: Length::new::<millimeter>(16.0),
+    ///         bottom_side_width: Length::new::<millimeter>(24.0),
+    ///         bottom_height: Length::new::<millimeter>(7.0),
+    ///         slot_angle,
+    ///     },
+    ///     top_angle: TopAngle::new_no_slope(slot_angle),
+    ///     bottom_radius: Length::new::<millimeter>(0.0),
+    ///     bottom_side_radius: Length::new::<millimeter>(0.0),
+    ///     top_radius: Length::new::<millimeter>(0.0),
+    ///     top_side_radius: Length::new::<millimeter>(0.0),
+    ///    opening_radius: Length::new::<millimeter>(0.0),
+    ///     consider_tooth_tip_leakage: true,
+    /// }
+    /// .try_into()
+    /// .unwrap();
+    ///
+    /// let h1 = Length::new::<millimeter>(2.0);
+    /// approx::assert_abs_diff_eq!(8.0, slot.width_at(h1).get::<millimeter>(), epsilon = 1e-6);
+    ///
+    /// let h2 = Length::new::<millimeter>(12.0);
+    /// approx::assert_abs_diff_eq!(20.0, slot.width_at(h2).get::<millimeter>(), epsilon = 1e-6);
+    ///
+    /// let h3 = Length::new::<millimeter>(20.0);
+    /// approx::assert_abs_diff_eq!(24.0, slot.width_at(h3).get::<millimeter>(), epsilon = 1e-6);
+    /// ```
+    fn width_at(&self, h: Length) -> Length {
+        width_at(h, &self.outline())
+    }
+
     /**
     Returns if the slot is open.
 
@@ -776,7 +850,8 @@ pub trait Slot: Send + Sync + std::fmt::Debug + DynClone + Any + 'static {
 
     with `h` being the slot height, `x` being a vertical coordinate starting at
     the slot bottom, `A` being the surface area of the layer, `A(x)` being the
-    area below `x` and `s(x)` being the width of the layer at `x`.
+    area below `x` and `s(x)` being the width of the layer at `x` (see
+    [`Slot::width_at`]).
 
     For the full derivation, see section 3.5.2.1 of [\[1\]](#1). Section A.1 of
     [\[2\]](#2) gives an example for a real slot geometry.
@@ -863,7 +938,7 @@ pub trait Slot: Send + Sync + std::fmt::Debug + DynClone + Any + 'static {
     the slot bottom, `x0` being the lowest point of the `linked_layer` measured
     in the `x`-coordinate system, `A_l/e` being the surface area of the linked
     / excitation layer, `A_l/e(x)` being the respective area below `x` and
-    `s(x)` being the width of the layer at `x`.
+    `s(x)` being the width of the layer at `x` (see [`Slot::width_at`]).
 
     From these equations, it is obvious to see that the vertical positioning of
     the layers relative to each other plays a huge role, as shown in the
@@ -954,7 +1029,6 @@ pub trait Slot: Send + Sync + std::fmt::Debug + DynClone + Any + 'static {
         return inductance_leakage_coefficient(
             self,
             &winding_area_contour,
-            &winding_area_bounds,
             layer_contour,
             &layer_bounds(
                 self,
@@ -1082,7 +1156,6 @@ pub trait Slot: Send + Sync + std::fmt::Debug + DynClone + Any + 'static {
                 *coefficient = inductance_leakage_coefficient(
                     self,
                     &winding_area_contour,
-                    &winding_area_bounds,
                     &all_layer_contours[layer_index],
                     &all_layer_bounds[layer_index],
                     all_layer_area[layer_index],
@@ -2171,44 +2244,21 @@ impl CurrentDisplacementCalculator {
 /// This is `s(x)` in the formulae given in
 /// [`Slot::self_inductance_leakage_coefficient`] and
 /// [`Slot::mutual_inductance_leakage_coefficient`]
-fn width<S: Slot + ?Sized>(
-    slot: &S,
-    vertical_slot_coord: Length,
-    contour: &Contour,
-    slot_bounds: &BoundingBox,
-) -> Length {
-    // Case x = 0: width equals slot opening
-    if vertical_slot_coord == Length::new::<meter>(0.0) {
-        return slot.opening_width();
-    }
+fn width_at(h: Length, polysegment: &Polysegment) -> Length {
+    let parallel_line = Line::from_point_angle([0.0, h.get::<meter>()], 0.0);
+    let (min, max) = polysegment
+        .intersections_primitive_par(&parallel_line, DEFAULT_EPSILON, DEFAULT_MAX_ULPS)
+        .map(|i| (i.point[0], i.point[0]))
+        .reduce(
+            || (f64::MAX, f64::MIN),
+            |(min1, max1), (min2, max2)| (min1.min(min2), max1.max(max2)),
+        );
 
-    let vertices = vec![
-        [2.0 * slot_bounds.xmin(), vertical_slot_coord.get::<meter>()],
-        [2.0 * slot_bounds.xmax(), vertical_slot_coord.get::<meter>()],
-    ];
-    let parallel_line = Polysegment::from_points(&vertices);
-    let intersections =
-        contour.intersections_par(&parallel_line, DEFAULT_EPSILON, DEFAULT_MAX_ULPS);
-
-    // One or no intersection -> Secant length is zero
-    if intersections.len() < 2 {
+    if min == f64::MAX || max == f64::MIN {
         return Length::new::<meter>(0.0);
-    } else {
-        // Identify the intersections with the largest positive or negative x-value
-        let mut inter_pos = intersections[0];
-        let mut inter_neg = intersections[0];
-
-        for intersection in intersections.iter().skip(1) {
-            if intersection.point[0] > inter_pos.point[0] {
-                inter_pos = *intersection;
-            }
-            if intersection.point[0] < inter_neg.point[0] {
-                inter_neg = *intersection;
-            }
-        }
-
-        return Length::new::<meter>(inter_pos.point[0] - inter_neg.point[0]);
     }
+
+    return Length::new::<meter>(max - min);
 }
 
 fn layer_bounds<S: Slot + ?Sized>(
@@ -2342,7 +2392,6 @@ fn layer_bounds<S: Slot + ?Sized>(
 fn inductance_leakage_coefficient<S: Slot + ?Sized>(
     slot: &S,
     winding_area_contour: &Contour,
-    winding_area_bounds: &BoundingBox,
     linked_layer_contour: &Contour,
     linked_layer_bounds: &BoundingBox,
     linked_layer_area: f64,
@@ -2351,11 +2400,9 @@ fn inductance_leakage_coefficient<S: Slot + ?Sized>(
     // Theta(x) is a squared function of the area ratio (we are located on the
     // height of both linked and excitation layer)
     let integrand_exc_squared = |vertical_coord: f64| {
-        let width = width(
-            slot,
+        let width = width_at(
             Length::new::<meter>(vertical_coord),
-            winding_area_contour,
-            winding_area_bounds,
+            winding_area_contour.polysegment(),
         );
         if width.get::<meter>() <= 0.0 {
             return 0.0;
@@ -2378,11 +2425,9 @@ fn inductance_leakage_coefficient<S: Slot + ?Sized>(
     // Theta(x) is linear rising (we are located in the excitation layer, the linked
     // layer is above or below)
     let integrand_exc_lin = |vertical_coord: f64| {
-        let width = width(
-            slot,
+        let width = width_at(
             Length::new::<meter>(vertical_coord),
-            winding_area_contour,
-            winding_area_bounds,
+            winding_area_contour.polysegment(),
         );
         if width.get::<meter>() <= 0.0 {
             return 0.0;
@@ -2399,11 +2444,9 @@ fn inductance_leakage_coefficient<S: Slot + ?Sized>(
 
     // Theta(x) is constant (we are located above the excitation layer)
     let integrand_exc_const = |vertical_coord: f64| {
-        let width = width(
-            slot,
+        let width = width_at(
             Length::new::<meter>(vertical_coord),
-            winding_area_contour,
-            winding_area_bounds,
+            winding_area_contour.polysegment(),
         );
         if width.get::<meter>() <= 0.0 {
             return 0.0;
@@ -2412,8 +2455,9 @@ fn inductance_leakage_coefficient<S: Slot + ?Sized>(
         return 1.0 / width.get::<meter>();
     };
 
-    // Initialize the quadrature rule
-    let quad = gauss_quad::GaussLegendre::new(16.try_into().expect("is not zero")); // polynomial degree 16 was determined empirically
+    // Initialize the quadrature rule, polynomial degree 16 was determined
+    // empirically
+    let quad = gauss_quad::GaussLegendre::new(16.try_into().expect("is not zero"));
 
     /*
     The parts of the integration function are separated to avoid numerical errors.
@@ -2458,25 +2502,25 @@ Panics if the given coil index is larger than the total number of coils in the
 coil layout.
 */
 fn lower_part_of_layer_area(
-    vertical_slot_coord: f64,
+    y: f64,
     layer_contour: &Contour,
     layer_bounds: &BoundingBox,
     contour_area: f64,
 ) -> f64 {
-    if vertical_slot_coord >= layer_bounds.ymax() {
+    if y >= layer_bounds.ymax() {
         // Vertical coordinate is below the contour layer => area is zero
         return 0.0;
     }
-    if vertical_slot_coord <= layer_bounds.ymin() {
+    if y <= layer_bounds.ymin() {
         // Vertical coordinate is above the contour layer => area is that of the contour
         return contour_area;
     }
 
-    // The lower coordinate of the bounding box to must be vertical_slot_coord
+    // The lower coordinate of the bounding box to must be y
     let lb_adjusted = BoundingBox::new(
         layer_bounds.xmin(),
         layer_bounds.xmax(),
-        vertical_slot_coord,
+        y,
         layer_bounds.ymax(),
     );
     let clb = Contour::from(lb_adjusted.clone());

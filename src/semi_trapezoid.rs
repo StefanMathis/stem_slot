@@ -1548,8 +1548,8 @@ impl TryFrom<SemiTrapezoidWithBottomHeightBuilder> for SemiTrapezoidSlot {
             + 2.0 * builder.bottom_height * (builder.bottom_angle.value() - FRAC_PI_2).tan();
 
         let side_height = if ulps_eq!(
-            -builder.top_angle.value(),
-            FRAC_PI_2 - builder.slot_angle / 2.0
+            (PI - builder.top_angle.value()).rem_euclid(TAU),
+            (FRAC_PI_2 - builder.slot_angle / 2.0).rem_euclid(TAU)
         ) {
             builder.height - builder.bottom_height - builder.opening_height
         } else {
@@ -1558,7 +1558,7 @@ impl TryFrom<SemiTrapezoidWithBottomHeightBuilder> for SemiTrapezoidSlot {
                     0.5 * builder.top_width.get::<meter>(),
                     builder.opening_height.get::<meter>(),
                 ],
-                -builder.top_angle.value(),
+                PI - builder.top_angle.value(),
             );
             let l2 = Line::from_point_angle(
                 [

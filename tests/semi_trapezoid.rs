@@ -142,6 +142,72 @@ fn test_properties() {
 }
 
 #[test]
+fn test_width_at() {
+    let slot_angle = 2.0 * (FRAC_PI_2 - (16.0f64).atan2(4.0));
+    let slot: SemiTrapezoidSlot = SemiTrapezoidWithBottomHeightBuilder {
+        bottom_width: Length::new::<millimeter>(16.0),
+        top_width: Length::new::<millimeter>(16.0),
+        opening_width: Length::new::<millimeter>(8.0),
+        height: Length::new::<millimeter>(27.0),
+        bottom_height: Length::new::<millimeter>(7.0),
+        opening_height: Length::new::<millimeter>(4.0),
+        slot_angle,
+        bottom_angle: BottomAngle::FromWidthAndHeight {
+            bottom_width: Length::new::<millimeter>(16.0),
+            bottom_side_width: Length::new::<millimeter>(24.0),
+            bottom_height: Length::new::<millimeter>(7.0),
+            slot_angle,
+        },
+        top_angle: TopAngle::new_no_slope(slot_angle),
+        bottom_radius: Length::new::<millimeter>(0.0),
+        bottom_side_radius: Length::new::<millimeter>(0.0),
+        top_radius: Length::new::<millimeter>(0.0),
+        top_side_radius: Length::new::<millimeter>(0.0),
+        opening_radius: Length::new::<millimeter>(0.0),
+        consider_tooth_tip_leakage: true,
+    }
+    .try_into()
+    .unwrap();
+
+    approx::assert_abs_diff_eq!(
+        0.0,
+        slot.width_at(Length::new::<millimeter>(30.0))
+            .get::<millimeter>(),
+        epsilon = 1e-6
+    );
+    approx::assert_abs_diff_eq!(
+        0.0,
+        slot.width_at(Length::new::<millimeter>(-30.0))
+            .get::<millimeter>(),
+        epsilon = 1e-6
+    );
+    approx::assert_abs_diff_eq!(
+        8.0,
+        slot.width_at(Length::new::<millimeter>(0.0))
+            .get::<millimeter>(),
+        epsilon = 1e-6
+    );
+    approx::assert_abs_diff_eq!(
+        8.0,
+        slot.width_at(Length::new::<millimeter>(2.0))
+            .get::<millimeter>(),
+        epsilon = 1e-6
+    );
+    approx::assert_abs_diff_eq!(
+        20.0,
+        slot.width_at(Length::new::<millimeter>(12.0))
+            .get::<millimeter>(),
+        epsilon = 1e-6
+    );
+    approx::assert_abs_diff_eq!(
+        24.0,
+        slot.width_at(Length::new::<millimeter>(20.0))
+            .get::<millimeter>(),
+        epsilon = 1e-6
+    );
+}
+
+#[test]
 fn test_current_displacement_coefficients() {
     let frequency = Frequency::new::<hertz>(100.0);
     let el_conductivity = ElectricalConductivity::new::<siemens_per_meter>(37.0 * 1e6); // electrical conductivity of aluminium is about 37*1e6 S / m
