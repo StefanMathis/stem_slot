@@ -457,6 +457,42 @@ fn test_plot_with_and_without_slot_opening() {
 }
 
 #[test]
+fn test_serialize_and_deserialize() {
+    let bottom_radius = Length::new::<millimeter>(0.5);
+    let slot_angle = PI / 18.0;
+    let bottom_width =
+        Length::new::<millimeter>(8.21) + 2.0 * bottom_radius * (1.0 + (slot_angle / 2.0).sin());
+
+    let slot: SemiTrapezoidSlot = SemiTrapezoidBuilder {
+        bottom_width,
+        top_width: bottom_width - 2.0 * Length::new::<millimeter>(17.0) * (slot_angle / 2.0).sin(),
+        opening_width: Length::new::<millimeter>(2.0),
+        height: Length::new::<millimeter>(17.75),
+        side_height: Length::new::<millimeter>(17.0),
+        opening_height: Length::new::<millimeter>(0.75),
+        slot_angle,
+        bottom_angle: BottomAngle::new_no_slope(slot_angle),
+        top_angle: TopAngle::new_no_slope(slot_angle),
+        bottom_radius,
+        bottom_side_radius: Length::new::<millimeter>(0.0),
+        top_radius: Length::new::<millimeter>(1.0),
+        top_side_radius: Length::new::<millimeter>(0.0),
+        opening_radius: Length::new::<millimeter>(0.0),
+        consider_tooth_tip_leakage: true,
+    }
+    .try_into()
+    .unwrap();
+    let serialized = serde_yaml::to_string(&slot).expect("can be serialized");
+    let slot_de: SemiTrapezoidSlot =
+        serde_yaml::from_str(&serialized).expect("can be deserialized");
+    approx::assert_abs_diff_eq!(
+        slot.area().get::<square_millimeter>(),
+        slot_de.area().get::<square_millimeter>(),
+        epsilon = DEFAULT_EPSILON
+    );
+}
+
+#[test]
 fn test_tooth_width_deserialize() {
     // Read from the database
     let yaml = indoc! {"

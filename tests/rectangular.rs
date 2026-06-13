@@ -449,6 +449,22 @@ fn test_leakage_coefficient_matrix() {
 }
 
 #[test]
+fn test_serialize_and_deserialize() {
+    let opening_height = Length::new::<millimeter>(1.0);
+    let opening_width = Length::new::<millimeter>(3.0);
+    let width = Length::new::<millimeter>(3.0);
+    let height = Length::new::<millimeter>(20.0);
+    let slot = RectangularSlot::new(width, opening_width, height, opening_height, true).unwrap();
+    let serialized = serde_yaml::to_string(&slot).expect("can be serialized");
+    let slot_de: RectangularSlot = serde_yaml::from_str(&serialized).expect("can be deserialized");
+    approx::assert_abs_diff_eq!(
+        slot.area().get::<square_millimeter>(),
+        slot_de.area().get::<square_millimeter>(),
+        epsilon = DEFAULT_EPSILON
+    );
+}
+
+#[test]
 fn test_deserialize() {
     let yaml = indoc! {"
         width: 1.0 mm
