@@ -55,6 +55,50 @@ fn test_shrunk_fillet_radii() {
 }
 
 #[test]
+fn test_width_and_height() {
+    {
+        let builder = OpenTrapezoidWidthsAndHeightsBuilder {
+            bottom_width: Length::new::<millimeter>(9.0),
+            bottom_side_width: Length::new::<millimeter>(10.0),
+            opening_width: Length::new::<millimeter>(7.0),
+            bottom_height: Length::new::<millimeter>(0.0),
+            side_height: Length::new::<millimeter>(17.0),
+            opening_height: Length::new::<millimeter>(0.75),
+            bottom_radius: Length::new::<millimeter>(2.0),
+            bottom_side_radius: Length::new::<millimeter>(0.0),
+            consider_tooth_tip_leakage: true,
+        };
+        let slot = OpenTrapezoidSlot::try_from(builder).expect("valid parameters");
+        approx::assert_abs_diff_eq!(
+            slot.area().get::<square_millimeter>(),
+            140.045,
+            epsilon = 1e-3
+        );
+        approx::assert_abs_diff_eq!(slot.slot_angle(), 0.1125570725, epsilon = 1e-8);
+    }
+    {
+        let builder = OpenTrapezoidWidthsAndHeightsBuilder {
+            bottom_width: Length::new::<millimeter>(9.0),
+            bottom_side_width: Length::new::<millimeter>(20.0),
+            opening_width: Length::new::<millimeter>(7.0),
+            bottom_height: Length::new::<millimeter>(0.0),
+            side_height: Length::new::<millimeter>(17.0),
+            opening_height: Length::new::<millimeter>(0.75),
+            bottom_radius: Length::new::<millimeter>(2.0),
+            bottom_side_radius: Length::new::<millimeter>(0.0),
+            consider_tooth_tip_leakage: true,
+        };
+        let slot = OpenTrapezoidSlot::try_from(builder).expect("valid parameters");
+        approx::assert_abs_diff_eq!(
+            slot.area().get::<square_millimeter>(),
+            140.045,
+            epsilon = 1e-3
+        );
+        approx::assert_abs_diff_eq!(slot.slot_angle(), 0.11255, epsilon = 1e-3);
+    }
+}
+
+#[test]
 fn test_angle_bottom() {
     let builder = OpenTrapezoidWithBottomAngleBuilder {
         opening_width: Length::new::<millimeter>(5.0),
@@ -72,6 +116,7 @@ fn test_angle_bottom() {
     };
     let slot = OpenTrapezoidSlot::try_from(builder).unwrap();
 
+    approx::assert_abs_diff_eq!(slot.slot_angle(), 10.0 * PI / 180.0, epsilon = 1e-6);
     approx::assert_abs_diff_eq!(slot.bottom_side_angle(), 120.0 * PI / 180.0, epsilon = 1e-6);
     approx::assert_abs_diff_eq!(slot.outline().length(), 0.0465666, epsilon = 1e-6);
     approx::assert_abs_diff_eq!(
@@ -182,9 +227,9 @@ fn test_different_layers() {
 
 #[test]
 fn test_open_slot_bottom_height() {
-    let slot: OpenTrapezoidSlot = OpenTrapezoidWithBottomHeightBuilder {
+    let slot: OpenTrapezoidSlot = OpenTrapezoidSlotAngleBuilder {
         opening_width: Length::new::<millimeter>(5.0),
-        height: Length::new::<millimeter>(20.0),
+        side_height: Length::new::<millimeter>(20.0 - 2.0 - 1.154),
         opening_height: Length::new::<millimeter>(2.0),
         bottom_height: Length::new::<millimeter>(1.154),
         bottom_width: Length::new::<millimeter>(5.0),
@@ -219,10 +264,10 @@ fn test_open_slot_bottom_height() {
 
 #[test]
 fn test_open_slot_bottom_slope_width() {
-    let slot: OpenTrapezoidSlot = OpenTrapezoidWithBottomSideWidthBuilder {
+    let slot: OpenTrapezoidSlot = OpenTrapezoidSlotAngleHeightBuilder {
         opening_width: Length::new::<millimeter>(5.0),
-        height: Length::new::<millimeter>(20.0),
         opening_height: Length::new::<millimeter>(2.0),
+        height: Length::new::<millimeter>(20.0),
         bottom_width: Length::new::<millimeter>(5.0),
         bottom_side_width: Length::new::<millimeter>(8.298),
         slot_angle: 10.0 * PI / 180.0,
@@ -254,12 +299,12 @@ fn test_open_slot_side_height_bugfix() {
     let bottom_radius = Length::new::<millimeter>(2.0);
     let slot_angle = PI / 18.0;
     let bottom_width = Length::new::<millimeter>(9.21);
-    let slot: OpenTrapezoidSlot = OpenTrapezoidBuilder {
+    let slot: OpenTrapezoidSlot = OpenTrapezoidSlotAngleBuilder {
         bottom_width,
         opening_width: bottom_width
             - Length::new::<millimeter>(2.0 * 17.75) * (slot_angle / 2.0).sin(),
-        height: Length::new::<millimeter>(17.75),
         side_height: Length::new::<millimeter>(17.0),
+        bottom_height: Length::new::<millimeter>(0.0),
         opening_height: Length::new::<millimeter>(0.75),
         slot_angle,
         bottom_radius,
@@ -286,7 +331,7 @@ fn test_test_from_rotary_core() {
         yoke_radius: Length::new::<millimeter>(50.0),
         slots: 12,
         opening_width: Length::new::<millimeter>(9.6),
-        height: Length::new::<millimeter>(20.0),
+        side_height: Length::new::<millimeter>(19.0),
         bottom_height: Length::new::<millimeter>(0.0),
         opening_height: Length::new::<millimeter>(1.0),
         bottom_radius: Length::new::<millimeter>(0.0),
@@ -307,7 +352,7 @@ fn test_test_from_rotary_core() {
 
 #[test]
 fn test_multilayer_vertical() {
-    let slot: OpenTrapezoidSlot = OpenTrapezoidWithBottomSideWidthBuilder {
+    let slot: OpenTrapezoidSlot = OpenTrapezoidSlotAngleHeightBuilder {
         opening_width: Length::new::<millimeter>(5.0),
         height: Length::new::<millimeter>(20.0),
         opening_height: Length::new::<millimeter>(2.0),
@@ -371,7 +416,7 @@ fn test_multilayer_vertical() {
 
 #[test]
 fn test_serialize_and_deserialize() {
-    let slot: OpenTrapezoidSlot = OpenTrapezoidWithBottomSideWidthBuilder {
+    let slot: OpenTrapezoidSlot = OpenTrapezoidSlotAngleHeightBuilder {
         opening_width: Length::new::<millimeter>(5.0),
         height: Length::new::<millimeter>(20.0),
         opening_height: Length::new::<millimeter>(2.0),
@@ -390,7 +435,7 @@ fn test_serialize_and_deserialize() {
     approx::assert_abs_diff_eq!(
         slot.area().get::<square_millimeter>(),
         slot_de.area().get::<square_millimeter>(),
-        epsilon = DEFAULT_EPSILON
+        epsilon = 1e-6
     );
 }
 

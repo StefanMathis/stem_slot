@@ -246,9 +246,6 @@ pub trait Slot: Send + Sync + std::fmt::Debug + DynClone + Any + 'static {
     ///
     /// This function basically puts a horizontal line segment between both
     /// sides of the slot outline at the height `h` and returns its length.
-    /// Therefore, it is the `s(x)` function in the leakage coefficient formulae
-    /// of [`Slot::self_inductance_leakage_coefficient`] and
-    /// [`Slot::mutual_inductance_leakage_coefficient`].
     ///
     /// The image below shows how the output changes based on the height.
     #[doc = ""]

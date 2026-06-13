@@ -5,7 +5,7 @@ use std::{
     path::PathBuf,
 };
 use stem_slot::{
-    open_trapezoid::OpenTrapezoidBuilder,
+    open_trapezoid::OpenTrapezoidSlotAngleBuilder,
     prelude::*,
     semi_trapezoid::{SemiTrapezoidBuilder, SemiTrapezoidWithoutSlopesBuilder},
 };
@@ -19,10 +19,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         true,
     )?;
 
-    let open_trapezoid_slot: OpenTrapezoidSlot = OpenTrapezoidBuilder {
+    let open_trapezoid_slot: OpenTrapezoidSlot = OpenTrapezoidSlotAngleBuilder {
         bottom_width: Length::new::<meter>(6.0),
         opening_width: Length::new::<meter>(6.0),
-        height: Length::new::<meter>(16.0),
+        bottom_height: Length::new::<meter>(2.0),
         side_height: Length::new::<meter>(12.0),
         opening_height: Length::new::<meter>(2.0),
         slot_angle: TAU / 36.0,
