@@ -2759,7 +2759,8 @@ pub struct SemiTrapezoidFromToothWidthRotWithoutSlopesBuilder {
     pub yoke_radius: Length,
     /// Number of slots. The slot angle is calculated as `2 * PI / slots`.
     pub slots: u16,
-    /// Width of the slot opening. Must be positive (`opening_width > 0 m`).
+    /// Width of the slot opening. Must not be positive
+    /// (`opening_width >= 0 m`).
     #[cfg_attr(
         feature = "serde",
         serde(

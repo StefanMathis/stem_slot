@@ -445,7 +445,7 @@ fn test_deserialize() {
         let yaml = indoc! {"
                 ---
                 opening_width: 9.6 mm
-                height: 20 mm
+                side_height: 20 mm
                 opening_height: 0.0 mm
                 slot_angle: 30.0 deg
                 bottom_radius: 1 mm
@@ -464,7 +464,7 @@ fn test_deserialize() {
         let yaml = indoc! {"
                         ---
                         opening_width: 9.6 mm
-                        height: 20 mm
+                        side_height: 19 mm
                         opening_height: 1.0 mm
                         slot_angle: 30.0 deg
                         bottom_radius: 1 mm
@@ -483,7 +483,7 @@ fn test_deserialize() {
         let yaml = indoc! {"
                         ---
                         opening_width: 9.6 mm
-                        height: 20 mm
+                        side_height: 15 mm
                         opening_height: 5.0 mm
                         slot_angle: 30.0 deg
                         bottom_radius: 1 mm

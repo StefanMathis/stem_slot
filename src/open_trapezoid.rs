@@ -68,7 +68,7 @@ use stem_slot::open_trapezoid::OpenTrapezoidWithoutSlopesBuilder;
 let builder = OpenTrapezoidWithoutSlopesBuilder {
     opening_width: Length::new::<millimeter>(5.0),
     opening_height: Length::new::<millimeter>(2.0),
-    height: Length::new::<millimeter>(20.0),
+    side_height: Length::new::<millimeter>(18.0),
     slot_angle: PI / 18.0,
     bottom_radius: Length::new::<millimeter>(1.0),
     consider_tooth_tip_leakage: true,
@@ -86,14 +86,14 @@ due to limited floating point precision.
 Using structs instead of constructor functions makes it less likely to confuse
 arguments, since the parameter name needs to be specified explicitly. For
 convenience, there exists a constructor function [`OpenTrapezoidSlot::new`]
-which internally creates an [`OpenTrapezoidSlotAngleBuilder`] and then converts it into
-an [`OpenTrapezoidSlot`].
+which internally creates an [`OpenTrapezoidSlotAngleBuilder`] and then converts
+it into an [`OpenTrapezoidSlot`].
 
 # Serialization and deserialization
 
 This struct can be directly deserialized from any of its "builder" structs (no
-need for a tag). Its serialized form is that of the [`OpenTrapezoidSlotAngleBuilder`]
-struct.
+need for a tag). Its serialized form is that of the
+[`OpenTrapezoidSlotAngleBuilder`] struct.
 
 ```
 use approx;
@@ -121,7 +121,7 @@ approx::assert_abs_diff_eq!(slot.opening_width().get::<millimeter>(), 5.0, epsil
 let str = indoc::indoc! {"
 opening_width: 5 mm
 opening_height: 2 mm
-height: 20 mm
+side_height: 18 mm
 slot_angle: PI / 18
 bottom_radius: 2 mm 
 consider_tooth_tip_leakage: true
@@ -1024,7 +1024,7 @@ use stem_slot::open_trapezoid::OpenTrapezoidWithoutSlopesBuilder;
 
 let builder = OpenTrapezoidWithoutSlopesBuilder {
     opening_width: Length::new::<millimeter>(7.0),
-    height: Length::new::<millimeter>(17.75),
+    side_height: Length::new::<millimeter>(17.0),
     opening_height: Length::new::<millimeter>(0.75),
     slot_angle: PI / 18.0,
     bottom_radius: Length::new::<millimeter>(2.0),
@@ -1046,9 +1046,8 @@ pub struct OpenTrapezoidWithoutSlopesBuilder {
         )
     )]
     pub opening_width: Length,
-    /// Height of the slot. Must not be smaller than
-    /// [`OpenTrapezoidWithoutSlopesBuilder::opening_height`] (`height >=
-    /// opening_height`).
+    /// Height of the slot sides. Must not be negative
+    /// (`side_height >= 0 m`).
     #[cfg_attr(
         feature = "serde",
         serde(
@@ -1056,10 +1055,9 @@ pub struct OpenTrapezoidWithoutSlopesBuilder {
             serialize_with = "serialize_quantity"
         )
     )]
-    pub height: Length,
-    /// Height of the slot. Must not be negative and not be larger than
-    /// [`OpenTrapezoidWithoutSlopesBuilder::height`] (`0 m <= opening_height <=
-    /// height`).
+    pub side_height: Length,
+    /// Height of the slot opening. Must not be negative
+    /// (`opening_height >= 0 m`).
     #[cfg_attr(
         feature = "serde",
         serde(
@@ -1091,16 +1089,15 @@ impl TryFrom<OpenTrapezoidWithoutSlopesBuilder> for OpenTrapezoidSlot {
     type Error = crate::error::Error;
 
     fn try_from(builder: OpenTrapezoidWithoutSlopesBuilder) -> Result<Self, Self::Error> {
-        let bottom_width =
-            builder.opening_width + 2.0 * builder.height * (0.5 * builder.slot_angle).sin();
-        let side_height = builder.height - builder.opening_height;
+        let height = builder.side_height + builder.opening_height;
+        let bottom_width = builder.opening_width + 2.0 * height * (0.5 * builder.slot_angle).sin();
 
         return OpenTrapezoidWidthsAndHeightsBuilder {
             bottom_width,
             bottom_side_width: bottom_width,
             opening_width: builder.opening_width,
             bottom_height: Length::new::<meter>(0.0),
-            side_height,
+            side_height: builder.side_height,
             opening_height: builder.opening_height,
             bottom_radius: builder.bottom_radius,
             bottom_side_radius: Length::new::<meter>(0.0),
