@@ -7,7 +7,7 @@ use std::{
 use stem_slot::{
     open_trapezoid::OpenTrapezoidSlotAngleBuilder,
     prelude::*,
-    semi_trapezoid::{SemiTrapezoidBuilder, SemiTrapezoidWithoutSlopesBuilder},
+    semi_trapezoid::{SemiTrapezoidAnglesSideHeightBuilder, SemiTrapezoidWithoutSlopesBuilder},
 };
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -32,7 +32,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
     .try_into()?;
 
-    let semi_trapezoid_slot_1: SemiTrapezoidSlot = SemiTrapezoidBuilder {
+    let semi_trapezoid_slot_1: SemiTrapezoidSlot = SemiTrapezoidAnglesSideHeightBuilder {
         bottom_width: Length::new::<meter>(5.0),
         top_width: Length::new::<meter>(6.0),
         opening_width: Length::new::<meter>(2.0),

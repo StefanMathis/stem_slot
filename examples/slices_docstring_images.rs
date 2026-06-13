@@ -89,7 +89,7 @@ fn slices_comp() -> Result<(), Box<dyn std::error::Error>> {
     let top_width = Length::new::<millimeter>(6.33381);
     let bottom_width = Length::new::<millimeter>(9.297);
 
-    let slot: SemiTrapezoidSlot = SemiTrapezoidBuilder {
+    let slot: SemiTrapezoidSlot = SemiTrapezoidAnglesSideHeightBuilder {
         bottom_width,
         top_width,
         opening_width: Length::new::<millimeter>(2.0),

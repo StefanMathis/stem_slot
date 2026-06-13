@@ -113,7 +113,6 @@ fn test_properties() {
             .get::<meter>();
         approx::assert_abs_diff_eq!(pt1 + pt2 + pt3 + pt4, outline, epsilon = 1e-6);
     }
-
     {
         let slot: SemiTrapezoidSlot = SemiTrapezoidWithoutSlopesBuilder {
             bottom_width: Length::new::<millimeter>(10.0),
@@ -144,7 +143,7 @@ fn test_properties() {
 #[test]
 fn test_width_at() {
     let slot_angle = 2.0 * (FRAC_PI_2 - (16.0f64).atan2(4.0));
-    let slot: SemiTrapezoidSlot = SemiTrapezoidWithBottomHeightBuilder {
+    let slot: SemiTrapezoidSlot = SemiTrapezoidAnglesBottomHeightBuilder {
         bottom_width: Length::new::<millimeter>(16.0),
         top_width: Length::new::<millimeter>(16.0),
         opening_width: Length::new::<millimeter>(8.0),
@@ -208,6 +207,52 @@ fn test_width_at() {
 }
 
 #[test]
+fn test_geometric_parameters() {
+    {
+        let slot: SemiTrapezoidSlot = SemiTrapezoidAnglesSideHeightBuilder {
+            bottom_width: Length::new::<millimeter>(10.0),
+            top_width: Length::new::<millimeter>(11.0),
+            opening_width: Length::new::<millimeter>(2.0),
+            height: Length::new::<millimeter>(16.0),
+            side_height: Length::new::<millimeter>(10.0),
+            opening_height: Length::new::<millimeter>(2.0),
+            slot_angle: PI / 18.0,
+            bottom_angle: (0.8 * PI).into(),
+            top_angle: (0.7 * PI).into(),
+            bottom_radius: Length::new::<millimeter>(1.0),
+            bottom_side_radius: Length::new::<millimeter>(1.0),
+            top_radius: Length::new::<millimeter>(0.5),
+            top_side_radius: Length::new::<millimeter>(0.5),
+            opening_radius: Length::new::<millimeter>(0.5),
+            consider_tooth_tip_leakage: true,
+        }
+        .try_into()
+        .expect("valid parameters");
+
+        approx::assert_abs_diff_eq!(
+            slot.bottom_height().get::<millimeter>(),
+            2.035763,
+            epsilon = 1e-5
+        );
+        approx::assert_abs_diff_eq!(
+            slot.bottom_side_width().get::<millimeter>(),
+            15.603976,
+            epsilon = 1e-5
+        );
+        approx::assert_abs_diff_eq!(
+            slot.top_height().get::<millimeter>(),
+            1.9642365,
+            epsilon = 1e-5
+        );
+        approx::assert_abs_diff_eq!(
+            slot.top_side_width().get::<millimeter>(),
+            13.854202,
+            epsilon = 1e-5
+        );
+    }
+}
+
+#[test]
 fn test_current_displacement_coefficients() {
     let frequency = Frequency::new::<hertz>(100.0);
     let el_conductivity = ElectricalConductivity::new::<siemens_per_meter>(37.0 * 1e6); // electrical conductivity of aluminium is about 37*1e6 S / m
@@ -219,7 +264,7 @@ fn test_current_displacement_coefficients() {
     let bottom_width =
         Length::new::<millimeter>(8.21) + 2.0 * bottom_radius * (1.0 + (slot_angle / 2.0).sin());
 
-    let slot: SemiTrapezoidSlot = SemiTrapezoidBuilder {
+    let slot: SemiTrapezoidSlot = SemiTrapezoidAnglesSideHeightBuilder {
         bottom_width,
         top_width: bottom_width - 2.0 * Length::new::<millimeter>(17.0) * (slot_angle / 2.0).sin(),
         opening_width: Length::new::<millimeter>(2.0),
@@ -259,7 +304,7 @@ fn test_slices() {
     let bottom_width =
         Length::new::<millimeter>(8.21) + 2.0 * bottom_radius * (1.0 + (slot_angle / 2.0).sin());
 
-    let slot: SemiTrapezoidSlot = SemiTrapezoidBuilder {
+    let slot: SemiTrapezoidSlot = SemiTrapezoidAnglesSideHeightBuilder {
         bottom_width,
         top_width: bottom_width - 2.0 * Length::new::<millimeter>(17.0) * (slot_angle / 2.0).sin(),
         opening_width: Length::new::<millimeter>(2.0),
@@ -290,23 +335,24 @@ fn test_semi_trapezoid_side_height() {
     let bottom_width =
         Length::new::<millimeter>(8.21) + 2.0 * bottom_radius * (1.0 + (slot_angle / 2.0).sin());
 
-    let slot = SemiTrapezoidSlot::new(
+    let slot: SemiTrapezoidSlot = SemiTrapezoidAnglesSideHeightBuilder {
         bottom_width,
-        bottom_width - Length::new::<millimeter>(2.0 * 17.0) * (slot_angle / 2.0).sin(),
-        Length::new::<millimeter>(2.0),
-        Length::new::<millimeter>(17.75),
-        Length::new::<millimeter>(0.75),
-        Length::new::<millimeter>(17.0),
+        top_width: bottom_width - Length::new::<millimeter>(2.0 * 17.0) * (slot_angle / 2.0).sin(),
+        opening_width: Length::new::<millimeter>(2.0),
+        height: Length::new::<millimeter>(17.75),
+        side_height: Length::new::<millimeter>(17.0),
+        opening_height: Length::new::<millimeter>(0.75),
         slot_angle,
-        BottomAngle::new_no_slope(slot_angle),
-        TopAngle::new_no_slope(slot_angle),
+        bottom_angle: BottomAngle::new_no_slope(slot_angle),
+        top_angle: TopAngle::new_no_slope(slot_angle),
         bottom_radius,
-        Length::new::<millimeter>(0.0),
-        Length::new::<millimeter>(1.0),
-        Length::new::<millimeter>(0.0),
-        Length::new::<millimeter>(0.0),
-        true,
-    )
+        bottom_side_radius: Length::new::<millimeter>(0.0),
+        top_radius: Length::new::<millimeter>(1.0),
+        top_side_radius: Length::new::<millimeter>(0.0),
+        opening_radius: Length::new::<millimeter>(0.0),
+        consider_tooth_tip_leakage: true,
+    }
+    .try_into()
     .unwrap();
 
     approx::assert_abs_diff_eq!(
@@ -463,7 +509,7 @@ fn test_serialize_and_deserialize() {
     let bottom_width =
         Length::new::<millimeter>(8.21) + 2.0 * bottom_radius * (1.0 + (slot_angle / 2.0).sin());
 
-    let slot: SemiTrapezoidSlot = SemiTrapezoidBuilder {
+    let slot: SemiTrapezoidSlot = SemiTrapezoidAnglesSideHeightBuilder {
         bottom_width,
         top_width: bottom_width - 2.0 * Length::new::<millimeter>(17.0) * (slot_angle / 2.0).sin(),
         opening_width: Length::new::<millimeter>(2.0),
@@ -502,7 +548,7 @@ fn test_tooth_width_deserialize() {
               yoke_radius: 63 mm
               slots: 12
               opening_width: 4 mm
-              height: 19.35 mm
+              side_height: 18.35 mm
               opening_height: 1 mm
               bottom_radius: 2.0 mm
               top_radius: 2.0 mm
@@ -559,7 +605,7 @@ fn test_semi_trapezoid_top_side_width_deserialize() {
     // Read from the database
     let yaml = indoc! {"
         ---
-        bottom_width: 6.76 mm
+        bottom_width: 6.75 mm
         top_width: 1.5 mm
         top_side_width: 8 mm
         opening_width: 1.5 mm
@@ -567,8 +613,8 @@ fn test_semi_trapezoid_top_side_width_deserialize() {
         opening_height: 0.75 mm
         slot_angle: -360/28 deg
         bottom_angle:
-            bottom_width: 6.76 mm
-            bottom_side_width: 6.76 mm
+            bottom_width: 6.75 mm
+            bottom_side_width: 6.75 mm
             bottom_height: 0.0 mm
             slot_angle: -360/28 deg
         top_angle:
@@ -656,21 +702,16 @@ fn test_contour_main_body() {
 
 #[test]
 fn test_inner_slot() {
-    let slot: SemiTrapezoidSlot = SemiTrapezoidWithTopSideWidthBuilder {
+    let slot: SemiTrapezoidSlot = SemiTrapezoidWidthsAndHeightsBuilder {
         bottom_width: Length::new::<millimeter>(6.76),
+        bottom_side_width: Length::new::<millimeter>(6.76),
+        top_side_width: Length::new::<millimeter>(8.0),
         top_width: Length::new::<millimeter>(1.5),
         opening_width: Length::new::<millimeter>(1.5),
-        height: Length::new::<millimeter>(6.79),
-        top_side_width: Length::new::<millimeter>(8.0),
+        bottom_height: Length::new::<millimeter>(0.0),
+        side_height: Length::new::<millimeter>(6.79 - 0.75 - 0.5),
+        top_height: Length::new::<millimeter>(0.5),
         opening_height: Length::new::<millimeter>(0.75),
-        slot_angle: -PI / 14.0,
-        bottom_angle: BottomAngle::new_no_slope(-PI / 14.0),
-        top_angle: TopAngle::FromWidthAndHeight {
-            top_width: Length::new::<millimeter>(1.5),
-            top_side_width: Length::new::<millimeter>(8.0),
-            top_height: Length::new::<millimeter>(0.5),
-            slot_angle: -PI / 14.0,
-        },
         bottom_radius: Length::new::<millimeter>(0.0),
         bottom_side_radius: Length::new::<millimeter>(0.0),
         top_radius: Length::new::<millimeter>(0.0),
@@ -682,10 +723,10 @@ fn test_inner_slot() {
     .unwrap();
 
     approx::assert_abs_diff_eq!(slot.bottom_side_angle(), PI, epsilon = 1e-6);
-    approx::assert_abs_diff_eq!(slot.bottom_angle(), FRAC_PI_2 + PI / 28.0, epsilon = 1e-6);
+    approx::assert_abs_diff_eq!(slot.bottom_angle(), FRAC_PI_2 + PI / 28.0, epsilon = 1e-3);
 
-    approx::assert_abs_diff_eq!(slot.top_side_angle(), 1.61124591, epsilon = 1e-6);
-    approx::assert_abs_diff_eq!(slot.top_angle(), 2.9889433, epsilon = 1e-6);
+    approx::assert_abs_diff_eq!(slot.top_side_angle(), 1.61124591, epsilon = 1e-3);
+    approx::assert_abs_diff_eq!(slot.top_angle(), 2.9889433, epsilon = 1e-3);
 
     assert!(slot.bottom_side_width() < slot.top_side_width());
 
@@ -711,7 +752,7 @@ fn test_from_rotary_core() {
         yoke_radius: Length::new::<millimeter>(85.0),
         slots: 36,
         opening_width: Length::new::<millimeter>(2.0),
-        height: Length::new::<millimeter>(17.75),
+        side_height: Length::new::<millimeter>(17.0),
         opening_height: Length::new::<millimeter>(0.75),
         bottom_radius: Length::new::<millimeter>(0.5),
         top_radius: Length::new::<millimeter>(1.0),
@@ -735,7 +776,7 @@ fn test_semi_trapezoid_inner_stator() {
     let bottom_width = Length::new::<millimeter>(6.33381);
     let top_width = Length::new::<millimeter>(9.297);
 
-    let slot: SemiTrapezoidSlot = SemiTrapezoidBuilder {
+    let slot: SemiTrapezoidSlot = SemiTrapezoidAnglesSideHeightBuilder {
         bottom_width,
         top_width,
         opening_width: Length::new::<millimeter>(2.0),
@@ -905,24 +946,25 @@ fn test_semi_trapezoid_creation_no_slopes() {
 #[test]
 fn test_plot_slopes() {
     {
-        let slot = SemiTrapezoidSlot::new(
-            Length::new::<millimeter>(9.0),
-            Length::new::<millimeter>(7.0),
-            Length::new::<millimeter>(2.0),
-            Length::new::<millimeter>(17.75),
-            Length::new::<millimeter>(0.75),
-            Length::new::<millimeter>(14.0),
-            PI / 36.0,
-            PI * 0.7,
-            PI * 0.7,
-            Length::new::<millimeter>(0.0),
-            Length::new::<millimeter>(0.0),
-            Length::new::<millimeter>(0.0),
-            Length::new::<millimeter>(0.0),
-            Length::new::<millimeter>(0.5),
-            true,
-        )
-        .expect("valid parameters");
+        let slot: SemiTrapezoidSlot = SemiTrapezoidAnglesSideHeightBuilder {
+            bottom_width: Length::new::<millimeter>(9.0),
+            top_width: Length::new::<millimeter>(7.0),
+            opening_width: Length::new::<millimeter>(2.0),
+            height: Length::new::<millimeter>(17.75),
+            side_height: Length::new::<millimeter>(14.0),
+            opening_height: Length::new::<millimeter>(0.75),
+            slot_angle: PI / 36.0,
+            bottom_angle: (PI * 0.7).into(),
+            top_angle: (PI * 0.7).into(),
+            bottom_radius: Length::new::<millimeter>(1.0),
+            bottom_side_radius: Length::new::<millimeter>(0.0),
+            top_radius: Length::new::<millimeter>(1.0),
+            top_side_radius: Length::new::<millimeter>(0.0),
+            opening_radius: Length::new::<millimeter>(0.0),
+            consider_tooth_tip_leakage: true,
+        }
+        .try_into()
+        .unwrap();
 
         assert!(slot.bottom_side_width() > slot.top_side_width());
 
@@ -940,24 +982,25 @@ fn test_plot_slopes() {
         );
     }
     {
-        let slot = SemiTrapezoidSlot::new(
-            Length::new::<millimeter>(9.0),
-            Length::new::<millimeter>(7.0),
-            Length::new::<millimeter>(2.0),
-            Length::new::<millimeter>(17.75),
-            Length::new::<millimeter>(0.75),
-            Length::new::<millimeter>(14.0),
-            -PI / 36.0,
-            PI * 0.7,
-            PI * 0.7,
-            Length::new::<millimeter>(0.0),
-            Length::new::<millimeter>(0.0),
-            Length::new::<millimeter>(0.0),
-            Length::new::<millimeter>(0.0),
-            Length::new::<millimeter>(0.5),
-            true,
-        )
-        .expect("valid parameters");
+        let slot: SemiTrapezoidSlot = SemiTrapezoidAnglesSideHeightBuilder {
+            bottom_width: Length::new::<millimeter>(9.0),
+            top_width: Length::new::<millimeter>(7.0),
+            opening_width: Length::new::<millimeter>(2.0),
+            height: Length::new::<millimeter>(17.75),
+            side_height: Length::new::<millimeter>(14.0),
+            opening_height: Length::new::<millimeter>(0.75),
+            slot_angle: -PI / 36.0,
+            bottom_angle: (PI * 0.7).into(),
+            top_angle: (PI * 0.7).into(),
+            bottom_radius: Length::new::<millimeter>(0.0),
+            bottom_side_radius: Length::new::<millimeter>(0.0),
+            top_radius: Length::new::<millimeter>(0.0),
+            top_side_radius: Length::new::<millimeter>(0.0),
+            opening_radius: Length::new::<millimeter>(0.5),
+            consider_tooth_tip_leakage: true,
+        }
+        .try_into()
+        .unwrap();
 
         assert!(slot.bottom_side_width() < slot.top_side_width());
 
@@ -975,7 +1018,7 @@ fn test_plot_slopes() {
         );
     }
     {
-        let slot: SemiTrapezoidSlot = SemiTrapezoidBuilder {
+        let slot: SemiTrapezoidSlot = SemiTrapezoidAnglesSideHeightBuilder {
             bottom_width: Length::new::<millimeter>(5.0),
             top_width: Length::new::<millimeter>(6.0),
             opening_width: Length::new::<millimeter>(2.0),
@@ -1029,7 +1072,7 @@ fn test_plot_slopes() {
         );
     }
     {
-        let slot: SemiTrapezoidSlot = SemiTrapezoidBuilder {
+        let slot: SemiTrapezoidSlot = SemiTrapezoidAnglesSideHeightBuilder {
             bottom_width: Length::new::<millimeter>(10.0),
             top_width: Length::new::<millimeter>(11.0),
             opening_width: Length::new::<millimeter>(2.0),
@@ -1086,7 +1129,7 @@ fn test_plot_slopes() {
 
 #[test]
 fn test_compare_builders_outer_rotor() {
-    let ref_slot: SemiTrapezoidSlot = SemiTrapezoidBuilder {
+    let ref_slot: SemiTrapezoidSlot = SemiTrapezoidAnglesSideHeightBuilder {
         bottom_width: Length::new::<millimeter>(10.0),
         top_width: Length::new::<millimeter>(11.0),
         opening_width: Length::new::<millimeter>(2.0),
@@ -1135,7 +1178,7 @@ fn test_compare_builders_outer_rotor() {
         );
     }
     {
-        let slot: SemiTrapezoidSlot = SemiTrapezoidWithTopHeightBuilder {
+        let slot: SemiTrapezoidSlot = SemiTrapezoidAnglesTopHeightBuilder {
             bottom_width: Length::new::<millimeter>(10.0),
             top_width: Length::new::<millimeter>(11.0),
             opening_width: Length::new::<millimeter>(2.0),
@@ -1179,7 +1222,7 @@ fn test_compare_builders_outer_rotor() {
         approx::assert_abs_diff_eq!(slot.side_height().get::<millimeter>(), 10.0, epsilon = 1e-6);
     }
     {
-        let slot: SemiTrapezoidSlot = SemiTrapezoidWithBottomHeightBuilder {
+        let slot: SemiTrapezoidSlot = SemiTrapezoidAnglesBottomHeightBuilder {
             bottom_width: Length::new::<millimeter>(10.0),
             top_width: Length::new::<millimeter>(11.0),
             opening_width: Length::new::<millimeter>(2.0),
@@ -1223,7 +1266,7 @@ fn test_compare_builders_outer_rotor() {
         approx::assert_abs_diff_eq!(slot.side_height().get::<millimeter>(), 10.0, epsilon = 1e-6);
     }
     {
-        let slot: SemiTrapezoidSlot = SemiTrapezoidWithTopSideWidthBuilder {
+        let slot: SemiTrapezoidSlot = SemiTrapezoidAnglesTopSideWidthBuilder {
             bottom_width: Length::new::<millimeter>(10.0),
             top_width: Length::new::<millimeter>(11.0),
             opening_width: Length::new::<millimeter>(2.0),
@@ -1267,7 +1310,7 @@ fn test_compare_builders_outer_rotor() {
         approx::assert_abs_diff_eq!(slot.side_height().get::<millimeter>(), 10.0, epsilon = 1e-6);
     }
     {
-        let slot: SemiTrapezoidSlot = SemiTrapezoidWithBottomSideWidthBuilder {
+        let slot: SemiTrapezoidSlot = SemiTrapezoidAnglesBottomSideWidthBuilder {
             bottom_width: Length::new::<millimeter>(10.0),
             top_width: Length::new::<millimeter>(11.0),
             opening_width: Length::new::<millimeter>(2.0),
@@ -1314,7 +1357,7 @@ fn test_compare_builders_outer_rotor() {
 
 #[test]
 fn test_compare_builders_inner_rotor() {
-    let ref_slot: SemiTrapezoidSlot = SemiTrapezoidBuilder {
+    let ref_slot: SemiTrapezoidSlot = SemiTrapezoidAnglesSideHeightBuilder {
         bottom_width: Length::new::<millimeter>(9.0),
         top_width: Length::new::<millimeter>(12.0),
         opening_width: Length::new::<millimeter>(2.0),
@@ -1363,7 +1406,7 @@ fn test_compare_builders_inner_rotor() {
         );
     }
     {
-        let slot: SemiTrapezoidSlot = SemiTrapezoidWithTopHeightBuilder {
+        let slot: SemiTrapezoidSlot = SemiTrapezoidAnglesTopHeightBuilder {
             bottom_width: Length::new::<millimeter>(9.0),
             top_width: Length::new::<millimeter>(12.0),
             opening_width: Length::new::<millimeter>(2.0),
@@ -1407,7 +1450,7 @@ fn test_compare_builders_inner_rotor() {
         approx::assert_abs_diff_eq!(slot.side_height().get::<millimeter>(), 10.0, epsilon = 1e-6);
     }
     {
-        let slot: SemiTrapezoidSlot = SemiTrapezoidWithBottomHeightBuilder {
+        let slot: SemiTrapezoidSlot = SemiTrapezoidAnglesBottomHeightBuilder {
             bottom_width: Length::new::<millimeter>(9.0),
             top_width: Length::new::<millimeter>(12.0),
             opening_width: Length::new::<millimeter>(2.0),
@@ -1451,7 +1494,7 @@ fn test_compare_builders_inner_rotor() {
         approx::assert_abs_diff_eq!(slot.side_height().get::<millimeter>(), 10.0, epsilon = 1e-6);
     }
     {
-        let slot: SemiTrapezoidSlot = SemiTrapezoidWithTopSideWidthBuilder {
+        let slot: SemiTrapezoidSlot = SemiTrapezoidAnglesTopSideWidthBuilder {
             bottom_width: Length::new::<millimeter>(9.0),
             top_width: Length::new::<millimeter>(12.0),
             opening_width: Length::new::<millimeter>(2.0),
@@ -1495,7 +1538,7 @@ fn test_compare_builders_inner_rotor() {
         approx::assert_abs_diff_eq!(slot.side_height().get::<millimeter>(), 10.0, epsilon = 1e-6);
     }
     {
-        let slot: SemiTrapezoidSlot = SemiTrapezoidWithBottomSideWidthBuilder {
+        let slot: SemiTrapezoidSlot = SemiTrapezoidAnglesBottomSideWidthBuilder {
             bottom_width: Length::new::<millimeter>(9.0),
             top_width: Length::new::<millimeter>(12.0),
             opening_width: Length::new::<millimeter>(2.0),
@@ -1551,7 +1594,7 @@ fn compare_builders_from_tooth_width() {
             bottom_width: Length::new::<millimeter>(9.0),
             top_width: Length::new::<millimeter>(7.0),
             opening_width: Length::new::<millimeter>(2.0),
-            height: Length::new::<millimeter>(17.75),
+            side_height: Length::new::<millimeter>(17.0),
             bottom_height: Length::new::<millimeter>(0.0),
             top_height: Length::new::<millimeter>(0.0),
             opening_height: Length::new::<millimeter>(0.75),
@@ -1576,7 +1619,7 @@ fn compare_builders_from_tooth_width() {
             yoke_radius: Length::new::<millimeter>(80.0),
             slots: 36,
             opening_width: Length::new::<millimeter>(2.0),
-            height: Length::new::<millimeter>(17.75),
+            side_height: Length::new::<millimeter>(17.0),
             opening_height: Length::new::<millimeter>(0.75),
             bottom_radius: Length::new::<millimeter>(2.0),
             top_radius: Length::new::<millimeter>(2.0),

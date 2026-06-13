@@ -79,7 +79,9 @@ approx::assert_abs_diff_eq!(slot.opening_width().get::<millimeter>(), 5.0, epsil
 
 The conversion fails if a parameter is out of bounds or if the resulting slot
 outline intersects itself. The bounds of a parameter are specified in the field
-docstring of the respective builder struct.
+docstring of the respective builder struct. Values which are closer than
+[`DEFAULT_EPSILON`] to zero may be rounded to zero to prevent building failures
+due to limited floating point precision.
 
 Using structs instead of constructor functions makes it less likely to confuse
 arguments, since the parameter name needs to be specified explicitly. For
@@ -158,9 +160,9 @@ impl OpenTrapezoidSlot {
     Creates a new [`OpenTrapezoidSlot`].
 
     This is the function equivalent for the
-    [`OpenTrapezoidWidthsAndHeightsBuilder`] (and in fact uses that struct
-    under the hood). See the docstring of
-    [`OpenTrapezoidWidthsAndHeightsBuilder`] for parameter descriptions.
+    [`OpenTrapezoidWidthsAndHeightsBuilder`] (it uses that struct under the
+    hood). See the docstring of [`OpenTrapezoidWidthsAndHeightsBuilder`] for
+    parameter descriptions.
 
     # Examples
 
@@ -534,13 +536,41 @@ impl TryFrom<OpenTrapezoidWidthsAndHeightsBuilder> for OpenTrapezoidSlot {
         let bottom_width = builder.bottom_width;
         let mut bottom_side_width = builder.bottom_side_width;
         let opening_width = builder.opening_width;
-        let bottom_height = builder.bottom_height;
+        let mut bottom_height = builder.bottom_height;
         let opening_height = builder.opening_height;
-        let side_height = builder.side_height;
+        let mut side_height = builder.side_height;
         let mut bottom_radius = builder.bottom_radius;
         let mut bottom_side_radius = builder.bottom_side_radius;
 
         let zero = Length::new::<meter>(0.0);
+
+        // Set parameters which may be calculated by an algorithm and are close
+        // to zero to exactly zero.
+        if approx::ulps_eq!(
+            bottom_side_width.get::<meter>(),
+            0.0,
+            epsilon = DEFAULT_EPSILON,
+            max_ulps = DEFAULT_MAX_ULPS
+        ) {
+            bottom_side_width = zero;
+        }
+        if approx::ulps_eq!(
+            bottom_height.get::<meter>(),
+            0.0,
+            epsilon = DEFAULT_EPSILON,
+            max_ulps = DEFAULT_MAX_ULPS
+        ) {
+            bottom_height = zero;
+        }
+        if approx::ulps_eq!(
+            side_height.get::<meter>(),
+            0.0,
+            epsilon = DEFAULT_EPSILON,
+            max_ulps = DEFAULT_MAX_ULPS
+        ) {
+            side_height = zero;
+        }
+
         compare_variables!(val zero <= bottom_width)?;
         compare_variables!(val zero < bottom_side_width)?;
         compare_variables!(val zero < opening_width)?;
@@ -558,12 +588,7 @@ impl TryFrom<OpenTrapezoidWidthsAndHeightsBuilder> for OpenTrapezoidSlot {
         ];
         let v3 = [bottom_width.get::<meter>() / 2.0, height.get::<meter>()];
 
-        let mut right_outline_half = if approx::ulps_eq!(
-            bottom_height.get::<meter>(),
-            0.0,
-            epsilon = DEFAULT_EPSILON,
-            max_ulps = DEFAULT_MAX_ULPS
-        ) {
+        let mut right_outline_half = if bottom_height == zero {
             bottom_side_width = bottom_width;
             Polysegment::from_fillet_chain(&[v1, v3, [0.0, v3[1]]], &[bottom_radius.get::<meter>()])
         } else {
