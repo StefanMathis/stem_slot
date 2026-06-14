@@ -41,3 +41,24 @@ fn test_current_displacement_coefficients_analytic_rectangular() {
     approx::assert_abs_diff_eq!(coeffs.resistance, 2.383342, epsilon = 1e-6);
     approx::assert_abs_diff_eq!(coeffs.inductance, 0.631493, epsilon = 1e-6);
 }
+
+#[test]
+fn test_current_displacement_calculator() {
+    let el_conductivity = ElectricalConductivity::new::<siemens_per_meter>(37.0 * 1e6);
+    {
+        // No slices
+        let mut calculator = CurrentDisplacementCalculator::from_slice_dims([].into_iter());
+
+        let coeffs = calculator.eval(Frequency::new::<hertz>(100.0), el_conductivity, 1.0);
+        assert_eq!(coeffs.resistance, 1.0);
+        assert_eq!(coeffs.inductance, 1.0);
+
+        let coeffs = calculator.eval(Frequency::new::<hertz>(5.0), el_conductivity, 1.0);
+        assert_eq!(coeffs.resistance, 1.0);
+        assert_eq!(coeffs.inductance, 1.0);
+
+        let coeffs = calculator.eval(Frequency::new::<hertz>(5.0), el_conductivity, 1000.0);
+        assert_eq!(coeffs.resistance, 1.0);
+        assert_eq!(coeffs.inductance, 1.0);
+    }
+}

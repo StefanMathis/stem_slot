@@ -1,6 +1,6 @@
 [package]
 name = "stem_slot"
-version = "0.3.0"
+version = "0.3.1"
 edition = "2024"
 description = "Slot definition for stem - a Simulation Toolbox for Electric Motors."
 readme = "README.md"

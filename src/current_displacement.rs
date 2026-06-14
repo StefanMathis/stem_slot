@@ -366,6 +366,10 @@ impl CurrentDisplacementCalculator {
     ) -> CurrentDisplacementCoefficients {
         use uom::typenum::P2;
 
+        if self.slices.is_empty() {
+            return CurrentDisplacementCoefficients::default();
+        }
+
         // Angular electric frequency
         let omega = TAU * frequency;
 
