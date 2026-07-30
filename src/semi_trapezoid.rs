@@ -5,7 +5,6 @@ semi-opened or even closed towards the air gap - as well as a couple of
 struct documentation for more.
  */
 
-use approx::ulps_eq;
 use compare_variables::{Comparison, ComparisonOperator, ComparisonValue, compare_variables};
 use planar_geo::prelude::*;
 use rayon::prelude::*;
@@ -667,43 +666,43 @@ impl TryFrom<SemiTrapezoidWidthsAndHeightsBuilder> for SemiTrapezoidSlot {
 
         // Set parameters which may be calculated by an algorithm and are close
         // to zero to exactly zero.
-        if approx::ulps_eq!(
+        if approx::relative_eq!(
             bottom_side_width.get::<meter>(),
             0.0,
             epsilon = DEFAULT_EPSILON,
-            max_ulps = DEFAULT_MAX_ULPS
+            max_relative = DEFAULT_MAX_RELATIVE
         ) {
             bottom_side_width = zero;
         }
-        if approx::ulps_eq!(
+        if approx::relative_eq!(
             top_side_width.get::<meter>(),
             0.0,
             epsilon = DEFAULT_EPSILON,
-            max_ulps = DEFAULT_MAX_ULPS
+            max_relative = DEFAULT_MAX_RELATIVE
         ) {
             top_side_width = zero;
         }
-        if approx::ulps_eq!(
+        if approx::relative_eq!(
             bottom_height.get::<meter>(),
             0.0,
             epsilon = DEFAULT_EPSILON,
-            max_ulps = DEFAULT_MAX_ULPS
+            max_relative = DEFAULT_MAX_RELATIVE
         ) {
             bottom_height = zero;
         }
-        if approx::ulps_eq!(
+        if approx::relative_eq!(
             side_height.get::<meter>(),
             0.0,
             epsilon = DEFAULT_EPSILON,
-            max_ulps = DEFAULT_MAX_ULPS
+            max_relative = DEFAULT_MAX_RELATIVE
         ) {
             side_height = zero;
         }
-        if approx::ulps_eq!(
+        if approx::relative_eq!(
             top_height.get::<meter>(),
             0.0,
             epsilon = DEFAULT_EPSILON,
-            max_ulps = DEFAULT_MAX_ULPS
+            max_relative = DEFAULT_MAX_RELATIVE
         ) {
             top_height = zero;
         }
@@ -729,11 +728,11 @@ impl TryFrom<SemiTrapezoidWidthsAndHeightsBuilder> for SemiTrapezoidSlot {
         let height = bottom_height + side_height + top_height + opening_height;
 
         if is_open {
-            points.push([opening_width.get::<meter>() / 2.0, 0.0]);
+            points.push([-opening_width.get::<meter>() / 2.0, 0.0]);
         }
 
         points.push([
-            opening_width.get::<meter>() / 2.0,
+            -opening_width.get::<meter>() / 2.0,
             opening_height.get::<meter>(),
         ]);
         if is_open {
@@ -741,19 +740,19 @@ impl TryFrom<SemiTrapezoidWidthsAndHeightsBuilder> for SemiTrapezoidSlot {
         }
 
         points.push([
-            top_width.get::<meter>() / 2.0,
+            -top_width.get::<meter>() / 2.0,
             opening_height.get::<meter>(),
         ]);
         radii.push(top_radius.get::<meter>());
 
-        if approx::ulps_ne!(
+        if approx::relative_ne!(
             top_side_width.get::<meter>(),
             top_width.get::<meter>(),
             epsilon = DEFAULT_EPSILON,
-            max_ulps = DEFAULT_MAX_ULPS,
+            max_relative = DEFAULT_MAX_RELATIVE,
         ) {
             points.push([
-                top_side_width.get::<meter>() / 2.0,
+                -top_side_width.get::<meter>() / 2.0,
                 (opening_height + top_height).get::<meter>(),
             ]);
             radii.push(top_side_radius.get::<meter>());
@@ -761,52 +760,52 @@ impl TryFrom<SemiTrapezoidWidthsAndHeightsBuilder> for SemiTrapezoidSlot {
 
         if bottom_side_width > bottom_width {
             points.push([
-                bottom_side_width.get::<meter>() / 2.0,
+                -bottom_side_width.get::<meter>() / 2.0,
                 (opening_height + top_height + side_height).get::<meter>(),
             ]);
             radii.push(bottom_side_radius.get::<meter>());
         }
 
-        points.push([bottom_width.get::<meter>() / 2.0, height.get::<meter>()]);
+        points.push([-bottom_width.get::<meter>() / 2.0, height.get::<meter>()]);
         radii.push(bottom_radius.get::<meter>());
 
         points.push([0.0, height.get::<meter>()]);
 
-        let mut right_outline_half = Polysegment::from_fillet_chain(&points, &radii);
+        let mut left_outline_half = Polysegment::from_fillet_chain(&points, &radii);
 
         // Remove the bottom line segment, it will be recreated when connecting
         // the two halfes
         if bottom_width.get::<meter>() > 0.0 {
-            right_outline_half.pop_back();
+            left_outline_half.pop_back();
         }
 
-        let mut left_outline_half = right_outline_half.clone();
-        left_outline_half.reverse();
-        left_outline_half.line_reflection([0.0, 0.0], [0.0, 1.0]);
-        right_outline_half.append(&mut left_outline_half);
+        let mut right_outline_half = left_outline_half.clone();
+        right_outline_half.reverse();
+        right_outline_half.line_reflection([0.0, 0.0], [0.0, 1.0]);
+        left_outline_half.append(&mut right_outline_half);
 
         let outline = if is_open {
             // Assert that the outline does not intersect itself
-            if let Some(intersection) = right_outline_half
+            if let Some(intersection) = left_outline_half
                 .intersections_polysegment_par(
-                    &right_outline_half,
+                    &left_outline_half,
                     DEFAULT_EPSILON,
-                    DEFAULT_MAX_ULPS,
+                    DEFAULT_MAX_RELATIVE,
                 )
                 .find_map_any(|v| Some(v))
             {
                 return Err(crate::error::Error::OutlineIntersection {
                     intersection,
-                    outline: right_outline_half,
+                    outline: left_outline_half,
                 });
             }
-            right_outline_half
+            left_outline_half
         } else {
-            let contour = Contour::new(right_outline_half);
+            let contour = Contour::new(left_outline_half);
 
             // Assert that the contour does not intersect itself
             if let Some(intersection) = contour
-                .intersections_contour_par(&contour, DEFAULT_EPSILON, DEFAULT_MAX_ULPS)
+                .intersections_contour_par(&contour, DEFAULT_EPSILON, DEFAULT_MAX_RELATIVE)
                 .find_map_any(|v| Some(v))
             {
                 return Err(crate::error::Error::OutlineIntersection {
@@ -835,11 +834,11 @@ impl TryFrom<SemiTrapezoidWidthsAndHeightsBuilder> for SemiTrapezoidSlot {
         for segment in outline.segments() {
             if let Segment::ArcSegment(arc_segment) = segment {
                 let current_param = &mut nonzero_radii[i];
-                if approx::ulps_ne!(
+                if approx::relative_ne!(
                     arc_segment.radius(),
                     (*current_param).get::<meter>(),
                     epsilon = DEFAULT_EPSILON,
-                    max_ulps = DEFAULT_MAX_ULPS
+                    max_relative = DEFAULT_MAX_RELATIVE
                 ) {
                     **current_param = Length::new::<meter>(arc_segment.radius());
                 }
@@ -1119,18 +1118,18 @@ impl TryFrom<SemiTrapezoidAnglesSideHeightBuilder> for SemiTrapezoidSlot {
         let (top_height, bottom_side_width, top_side_width) = {
             let dh = (height - side_height - opening_height).get::<meter>();
             let angle_quotient = (bottom_angle - FRAC_PI_2).tan() / (top_angle - FRAC_PI_2).tan();
-            if ulps_eq!(
+            if approx::relative_eq!(
                 dh,
                 0.0,
                 epsilon = DEFAULT_EPSILON,
-                max_ulps = DEFAULT_MAX_ULPS
+                max_relative = DEFAULT_MAX_RELATIVE
             ) {
                 (Length::new::<meter>(0.0), bottom_width, top_width)
-            } else if ulps_eq!(
+            } else if approx::relative_eq!(
                 angle_quotient,
                 -1.0,
                 epsilon = DEFAULT_EPSILON,
-                max_ulps = DEFAULT_MAX_ULPS
+                max_relative = DEFAULT_MAX_RELATIVE
             ) {
                 (Length::new::<meter>(0.0), bottom_width, top_width)
             } else {
@@ -1558,7 +1557,7 @@ impl TryFrom<SemiTrapezoidAnglesTopHeightBuilder> for SemiTrapezoidSlot {
         let top_side_width = builder.top_width
             + 2.0 * builder.top_height * (builder.top_angle.value() - FRAC_PI_2).tan();
 
-        let side_height = if ulps_eq!(
+        let side_height = if approx::relative_eq!(
             builder.bottom_angle.value(),
             FRAC_PI_2 - builder.slot_angle / 2.0
         ) {
@@ -1580,7 +1579,7 @@ impl TryFrom<SemiTrapezoidAnglesTopHeightBuilder> for SemiTrapezoidSlot {
             );
 
             let intersection: [f64; 2] =
-                match l1.intersections_primitive(&l2, DEFAULT_EPSILON, DEFAULT_MAX_ULPS) {
+                match l1.intersections_primitive(&l2, DEFAULT_EPSILON, DEFAULT_MAX_RELATIVE) {
                     PrimitiveIntersections::One(p) => p,
                     _ => {
                         return Err(Comparison::new(
@@ -1838,7 +1837,7 @@ impl TryFrom<SemiTrapezoidAnglesBottomHeightBuilder> for SemiTrapezoidSlot {
         let bottom_side_width = builder.bottom_width
             + 2.0 * builder.bottom_height * (builder.bottom_angle.value() - FRAC_PI_2).tan();
 
-        let side_height = if ulps_eq!(
+        let side_height = if approx::relative_eq!(
             (PI - builder.top_angle.value()).rem_euclid(TAU),
             (FRAC_PI_2 - builder.slot_angle / 2.0).rem_euclid(TAU)
         ) {
@@ -1860,7 +1859,7 @@ impl TryFrom<SemiTrapezoidAnglesBottomHeightBuilder> for SemiTrapezoidSlot {
             );
 
             let intersection: [f64; 2] =
-                match l1.intersections_primitive(&l2, DEFAULT_EPSILON, DEFAULT_MAX_ULPS) {
+                match l1.intersections_primitive(&l2, DEFAULT_EPSILON, DEFAULT_MAX_RELATIVE) {
                     PrimitiveIntersections::One(p) => p,
                     _ => {
                         return Err(Comparison::new(

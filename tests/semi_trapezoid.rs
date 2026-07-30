@@ -142,68 +142,128 @@ fn test_properties() {
 
 #[test]
 fn test_width_at() {
-    let slot_angle = 2.0 * (FRAC_PI_2 - (16.0f64).atan2(4.0));
-    let slot: SemiTrapezoidSlot = SemiTrapezoidAnglesBottomHeightBuilder {
-        bottom_width: Length::new::<millimeter>(16.0),
-        top_width: Length::new::<millimeter>(16.0),
-        opening_width: Length::new::<millimeter>(8.0),
-        height: Length::new::<millimeter>(27.0),
-        bottom_height: Length::new::<millimeter>(7.0),
-        opening_height: Length::new::<millimeter>(4.0),
-        slot_angle,
-        bottom_angle: BottomAngle::FromWidthAndHeight {
-            bottom_width: Length::new::<millimeter>(16.0),
-            bottom_side_width: Length::new::<millimeter>(24.0),
-            bottom_height: Length::new::<millimeter>(7.0),
-            slot_angle,
-        },
-        top_angle: TopAngle::new_no_slope(slot_angle),
-        bottom_radius: Length::new::<millimeter>(0.0),
-        bottom_side_radius: Length::new::<millimeter>(0.0),
-        top_radius: Length::new::<millimeter>(0.0),
-        top_side_radius: Length::new::<millimeter>(0.0),
-        opening_radius: Length::new::<millimeter>(0.0),
-        consider_tooth_tip_leakage: true,
-    }
-    .try_into()
-    .unwrap();
+    {
+        let slot: SemiTrapezoidSlot = SemiTrapezoidWithoutSlopesBuilder {
+            bottom_width: Length::new::<millimeter>(8.0),
+            opening_width: Length::new::<millimeter>(2.0),
+            height: Length::new::<millimeter>(17.75),
+            opening_height: Length::new::<millimeter>(0.75),
+            slot_angle: 0.0,
+            bottom_radius: Length::new::<millimeter>(3.0),
+            top_radius: Length::new::<millimeter>(2.0),
+            opening_radius: Length::new::<millimeter>(0.0),
+            consider_tooth_tip_leakage: true,
+        }
+        .try_into()
+        .unwrap();
 
-    approx::assert_abs_diff_eq!(
-        0.0,
-        slot.width_at(Length::new::<millimeter>(30.0))
-            .get::<millimeter>(),
-        epsilon = 1e-6
-    );
-    approx::assert_abs_diff_eq!(
-        0.0,
-        slot.width_at(Length::new::<millimeter>(-30.0))
-            .get::<millimeter>(),
-        epsilon = 1e-6
-    );
-    approx::assert_abs_diff_eq!(
-        8.0,
-        slot.width_at(Length::new::<millimeter>(0.0))
-            .get::<millimeter>(),
-        epsilon = 1e-6
-    );
-    approx::assert_abs_diff_eq!(
-        8.0,
-        slot.width_at(Length::new::<millimeter>(2.0))
-            .get::<millimeter>(),
-        epsilon = 1e-6
-    );
-    approx::assert_abs_diff_eq!(
-        20.0,
-        slot.width_at(Length::new::<millimeter>(12.0))
-            .get::<millimeter>(),
-        epsilon = 1e-6
-    );
-    approx::assert_abs_diff_eq!(
-        24.0,
-        slot.width_at(Length::new::<millimeter>(20.0))
-            .get::<millimeter>(),
-        epsilon = 1e-6
-    );
+        approx::assert_abs_diff_eq!(
+            0.0,
+            slot.width_at(Length::new::<millimeter>(30.0))
+                .get::<millimeter>(),
+            epsilon = 1e-6
+        );
+        approx::assert_abs_diff_eq!(
+            0.0,
+            slot.width_at(Length::new::<millimeter>(-30.0))
+                .get::<millimeter>(),
+            epsilon = 1e-6
+        );
+        approx::assert_abs_diff_eq!(
+            2.0,
+            slot.width_at(Length::new::<millimeter>(0.0))
+                .get::<millimeter>(),
+            epsilon = 1e-6
+        );
+        approx::assert_abs_diff_eq!(
+            7.7080992,
+            slot.width_at(Length::new::<millimeter>(2.0))
+                .get::<millimeter>(),
+            epsilon = 1e-6
+        );
+        approx::assert_abs_diff_eq!(
+            8.0,
+            slot.width_at(Length::new::<millimeter>(6.0))
+                .get::<millimeter>(),
+            epsilon = 1e-6
+        );
+        approx::assert_abs_diff_eq!(
+            8.0,
+            slot.width_at(Length::new::<millimeter>(12.0))
+                .get::<millimeter>(),
+            epsilon = 1e-6
+        );
+        approx::assert_abs_diff_eq!(
+            0.0,
+            slot.width_at(Length::new::<millimeter>(20.0))
+                .get::<millimeter>(),
+            epsilon = 1e-6
+        );
+    }
+    {
+        let slot_angle = 2.0 * (FRAC_PI_2 - (16.0f64).atan2(4.0));
+        let slot: SemiTrapezoidSlot = SemiTrapezoidAnglesBottomHeightBuilder {
+            bottom_width: Length::new::<millimeter>(16.0),
+            top_width: Length::new::<millimeter>(16.0),
+            opening_width: Length::new::<millimeter>(8.0),
+            height: Length::new::<millimeter>(27.0),
+            bottom_height: Length::new::<millimeter>(7.0),
+            opening_height: Length::new::<millimeter>(4.0),
+            slot_angle,
+            bottom_angle: BottomAngle::FromWidthAndHeight {
+                bottom_width: Length::new::<millimeter>(16.0),
+                bottom_side_width: Length::new::<millimeter>(24.0),
+                bottom_height: Length::new::<millimeter>(7.0),
+                slot_angle,
+            },
+            top_angle: TopAngle::new_no_slope(slot_angle),
+            bottom_radius: Length::new::<millimeter>(0.0),
+            bottom_side_radius: Length::new::<millimeter>(0.0),
+            top_radius: Length::new::<millimeter>(0.0),
+            top_side_radius: Length::new::<millimeter>(0.0),
+            opening_radius: Length::new::<millimeter>(0.0),
+            consider_tooth_tip_leakage: true,
+        }
+        .try_into()
+        .unwrap();
+
+        approx::assert_abs_diff_eq!(
+            0.0,
+            slot.width_at(Length::new::<millimeter>(30.0))
+                .get::<millimeter>(),
+            epsilon = 1e-6
+        );
+        approx::assert_abs_diff_eq!(
+            0.0,
+            slot.width_at(Length::new::<millimeter>(-30.0))
+                .get::<millimeter>(),
+            epsilon = 1e-6
+        );
+        approx::assert_abs_diff_eq!(
+            8.0,
+            slot.width_at(Length::new::<millimeter>(0.0))
+                .get::<millimeter>(),
+            epsilon = 1e-6
+        );
+        approx::assert_abs_diff_eq!(
+            8.0,
+            slot.width_at(Length::new::<millimeter>(2.0))
+                .get::<millimeter>(),
+            epsilon = 1e-6
+        );
+        approx::assert_abs_diff_eq!(
+            20.0,
+            slot.width_at(Length::new::<millimeter>(12.0))
+                .get::<millimeter>(),
+            epsilon = 1e-6
+        );
+        approx::assert_abs_diff_eq!(
+            24.0,
+            slot.width_at(Length::new::<millimeter>(20.0))
+                .get::<millimeter>(),
+            epsilon = 1e-6
+        );
+    }
 }
 
 #[test]
@@ -255,46 +315,69 @@ fn test_geometric_parameters() {
 #[test]
 fn test_current_displacement_coefficients() {
     let frequency = Frequency::new::<hertz>(100.0);
-    let el_conductivity = ElectricalConductivity::new::<siemens_per_meter>(37.0 * 1e6); // electrical conductivity of aluminium is about 37*1e6 S / m
+
+    // electrical conductivity of aluminium is about 37*1e6 S / m
+    let el_conductivity = ElectricalConductivity::new::<siemens_per_meter>(37.0 * 1e6);
     let rel_permeability = 1.0; // Relative permeability of aluminium is about 1
 
-    // Slot from [Mat19]
     let bottom_radius = Length::new::<millimeter>(0.5);
     let slot_angle = PI / 18.0;
     let bottom_width =
         Length::new::<millimeter>(8.21) + 2.0 * bottom_radius * (1.0 + (slot_angle / 2.0).sin());
 
-    let slot: SemiTrapezoidSlot = SemiTrapezoidAnglesSideHeightBuilder {
-        bottom_width,
-        top_width: bottom_width - 2.0 * Length::new::<millimeter>(17.0) * (slot_angle / 2.0).sin(),
-        opening_width: Length::new::<millimeter>(2.0),
-        height: Length::new::<millimeter>(17.75),
-        side_height: Length::new::<millimeter>(17.0),
-        opening_height: Length::new::<millimeter>(0.75),
-        slot_angle,
-        bottom_angle: BottomAngle::new_no_slope(slot_angle),
-        top_angle: TopAngle::new_no_slope(slot_angle),
-        bottom_radius,
-        bottom_side_radius: Length::new::<millimeter>(0.0),
-        top_radius: Length::new::<millimeter>(1.0),
-        top_side_radius: Length::new::<millimeter>(0.0),
-        opening_radius: Length::new::<millimeter>(0.0),
-        consider_tooth_tip_leakage: true,
+    {
+        let slot: SemiTrapezoidSlot = SemiTrapezoidWithoutSlopesBuilder {
+            bottom_width: Length::new::<millimeter>(8.0),
+            opening_width: Length::new::<millimeter>(2.0),
+            height: Length::new::<millimeter>(17.75),
+            opening_height: Length::new::<millimeter>(0.75),
+            slot_angle: 0.0,
+            bottom_radius: Length::new::<millimeter>(3.0),
+            top_radius: Length::new::<millimeter>(2.0),
+            opening_radius: Length::new::<millimeter>(0.0),
+            consider_tooth_tip_leakage: true,
+        }
+        .try_into()
+        .unwrap();
+
+        let coeffs = slot.current_displacement_coefficients(50).eval(
+            frequency,
+            el_conductivity,
+            rel_permeability,
+        );
+        approx::assert_abs_diff_eq!(coeffs.resistance, 1.948575, epsilon = 1e-6);
+        approx::assert_abs_diff_eq!(coeffs.inductance, 0.847564, epsilon = 1e-6);
     }
-    .try_into()
-    .unwrap();
+    {
+        let slot: SemiTrapezoidSlot = SemiTrapezoidAnglesSideHeightBuilder {
+            bottom_width,
+            top_width: bottom_width
+                - 2.0 * Length::new::<millimeter>(17.0) * (slot_angle / 2.0).sin(),
+            opening_width: Length::new::<millimeter>(2.0),
+            height: Length::new::<millimeter>(17.75),
+            side_height: Length::new::<millimeter>(17.0),
+            opening_height: Length::new::<millimeter>(0.75),
+            slot_angle,
+            bottom_angle: BottomAngle::new_no_slope(slot_angle),
+            top_angle: TopAngle::new_no_slope(slot_angle),
+            bottom_radius,
+            bottom_side_radius: Length::new::<millimeter>(0.0),
+            top_radius: Length::new::<millimeter>(1.0),
+            top_side_radius: Length::new::<millimeter>(0.0),
+            opening_radius: Length::new::<millimeter>(0.0),
+            consider_tooth_tip_leakage: true,
+        }
+        .try_into()
+        .unwrap();
 
-    let coeffs = slot.current_displacement_coefficients(50).eval(
-        frequency,
-        el_conductivity,
-        rel_permeability,
-    );
-
-    // kr
-    approx::assert_abs_diff_eq!(coeffs.resistance, 2.23397, epsilon = 1e-6);
-
-    // kx
-    approx::assert_abs_diff_eq!(coeffs.inductance, 0.810344, epsilon = 1e-6);
+        let coeffs = slot.current_displacement_coefficients(50).eval(
+            frequency,
+            el_conductivity,
+            rel_permeability,
+        );
+        approx::assert_abs_diff_eq!(coeffs.resistance, 1.8392036, epsilon = 1e-6);
+        approx::assert_abs_diff_eq!(coeffs.inductance, 0.7980932, epsilon = 1e-6);
+    }
 }
 
 #[test]
@@ -404,6 +487,12 @@ fn test_leakage_coefficients() {
     }
     .try_into()
     .unwrap();
+
+    approx::assert_abs_diff_eq!(
+        Contour::from(slot.outline_winding_area()).area(),
+        0.000149206323,
+        epsilon = 1e-8
+    );
 
     // Winding area
     let winding_area_leakage_coeff = 0.86432;
@@ -796,23 +885,6 @@ fn test_semi_trapezoid_inner_stator() {
     .try_into()
     .unwrap();
 
-    approx::assert_abs_diff_eq!(
-        132.25,
-        slot.winding_area().get::<square_millimeter>(),
-        epsilon = 1e-2
-    );
-    approx::assert_abs_diff_eq!(
-        132.25 + 1.5,
-        slot.area().get::<square_millimeter>(),
-        epsilon = 1e-2
-    );
-
-    approx::assert_abs_diff_eq!(
-        slot.bottom_width().get::<millimeter>(),
-        slot.bottom_side_width().get::<millimeter>(),
-        epsilon = 1e-6
-    );
-
     compare_to_reference(
         slot.drawables(&CoilLayout::DoubleVertical).as_slice(),
         "tests/img/semi_trapezoid_inner_stator_double_layer_hori.png",
@@ -829,6 +901,23 @@ fn test_semi_trapezoid_inner_stator() {
         slot.drawables(&CoilLayout::SingleFilled).as_slice(),
         "tests/img/semi_trapezoid_inner_stator.png",
         None,
+    );
+
+    approx::assert_abs_diff_eq!(
+        132.25,
+        slot.winding_area().get::<square_millimeter>(),
+        epsilon = 1e-2
+    );
+    approx::assert_abs_diff_eq!(
+        132.25 + 1.5,
+        slot.area().get::<square_millimeter>(),
+        epsilon = 1e-2
+    );
+
+    approx::assert_abs_diff_eq!(
+        slot.bottom_width().get::<millimeter>(),
+        slot.bottom_side_width().get::<millimeter>(),
+        epsilon = 1e-6
     );
 
     // Image comparison: Slices

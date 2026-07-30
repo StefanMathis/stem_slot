@@ -41,17 +41,17 @@ fn test_slot_outline() {
 
     let contour = Contour::from(slot.outline().into_owned());
     let vertices: Vec<[f64; 2]> = contour.points().collect();
-    approx::assert_abs_diff_eq!(vertices[0][0], opening_width.get::<meter>() / 2.0);
+    approx::assert_abs_diff_eq!(vertices[0][0], -opening_width.get::<meter>() / 2.0);
     approx::assert_abs_diff_eq!(vertices[0][1], 0.0);
-    approx::assert_abs_diff_eq!(vertices[1][0], opening_width.get::<meter>() / 2.0);
+    approx::assert_abs_diff_eq!(vertices[1][0], -opening_width.get::<meter>() / 2.0);
     approx::assert_abs_diff_eq!(vertices[1][1], opening_height.get::<meter>());
-    approx::assert_abs_diff_eq!(vertices[2][0], width.get::<meter>() / 2.0);
+    approx::assert_abs_diff_eq!(vertices[2][0], -width.get::<meter>() / 2.0);
     approx::assert_abs_diff_eq!(vertices[2][1], height.get::<meter>());
-    approx::assert_abs_diff_eq!(vertices[3][0], -width.get::<meter>() / 2.0);
+    approx::assert_abs_diff_eq!(vertices[3][0], width.get::<meter>() / 2.0);
     approx::assert_abs_diff_eq!(vertices[3][1], height.get::<meter>());
-    approx::assert_abs_diff_eq!(vertices[4][0], -width.get::<meter>() / 2.0);
+    approx::assert_abs_diff_eq!(vertices[4][0], width.get::<meter>() / 2.0);
     approx::assert_abs_diff_eq!(vertices[4][1], opening_height.get::<meter>());
-    approx::assert_abs_diff_eq!(vertices[5][0], -opening_width.get::<meter>() / 2.0);
+    approx::assert_abs_diff_eq!(vertices[5][0], opening_width.get::<meter>() / 2.0);
     approx::assert_abs_diff_eq!(vertices[5][1], 0.0);
 }
 

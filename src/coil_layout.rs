@@ -63,7 +63,7 @@ implementation of a `coil_layout` method which returns the corresponding variant
 of this enum. This is used to calculate properties like e.g. the slot leakage
 inductance for motors.
  */
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub enum CoilLayout {
     /**

@@ -546,27 +546,27 @@ impl TryFrom<OpenTrapezoidWidthsAndHeightsBuilder> for OpenTrapezoidSlot {
 
         // Set parameters which may be calculated by an algorithm and are close
         // to zero to exactly zero.
-        if approx::ulps_eq!(
+        if approx::relative_eq!(
             bottom_side_width.get::<meter>(),
             0.0,
             epsilon = DEFAULT_EPSILON,
-            max_ulps = DEFAULT_MAX_ULPS
+            max_relative = DEFAULT_MAX_RELATIVE
         ) {
             bottom_side_width = zero;
         }
-        if approx::ulps_eq!(
+        if approx::relative_eq!(
             bottom_height.get::<meter>(),
             0.0,
             epsilon = DEFAULT_EPSILON,
-            max_ulps = DEFAULT_MAX_ULPS
+            max_relative = DEFAULT_MAX_RELATIVE
         ) {
             bottom_height = zero;
         }
-        if approx::ulps_eq!(
+        if approx::relative_eq!(
             side_height.get::<meter>(),
             0.0,
             epsilon = DEFAULT_EPSILON,
-            max_ulps = DEFAULT_MAX_ULPS
+            max_relative = DEFAULT_MAX_RELATIVE
         ) {
             side_height = zero;
         }
@@ -581,14 +581,14 @@ impl TryFrom<OpenTrapezoidWidthsAndHeightsBuilder> for OpenTrapezoidSlot {
         compare_variables!(val zero <= bottom_side_radius)?;
         let height = bottom_height + side_height + opening_height;
 
-        let v1 = [opening_width.get::<meter>() / 2.0, 0.0];
+        let v1 = [-opening_width.get::<meter>() / 2.0, 0.0];
         let v2 = [
-            bottom_side_width.get::<meter>() / 2.0,
+            -bottom_side_width.get::<meter>() / 2.0,
             (side_height + opening_height).get::<meter>(),
         ];
-        let v3 = [bottom_width.get::<meter>() / 2.0, height.get::<meter>()];
+        let v3 = [-bottom_width.get::<meter>() / 2.0, height.get::<meter>()];
 
-        let mut right_outline_half = if bottom_height == zero {
+        let mut left_outline_half = if bottom_height == zero {
             bottom_side_width = bottom_width;
             Polysegment::from_fillet_chain(&[v1, v3, [0.0, v3[1]]], &[bottom_radius.get::<meter>()])
         } else {
@@ -610,7 +610,7 @@ impl TryFrom<OpenTrapezoidWidthsAndHeightsBuilder> for OpenTrapezoidSlot {
             }
         }
         let mut i = 0;
-        for segment in right_outline_half.segments() {
+        for segment in left_outline_half.segments() {
             if let Segment::ArcSegment(arc_segment) = segment {
                 let current_param = &mut nonzero_radii[i];
                 **current_param = Length::new::<meter>(arc_segment.radius());
@@ -624,18 +624,19 @@ impl TryFrom<OpenTrapezoidWidthsAndHeightsBuilder> for OpenTrapezoidSlot {
         // Remove the bottom line segment, it will be recreated when connecting
         // the two halfes
         if bottom_width.get::<meter>() > 0.0 {
-            right_outline_half.pop_back();
+            left_outline_half.pop_back();
         }
 
-        let mut left_outline_half = right_outline_half.clone();
-        left_outline_half.reverse();
-        left_outline_half.line_reflection([0.0, 0.0], [0.0, 1.0]);
-        right_outline_half.append(&mut left_outline_half);
-        let outline = right_outline_half;
+        let mut right_outline_half = left_outline_half.clone();
+        right_outline_half.reverse();
+        right_outline_half.line_reflection([0.0, 0.0], [0.0, 1.0]);
+
+        let mut outline = left_outline_half;
+        outline.append(&mut right_outline_half);
 
         // Assert that the outline does not intersect itself
         if let Some(intersection) = outline
-            .intersections_polysegment_par(&outline, DEFAULT_EPSILON, DEFAULT_MAX_ULPS)
+            .intersections_polysegment_par(&outline, DEFAULT_EPSILON, DEFAULT_MAX_RELATIVE)
             .find_map_any(|v| Some(v))
         {
             return Err(crate::error::Error::OutlineIntersection {
@@ -1260,7 +1261,7 @@ impl TryFrom<OpenTrapezoidWithBottomAngleBuilder> for OpenTrapezoidSlot {
         );
 
         let intersection: [f64; 2] =
-            match l1.intersections_primitive(&l2, DEFAULT_EPSILON, DEFAULT_MAX_ULPS) {
+            match l1.intersections_primitive(&l2, DEFAULT_EPSILON, DEFAULT_MAX_RELATIVE) {
                 PrimitiveIntersections::One(p) => p,
                 _ => {
                     return Err(Comparison::new(

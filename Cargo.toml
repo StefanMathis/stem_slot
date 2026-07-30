@@ -1,6 +1,6 @@
 [package]
 name = "stem_slot"
-version = "0.3.1"
+version = "0.3.2"
 edition = "2024"
 description = "Slot definition for stem - a Simulation Toolbox for Electric Motors."
 readme = "README.md"
@@ -14,8 +14,8 @@ approx = { package = "approxim", version = "0.6" }
 compare_variables = { version = "0.3.0", features = ["proc_macro"] }
 gauss-quad = "0.3"
 akima_spline = "0.1.7"
-planar_geo = { version = "0.4.9", features = ["cairo"] }
-stem_material = "0.3.4"
+planar_geo = { version = "0.5" }
+stem_material = "0.3.5"
 cart_lin = "0.2.1"
 num = "0.4.0"
 rayon = "1.5"
@@ -29,14 +29,14 @@ embed-doc-image = { version = "0.1.4", optional = true }
 [features]
 default = []
 serde = ["dep:deserialize_untagged_verbose_error", "dep:serde", "dep:typetag",
-         "stem_material/serde"]
+         "stem_material/serde", "planar_geo/serde"]
 cairo = ["planar_geo/cairo"]
 doc-images = ["dep:embed-doc-image"]
 
 [dev-dependencies]
 indoc = "1.0"
 serde_yaml = "0.8"
-cairo_viewport = { version = "0.2.5", features = ["image-compare"]}
+cairo_viewport = { version = "0.3", features = ["image-compare"]}
 stem_slot = { path = ".", features = ["serde", "cairo"] }
 
 [package.metadata.docs.rs]

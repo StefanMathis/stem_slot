@@ -168,23 +168,23 @@ impl RectangularSlot {
             let mut pts = [[0.0; 2]; 8];
 
             pts[1] = [
-                opening_width.get::<meter>() / 2.0,
-                opening_height.get::<meter>(),
-            ];
-            pts[6] = [
                 -opening_width.get::<meter>() / 2.0,
                 opening_height.get::<meter>(),
             ];
+            pts[6] = [
+                opening_width.get::<meter>() / 2.0,
+                opening_height.get::<meter>(),
+            ];
 
-            pts[2] = [width.get::<meter>() / 2.0, opening_height.get::<meter>()];
-            pts[5] = [-width.get::<meter>() / 2.0, opening_height.get::<meter>()];
+            pts[2] = [-width.get::<meter>() / 2.0, opening_height.get::<meter>()];
+            pts[5] = [width.get::<meter>() / 2.0, opening_height.get::<meter>()];
 
-            pts[3] = [width.get::<meter>() / 2.0, height.get::<meter>()];
-            pts[4] = [-width.get::<meter>() / 2.0, height.get::<meter>()];
+            pts[3] = [-width.get::<meter>() / 2.0, height.get::<meter>()];
+            pts[4] = [width.get::<meter>() / 2.0, height.get::<meter>()];
 
             if opening_width > zero {
-                pts[0] = [opening_width.get::<meter>() / 2.0, 0.0];
-                pts[7] = [-opening_width.get::<meter>() / 2.0, 0.0];
+                pts[0] = [-opening_width.get::<meter>() / 2.0, 0.0];
+                pts[7] = [opening_width.get::<meter>() / 2.0, 0.0];
                 Polysegment::from_points(&pts)
             } else {
                 Polysegment::from_points(&pts[1..6])
@@ -193,7 +193,7 @@ impl RectangularSlot {
 
         // Assert that the outline does not intersect itself
         if let Some(intersection) = outline
-            .intersections_polysegment_par(&outline, DEFAULT_EPSILON, DEFAULT_MAX_ULPS)
+            .intersections_polysegment_par(&outline, DEFAULT_EPSILON, DEFAULT_MAX_RELATIVE)
             .find_map_any(|v| Some(v))
         {
             return Err(crate::error::Error::OutlineIntersection {

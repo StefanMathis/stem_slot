@@ -12,7 +12,6 @@ semi-regular polygon.
  */
 
 use akima_spline::AkimaSpline;
-use approx::ulps_eq;
 use dyn_clone::DynClone;
 use gauss_quad;
 use planar_geo::prelude::*;
@@ -77,8 +76,8 @@ the x-axis as well. If the slot is closed, its start and end point must be
 identical and must have a positive y-value. All segments of the outline must
 have positive y-values as well.
 - The slot outline must not intersect itself.
-- The slot outline is defined in counter-clockwise fashion: starting on the
-right side of the y-axis and ending on its left side as shown in the image
+- The slot outline is defined in clockwise fashion: starting on the
+left side of the y-axis and ending on its right side as shown in the image
 above.
 - If the slot is open, the distance between the start and end points of the
 outline is the [`Slot::opening_width`].
@@ -435,7 +434,7 @@ pub trait Slot: Send + Sync + std::fmt::Debug + DynClone + Any + 'static {
         // separated_lines. If the length of separated_lines is smaller than 2,
         // the contour has no slot opening and is therefore not changed.
         let separated_lines: Vec<Polysegment> =
-            contour.intersection_cut(&parallel_line, DEFAULT_EPSILON, DEFAULT_MAX_ULPS);
+            contour.intersection_cut(&parallel_line, DEFAULT_EPSILON, DEFAULT_MAX_RELATIVE);
 
         // Combine all lines which are not below self.opening_height() into a new chain.
         // The "1e-9" is necessary because of floating point rounding errors.
@@ -542,7 +541,7 @@ pub trait Slot: Send + Sync + std::fmt::Debug + DynClone + Any + 'static {
                 .intersection_cut(
                     &Polysegment::from(&layer_bounds),
                     DEFAULT_EPSILON,
-                    DEFAULT_MAX_ULPS,
+                    DEFAULT_MAX_RELATIVE,
                 )
                 .into_iter(),
             layer_bounds,
@@ -619,7 +618,7 @@ pub trait Slot: Send + Sync + std::fmt::Debug + DynClone + Any + 'static {
                 let verts_par = [[0.0, bb.ymin() - 1.0], [0.0, bb.ymax() + 1.0]];
                 let vertical_line = Polysegment::from_points(verts_par.as_slice());
                 let separated_lines =
-                    contour.intersection_cut(&vertical_line, DEFAULT_EPSILON, DEFAULT_MAX_ULPS);
+                    contour.intersection_cut(&vertical_line, DEFAULT_EPSILON, DEFAULT_MAX_RELATIVE);
 
                 let invert = if let Some(ps) = separated_lines.get(0) {
                     let bb = ps.bounding_box();
@@ -647,8 +646,11 @@ pub trait Slot: Send + Sync + std::fmt::Debug + DynClone + Any + 'static {
 
                 let verts_par = [[2.0 * bb.xmin(), center[1]], [2.0 * bb.xmax(), center[1]]];
                 let horizontal_line = Polysegment::from_points(verts_par.as_slice());
-                let separated_lines =
-                    contour.intersection_cut(&horizontal_line, DEFAULT_EPSILON, DEFAULT_MAX_ULPS);
+                let separated_lines = contour.intersection_cut(
+                    &horizontal_line,
+                    DEFAULT_EPSILON,
+                    DEFAULT_MAX_RELATIVE,
+                );
 
                 // Check which half is the upper one
                 let invert = if let Some(ps) = separated_lines.get(0) {
@@ -698,7 +700,8 @@ pub trait Slot: Send + Sync + std::fmt::Debug + DynClone + Any + 'static {
                 );
 
                 // Cut the contour into four halfes
-                let quarters = contour.intersection_cut(&cutter, DEFAULT_EPSILON, DEFAULT_MAX_ULPS);
+                let quarters =
+                    contour.intersection_cut(&cutter, DEFAULT_EPSILON, DEFAULT_MAX_RELATIVE);
 
                 let mut ps_ll: Option<Polysegment> = None; // Contour of the lower-left layer
                 let mut ps_ul: Option<Polysegment> = None; // Contour of the upper-left layer
@@ -742,8 +745,7 @@ pub trait Slot: Send + Sync + std::fmt::Debug + DynClone + Any + 'static {
                         // Create full contour
                         if let Some(seg) = ps.segments().last() {
                             let start = seg.stop();
-                            match LineSegment::new(start, center, DEFAULT_EPSILON, DEFAULT_MAX_ULPS)
-                            {
+                            match LineSegment::new(start, center) {
                                 Ok(ls) => ps.push_back(ls.into()),
                                 Err(_) => (),
                             }
@@ -775,7 +777,7 @@ pub trait Slot: Send + Sync + std::fmt::Debug + DynClone + Any + 'static {
                         let mut separated_lines = shape_contour.intersection_cut(
                             &horizontal_line,
                             DEFAULT_EPSILON,
-                            DEFAULT_MAX_ULPS,
+                            DEFAULT_MAX_RELATIVE,
                         );
 
                         // Check which half is the upper one
@@ -1458,7 +1460,7 @@ pub trait Slot: Send + Sync + std::fmt::Debug + DynClone + Any + 'static {
         let binding = self.outline();
         let mut point_iter = binding.polygonize(Polygonizer::PerType {
             arc: SegmentPolygonizer::MaximumAngle(TAU / 36.0),
-            straight: SegmentPolygonizer::InnerSegments(1),
+            line: SegmentPolygonizer::InnerSegments(1),
         });
 
         let max_slice_height = self.height().get::<meter>() / (min_num_slices as f64);
@@ -1484,13 +1486,13 @@ pub trait Slot: Send + Sync + std::fmt::Debug + DynClone + Any + 'static {
                 }
 
                 // Skip sections which have a very small incline
-                let delta_x = pt2[0] - pt1[0];
+                let delta_x = (pt2[0] - pt1[0]).abs();
                 let delta_y = (pt2[1] - pt1[1]).abs();
-                if ulps_eq!(
+                if approx::relative_eq!(
                     delta_y,
                     0.0,
                     epsilon = DEFAULT_EPSILON,
-                    max_ulps = DEFAULT_MAX_ULPS
+                    max_relative = DEFAULT_MAX_RELATIVE
                 ) {
                     pt1 = pt2;
                     continue;
@@ -1505,7 +1507,7 @@ pub trait Slot: Send + Sync + std::fmt::Debug + DynClone + Any + 'static {
 
                 for ii in 0..(n_slices_section as usize) {
                     let d = (n_slices_section - ii as f64) - 0.5;
-                    let x = pt2[0].abs() + d * delta_x / n_slices_section;
+                    let x = pt2[0].abs() - d * delta_x / n_slices_section;
                     let y_middle = pt2[1] + d * slice_height;
                     bbs.push(BoundingBox::new(
                         -x,
@@ -1595,7 +1597,7 @@ impl Iterator for LayerOutlines {
         let ps = self.inner.next()?;
         if self
             .layer_bounds
-            .approx_covers(&ps.bounding_box(), DEFAULT_EPSILON, DEFAULT_MAX_ULPS)
+            .approx_covers(&ps.bounding_box(), DEFAULT_EPSILON)
         {
             return Some(ps);
         }
@@ -1953,11 +1955,11 @@ impl BottomAngle {
                 slot_angle,
             } => {
                 let bottom_height = (*bottom_height).get::<meter>();
-                if approx::ulps_ne!(
+                if approx::relative_ne!(
                     bottom_height,
                     0.0,
                     epsilon = DEFAULT_EPSILON,
-                    max_ulps = DEFAULT_MAX_ULPS
+                    max_relative = DEFAULT_MAX_RELATIVE
                 ) {
                     return (*bottom_side_width - *bottom_width)
                         .get::<meter>()
@@ -2187,11 +2189,11 @@ impl TopAngle {
                 slot_angle,
             } => {
                 let top_height = (*top_height).get::<meter>();
-                if approx::ulps_ne!(
+                if approx::relative_ne!(
                     top_height,
                     0.0,
                     epsilon = DEFAULT_EPSILON,
-                    max_ulps = DEFAULT_MAX_ULPS
+                    max_relative = DEFAULT_MAX_RELATIVE
                 ) {
                     return (*top_side_width - *top_width)
                         .get::<meter>()
@@ -2244,7 +2246,7 @@ impl CurrentDisplacementCalculator {
 fn width_at(h: Length, polysegment: &Polysegment) -> Length {
     let parallel_line = Line::from_point_angle([0.0, h.get::<meter>()], 0.0);
     let (min, max) = polysegment
-        .intersections_primitive_par(&parallel_line, DEFAULT_EPSILON, DEFAULT_MAX_ULPS)
+        .intersections_primitive_par(&parallel_line, DEFAULT_EPSILON, DEFAULT_MAX_RELATIVE)
         .map(|i| (i.point[0], i.point[0]))
         .reduce(
             || (f64::MAX, f64::MIN),
@@ -2514,13 +2516,13 @@ fn lower_part_of_layer_area(
     }
 
     // The lower coordinate of the bounding box to must be y
-    let lb_adjusted = BoundingBox::new(
+    let bb = BoundingBox::new(
         layer_bounds.xmin(),
         layer_bounds.xmax(),
         y,
         layer_bounds.ymax(),
     );
-    let clb = Contour::from(lb_adjusted.clone());
+    let clb = Contour::from(bb.clone());
 
     /*
     Cut the layer contour into individual polysegments using the adjusted bounding box.
@@ -2530,11 +2532,9 @@ fn lower_part_of_layer_area(
     This contour is guaranteed to be covered by lb_adjusted.
      */
     return layer_contour
-        .intersection_cut(clb.polysegment(), DEFAULT_EPSILON, DEFAULT_MAX_ULPS)
+        .intersection_cut(clb.polysegment(), DEFAULT_EPSILON, DEFAULT_MAX_RELATIVE)
         .into_iter()
-        .filter(|ps| {
-            lb_adjusted.approx_covers(&ps.bounding_box(), DEFAULT_EPSILON, DEFAULT_MAX_ULPS)
-        })
+        .filter(|ps| bb.approx_covers(&ps.bounding_box(), DEFAULT_EPSILON))
         .reduce(|mut ps1, mut ps2| {
             ps1.append(&mut ps2);
             ps1
