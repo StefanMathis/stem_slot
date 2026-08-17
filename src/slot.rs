@@ -197,7 +197,7 @@ pub trait Slot: Send + Sync + std::fmt::Debug + DynClone + Any + 'static {
     # Examples
 
     ```
-    use approx::assert_abs_diff_eq;
+    use approxim::assert_abs_diff_eq;
     use stem_slot::prelude::*;
 
     let slot = RectangularSlot::new(
@@ -300,13 +300,13 @@ pub trait Slot: Send + Sync + std::fmt::Debug + DynClone + Any + 'static {
     /// .unwrap();
     ///
     /// let h1 = Length::new::<millimeter>(2.0);
-    /// approx::assert_abs_diff_eq!(8.0, slot.width_at(h1).get::<millimeter>(), epsilon = 1e-6);
+    /// approxim::assert_abs_diff_eq!(8.0, slot.width_at(h1).get::<millimeter>(), epsilon = 1e-6);
     ///
     /// let h2 = Length::new::<millimeter>(12.0);
-    /// approx::assert_abs_diff_eq!(20.0, slot.width_at(h2).get::<millimeter>(), epsilon = 1e-6);
+    /// approxim::assert_abs_diff_eq!(20.0, slot.width_at(h2).get::<millimeter>(), epsilon = 1e-6);
     ///
     /// let h3 = Length::new::<millimeter>(20.0);
-    /// approx::assert_abs_diff_eq!(24.0, slot.width_at(h3).get::<millimeter>(), epsilon = 1e-6);
+    /// approxim::assert_abs_diff_eq!(24.0, slot.width_at(h3).get::<millimeter>(), epsilon = 1e-6);
     /// ```
     fn width_at(&self, h: Length) -> Length {
         width_at(h, &self.outline())
@@ -321,7 +321,7 @@ pub trait Slot: Send + Sync + std::fmt::Debug + DynClone + Any + 'static {
     # Examples
 
     ```
-    use approx::assert_abs_diff_eq;
+    use approxim::assert_abs_diff_eq;
     use stem_slot::prelude::*;
 
     assert!(RectangularSlot::new(
@@ -363,7 +363,7 @@ pub trait Slot: Send + Sync + std::fmt::Debug + DynClone + Any + 'static {
     # Examples
 
     ```
-    use approx::assert_abs_diff_eq;
+    use approxim::assert_abs_diff_eq;
     use stem_slot::prelude::*;
 
     let slot = RectangularSlot::new(
@@ -392,7 +392,7 @@ pub trait Slot: Send + Sync + std::fmt::Debug + DynClone + Any + 'static {
     # Examples
 
     ```
-    use approx::assert_abs_diff_eq;
+    use approxim::assert_abs_diff_eq;
     use planar_geo::prelude::ToBoundingBox;
     use stem_slot::prelude::*;
 
@@ -433,8 +433,7 @@ pub trait Slot: Send + Sync + std::fmt::Debug + DynClone + Any + 'static {
         // Cut off the slot opening. The upper part of the slot is the second item in
         // separated_lines. If the length of separated_lines is smaller than 2,
         // the contour has no slot opening and is therefore not changed.
-        let separated_lines: Vec<Polysegment> =
-            contour.intersection_cut(&parallel_line, DEFAULT_EPSILON, DEFAULT_MAX_RELATIVE);
+        let separated_lines: Vec<Polysegment> = contour.intersection_cut(&parallel_line);
 
         // Combine all lines which are not below self.opening_height() into a new chain.
         // The "1e-9" is necessary because of floating point rounding errors.
@@ -457,7 +456,7 @@ pub trait Slot: Send + Sync + std::fmt::Debug + DynClone + Any + 'static {
     # Examples
 
     ```
-    use approx::assert_abs_diff_eq;
+    use approxim::assert_abs_diff_eq;
     use stem_slot::prelude::*;
 
     let slot = RectangularSlot::new(
@@ -501,7 +500,7 @@ pub trait Slot: Send + Sync + std::fmt::Debug + DynClone + Any + 'static {
     /// # Examples
     ///
     /// ```
-    /// use approx::assert_abs_diff_eq;
+    /// use approxim::assert_abs_diff_eq;
     /// use stem_slot::prelude::*;
     ///
     /// // Open slot
@@ -538,11 +537,7 @@ pub trait Slot: Send + Sync + std::fmt::Debug + DynClone + Any + 'static {
         // Sum up all parts of the segment chain which are within bounds
         return LayerOutlines {
             inner: polysegment
-                .intersection_cut(
-                    &Polysegment::from(&layer_bounds),
-                    DEFAULT_EPSILON,
-                    DEFAULT_MAX_RELATIVE,
-                )
+                .intersection_cut(&Polysegment::from(&layer_bounds))
                 .into_iter(),
             layer_bounds,
         };
@@ -580,7 +575,7 @@ pub trait Slot: Send + Sync + std::fmt::Debug + DynClone + Any + 'static {
     ///
     /// ```
     /// use std::f64::consts::PI;
-    /// use approx::assert_abs_diff_eq;
+    /// use approxim::assert_abs_diff_eq;
     /// use stem_slot::prelude::*;
     /// use stem_slot::semi_trapezoid::SemiTrapezoidWithoutSlopesBuilder;
     ///
@@ -617,8 +612,7 @@ pub trait Slot: Send + Sync + std::fmt::Debug + DynClone + Any + 'static {
 
                 let verts_par = [[0.0, bb.ymin() - 1.0], [0.0, bb.ymax() + 1.0]];
                 let vertical_line = Polysegment::from_points(verts_par.as_slice());
-                let separated_lines =
-                    contour.intersection_cut(&vertical_line, DEFAULT_EPSILON, DEFAULT_MAX_RELATIVE);
+                let separated_lines = contour.intersection_cut(&vertical_line);
 
                 let invert = if let Some(ps) = separated_lines.get(0) {
                     let bb = ps.bounding_box();
@@ -646,11 +640,7 @@ pub trait Slot: Send + Sync + std::fmt::Debug + DynClone + Any + 'static {
 
                 let verts_par = [[2.0 * bb.xmin(), center[1]], [2.0 * bb.xmax(), center[1]]];
                 let horizontal_line = Polysegment::from_points(verts_par.as_slice());
-                let separated_lines = contour.intersection_cut(
-                    &horizontal_line,
-                    DEFAULT_EPSILON,
-                    DEFAULT_MAX_RELATIVE,
-                );
+                let separated_lines = contour.intersection_cut(&horizontal_line);
 
                 // Check which half is the upper one
                 let invert = if let Some(ps) = separated_lines.get(0) {
@@ -700,8 +690,7 @@ pub trait Slot: Send + Sync + std::fmt::Debug + DynClone + Any + 'static {
                 );
 
                 // Cut the contour into four halfes
-                let quarters =
-                    contour.intersection_cut(&cutter, DEFAULT_EPSILON, DEFAULT_MAX_RELATIVE);
+                let quarters = contour.intersection_cut(&cutter);
 
                 let mut ps_ll: Option<Polysegment> = None; // Contour of the lower-left layer
                 let mut ps_ul: Option<Polysegment> = None; // Contour of the upper-left layer
@@ -774,11 +763,7 @@ pub trait Slot: Send + Sync + std::fmt::Debug + DynClone + Any + 'static {
                         // Separate into two halfes
                         let verts_par = [[x_start, y], [x_stop, y]];
                         let horizontal_line = Polysegment::from_points(verts_par.as_slice());
-                        let mut separated_lines = shape_contour.intersection_cut(
-                            &horizontal_line,
-                            DEFAULT_EPSILON,
-                            DEFAULT_MAX_RELATIVE,
-                        );
+                        let mut separated_lines = shape_contour.intersection_cut(&horizontal_line);
 
                         // Check which half is the upper one
                         let bb_first = separated_lines[0].bounding_box();
@@ -876,7 +861,7 @@ pub trait Slot: Send + Sync + std::fmt::Debug + DynClone + Any + 'static {
     # Examples
 
     ```
-    use approx::assert_abs_diff_eq;
+    use approxim::assert_abs_diff_eq;
     use stem_slot::prelude::*;
 
     let slot = RectangularSlot::new(
@@ -956,7 +941,7 @@ pub trait Slot: Send + Sync + std::fmt::Debug + DynClone + Any + 'static {
     # Examples
 
     ```
-    use approx::assert_abs_diff_eq;
+    use approxim::assert_abs_diff_eq;
     use stem_slot::prelude::*;
 
     let slot = RectangularSlot::new(
@@ -1061,7 +1046,7 @@ pub trait Slot: Send + Sync + std::fmt::Debug + DynClone + Any + 'static {
 
     # Examples
     ```
-    use approx::assert_abs_diff_eq;
+    use approxim::assert_abs_diff_eq;
     use stem_slot::prelude::*;
 
     let slot = RectangularSlot::new(
@@ -1328,7 +1313,7 @@ pub trait Slot: Send + Sync + std::fmt::Debug + DynClone + Any + 'static {
     ///
     /// # Examples
     /// ```
-    /// use approx::assert_abs_diff_eq;
+    /// use approxim::assert_abs_diff_eq;
     /// use stem_slot::prelude::*;
     ///
     /// let slot = RectangularSlot::new(
@@ -1438,7 +1423,7 @@ pub trait Slot: Send + Sync + std::fmt::Debug + DynClone + Any + 'static {
     /// # Examples
     ///
     /// ```
-    /// use approx::assert_abs_diff_eq;
+    /// use approxim::assert_abs_diff_eq;
     /// use stem_slot::prelude::*;
     ///
     /// let slot = RectangularSlot::new(
@@ -1488,7 +1473,7 @@ pub trait Slot: Send + Sync + std::fmt::Debug + DynClone + Any + 'static {
                 // Skip sections which have a very small incline
                 let delta_x = (pt2[0] - pt1[0]).abs();
                 let delta_y = (pt2[1] - pt1[1]).abs();
-                if approx::relative_eq!(
+                if approxim::relative_eq!(
                     delta_y,
                     0.0,
                     epsilon = DEFAULT_EPSILON,
@@ -1669,7 +1654,7 @@ lazy_static::lazy_static! {
 /// # Examples
 ///
 /// ```
-/// use approx::assert_abs_diff_eq;
+/// use approxim::assert_abs_diff_eq;
 /// use stem_slot::prelude::*;
 /// use stem_slot::slot::leakage_coefficient_tooth_tip;
 ///
@@ -1726,7 +1711,7 @@ pub fn leakage_coefficient_tooth_tip(opening_width: Length, magnetic_air_gap: Le
 /// # Examples
 ///
 /// ```
-/// use approx::assert_abs_diff_eq;
+/// use approxim::assert_abs_diff_eq;
 /// use stem_slot::slot::semi_regular_polygon_side_length;
 ///
 /// let second_side = semi_regular_polygon_side_length(1.0, 2.0, 12).expect("valid inputs");;
@@ -1789,7 +1774,7 @@ This enum is serialized / deserialized as an untagged enum:
 
 ```
 use std::f64::consts::PI;
-use approx::assert_abs_diff_eq;
+use approxim::assert_abs_diff_eq;
 use indoc::indoc;
 use stem_slot::slot::BottomAngle;
 
@@ -1798,7 +1783,7 @@ let data = indoc! {"
     ---
     135.0 deg
     "};
-let bottom_angle: BottomAngle = serde_yaml::from_str(data).unwrap();
+let bottom_angle: BottomAngle = yaml_serde::from_str(data).unwrap();
 assert_abs_diff_eq!(bottom_angle.value(), 0.75 * PI, epsilon = 1e-10);
 
 // Deserialize from parameters
@@ -1809,8 +1794,8 @@ let data = indoc! {"
     bottom_height: 1.0 m
     slot_angle: 10.0 deg
     "};
-let bottom_angle: BottomAngle = serde_yaml::from_str(data).unwrap();
-approx::assert_abs_diff_eq!(bottom_angle.value(), 0.75 * PI, epsilon = 1e-10);
+let bottom_angle: BottomAngle = yaml_serde::from_str(data).unwrap();
+approxim::assert_abs_diff_eq!(bottom_angle.value(), 0.75 * PI, epsilon = 1e-10);
 ```
 
 Of course, the untagged representation can of course also be used when
@@ -1836,14 +1821,14 @@ pub enum BottomAngle {
 
     ```
     use std::f64::consts::{FRAC_PI_2, FRAC_PI_4};
-    use approx::assert_abs_diff_eq;
+    use approxim::assert_abs_diff_eq;
     use stem_slot::slot::BottomAngle;
 
     let bottom_angle: f64 = BottomAngle::FromBottomSideAngle {
         bottom_side_angle: FRAC_PI_2,
         slot_angle: FRAC_PI_2,
     }.into(); // Calls BottomAngle::value()
-    approx::assert_abs_diff_eq!(bottom_angle, FRAC_PI_2 + FRAC_PI_4, epsilon = 1e-10);
+    approxim::assert_abs_diff_eq!(bottom_angle, FRAC_PI_2 + FRAC_PI_4, epsilon = 1e-10);
     ```
      */
     FromBottomSideAngle {
@@ -1864,7 +1849,7 @@ pub enum BottomAngle {
 
     ```
     use std::f64::consts::{TAU, FRAC_PI_4};
-    use approx::assert_abs_diff_eq;
+    use approxim::assert_abs_diff_eq;
     use stem_slot::prelude::*;
     use stem_slot::slot::BottomAngle;
 
@@ -1875,7 +1860,7 @@ pub enum BottomAngle {
         bottom_height: Length::new::<millimeter>(1.0),
         slot_angle: TAU / 36.0,
     }.into(); // Calls BottomAngle::value()
-    approx::assert_abs_diff_eq!(bottom_angle, 3.0 * FRAC_PI_4, epsilon = 1e-10);
+    approxim::assert_abs_diff_eq!(bottom_angle, 3.0 * FRAC_PI_4, epsilon = 1e-10);
     ```
      */
     FromWidthAndHeight {
@@ -1929,14 +1914,14 @@ impl BottomAngle {
 
     ```
     use std::f64::consts::{FRAC_PI_2, FRAC_PI_4};
-    use approx::assert_abs_diff_eq;
+    use approxim::assert_abs_diff_eq;
     use stem_slot::slot::BottomAngle;
 
     let bottom_angle: f64 = BottomAngle::FromBottomSideAngle {
         bottom_side_angle: FRAC_PI_2,
         slot_angle: FRAC_PI_2,
     }.value();
-    approx::assert_abs_diff_eq!(bottom_angle, FRAC_PI_2 + FRAC_PI_4, epsilon = 1e-10);
+    approxim::assert_abs_diff_eq!(bottom_angle, FRAC_PI_2 + FRAC_PI_4, epsilon = 1e-10);
     ```
      */
     pub fn value(&self) -> f64 {
@@ -1955,7 +1940,7 @@ impl BottomAngle {
                 slot_angle,
             } => {
                 let bottom_height = (*bottom_height).get::<meter>();
-                if approx::relative_ne!(
+                if approxim::relative_ne!(
                     bottom_height,
                     0.0,
                     epsilon = DEFAULT_EPSILON,
@@ -2023,7 +2008,7 @@ This enum is serialized / deserialized as an untagged enum:
 
 ```
 use std::f64::consts::PI;
-use approx::assert_abs_diff_eq;
+use approxim::assert_abs_diff_eq;
 use indoc::indoc;
 use stem_slot::slot::TopAngle;
 
@@ -2032,7 +2017,7 @@ let data = indoc! {"
     ---
     135.0 deg
     "};
-let top_angle: TopAngle = serde_yaml::from_str(data).unwrap();
+let top_angle: TopAngle = yaml_serde::from_str(data).unwrap();
 assert_abs_diff_eq!(top_angle.value(), 0.75 * PI, epsilon = 1e-10);
 
 // Deserialize from parameters
@@ -2043,8 +2028,8 @@ let data = indoc! {"
     top_height: 1.0 m
     slot_angle: 10.0 deg
     "};
-let top_angle: TopAngle = serde_yaml::from_str(data).unwrap();
-approx::assert_abs_diff_eq!(top_angle.value(), 0.75 * PI, epsilon = 1e-10);
+let top_angle: TopAngle = yaml_serde::from_str(data).unwrap();
+approxim::assert_abs_diff_eq!(top_angle.value(), 0.75 * PI, epsilon = 1e-10);
 ```
 
 Of course, the untagged representation can of course also be used when
@@ -2070,14 +2055,14 @@ pub enum TopAngle {
 
     ```
     use std::f64::consts::{FRAC_PI_2, FRAC_PI_4};
-    use approx::assert_abs_diff_eq;
+    use approxim::assert_abs_diff_eq;
     use stem_slot::slot::TopAngle;
 
     let top_angle: f64 = TopAngle::FromTopSideAngle {
         top_side_angle: 1.5 * FRAC_PI_2,
         slot_angle: FRAC_PI_4,
     }.value();
-    approx::assert_abs_diff_eq!(top_angle, 3.5*FRAC_PI_4, epsilon = 1e-10);
+    approxim::assert_abs_diff_eq!(top_angle, 3.5*FRAC_PI_4, epsilon = 1e-10);
     ```
      */
     FromTopSideAngle {
@@ -2098,7 +2083,7 @@ pub enum TopAngle {
 
     ```
     use std::f64::consts::{TAU, FRAC_PI_2};
-    use approx::assert_abs_diff_eq;
+    use approxim::assert_abs_diff_eq;
     use stem_slot::prelude::*;
     use stem_slot::slot::TopAngle;
 
@@ -2109,7 +2094,7 @@ pub enum TopAngle {
         top_height: Length::new::<millimeter>(1.0),
         slot_angle: TAU / 36.0,
     }.into(); // Calls TopAngle::value()
-    approx::assert_abs_diff_eq!(top_angle, 1.5 * FRAC_PI_2, epsilon = 1e-10);
+    approxim::assert_abs_diff_eq!(top_angle, 1.5 * FRAC_PI_2, epsilon = 1e-10);
     ```
      */
     FromWidthAndHeight {
@@ -2163,14 +2148,14 @@ impl TopAngle {
 
     ```
     use std::f64::consts::{FRAC_PI_2, FRAC_PI_4};
-    use approx::assert_abs_diff_eq;
+    use approxim::assert_abs_diff_eq;
     use stem_slot::slot::TopAngle;
 
     let top_angle: f64 = TopAngle::FromTopSideAngle {
         top_side_angle: 1.5 * FRAC_PI_2,
         slot_angle: FRAC_PI_4,
     }.value();
-    approx::assert_abs_diff_eq!(top_angle, 3.5*FRAC_PI_4, epsilon = 1e-10);
+    approxim::assert_abs_diff_eq!(top_angle, 3.5*FRAC_PI_4, epsilon = 1e-10);
     ```
      */
     pub fn value(&self) -> f64 {
@@ -2189,7 +2174,7 @@ impl TopAngle {
                 slot_angle,
             } => {
                 let top_height = (*top_height).get::<meter>();
-                if approx::relative_ne!(
+                if approxim::relative_ne!(
                     top_height,
                     0.0,
                     epsilon = DEFAULT_EPSILON,
@@ -2246,7 +2231,7 @@ impl CurrentDisplacementCalculator {
 fn width_at(h: Length, polysegment: &Polysegment) -> Length {
     let parallel_line = Line::from_point_angle([0.0, h.get::<meter>()], 0.0);
     let (min, max) = polysegment
-        .intersections_primitive_par(&parallel_line, DEFAULT_EPSILON, DEFAULT_MAX_RELATIVE)
+        .intersections_line_par(&parallel_line)
         .map(|i| (i.point[0], i.point[0]))
         .reduce(
             || (f64::MAX, f64::MIN),
@@ -2532,7 +2517,7 @@ fn lower_part_of_layer_area(
     This contour is guaranteed to be covered by lb_adjusted.
      */
     return layer_contour
-        .intersection_cut(clb.polysegment(), DEFAULT_EPSILON, DEFAULT_MAX_RELATIVE)
+        .intersection_cut(clb.polysegment())
         .into_iter()
         .filter(|ps| bb.approx_covers(&ps.bounding_box(), DEFAULT_EPSILON))
         .reduce(|mut ps1, mut ps2| {
@@ -2595,7 +2580,7 @@ pub(crate) fn slot_side_bottom_and_top_width_from_rot_core(
 mod tests {
     use super::*;
     use crate::rectangular::RectangularSlot;
-    use approx;
+    use approxim;
 
     #[test]
     fn test_lower_part_of_layer_area_rectangular() {
@@ -2619,22 +2604,22 @@ mod tests {
             0.0,
         );
 
-        approx::assert_abs_diff_eq!(
+        approxim::assert_abs_diff_eq!(
             lower_part_of_layer_area(0.0, &slot_contour, &bounds, slot_contour.area()),
             ((height - opening_height) * width).get::<square_meter>(),
             epsilon = 1e-6
         );
-        approx::assert_abs_diff_eq!(
+        approxim::assert_abs_diff_eq!(
             lower_part_of_layer_area(10e-3, &slot_contour, &bounds, slot_contour.area()),
             10e-3 * width.get::<meter>(),
             epsilon = 1e-6
         );
-        approx::assert_abs_diff_eq!(
+        approxim::assert_abs_diff_eq!(
             lower_part_of_layer_area(5e-3, &slot_contour, &bounds, slot_contour.area()),
             15e-3 * width.get::<meter>(),
             epsilon = 1e-6
         );
-        approx::assert_abs_diff_eq!(
+        approxim::assert_abs_diff_eq!(
             lower_part_of_layer_area(20e-3, &slot_contour, &bounds, slot_contour.area()),
             0.0,
             epsilon = 1e-6
@@ -2651,13 +2636,13 @@ mod tests {
             0.0,
         );
 
-        approx::assert_abs_diff_eq!(
+        approxim::assert_abs_diff_eq!(
             lower_part_of_layer_area(10e-3, &slot_contour, &bounds, slot_contour.area()),
             7.5e-6,
             epsilon = 1e-6
         );
 
-        approx::assert_abs_diff_eq!(
+        approxim::assert_abs_diff_eq!(
             lower_part_of_layer_area(12e-3, &slot_contour, &bounds, slot_contour.area()),
             6e-6,
             epsilon = 1e-6
@@ -2674,17 +2659,17 @@ mod tests {
             0.0,
         );
 
-        approx::assert_abs_diff_eq!(
+        approxim::assert_abs_diff_eq!(
             lower_part_of_layer_area(15e-3, &slot_contour, &bounds, slot_contour.area()),
             5e-3 * width.get::<meter>(),
             epsilon = 1e-8
         );
-        approx::assert_abs_diff_eq!(
+        approxim::assert_abs_diff_eq!(
             lower_part_of_layer_area(10e-3, &slot_contour, &bounds, slot_contour.area()),
             5.7e-5,
             epsilon = 1e-8
         );
-        approx::assert_abs_diff_eq!(
+        approxim::assert_abs_diff_eq!(
             lower_part_of_layer_area(5e-3, &slot_contour, &bounds, slot_contour.area()),
             5.7e-5,
             epsilon = 1e-8
@@ -2700,17 +2685,17 @@ mod tests {
             0.0,
         );
 
-        approx::assert_abs_diff_eq!(
+        approxim::assert_abs_diff_eq!(
             lower_part_of_layer_area(9e-3, &slot_contour, &bounds, slot_contour.area()),
             1.5e-3 * width.get::<meter>(),
             epsilon = 1e-6
         );
-        approx::assert_abs_diff_eq!(
+        approxim::assert_abs_diff_eq!(
             lower_part_of_layer_area(3e-3, &slot_contour, &bounds, slot_contour.area()),
             (9.5e-3 - 2e-3) * width.get::<meter>(),
             epsilon = 1e-6
         );
-        approx::assert_abs_diff_eq!(
+        approxim::assert_abs_diff_eq!(
             lower_part_of_layer_area(10.5e-3, &slot_contour, &bounds, slot_contour.area()),
             0.0,
             epsilon = 1e-6
@@ -2738,7 +2723,7 @@ mod tests {
             opening_height,
         );
 
-        approx::assert_abs_diff_eq!(b_bottom.get::<millimeter>(), 9.29996, epsilon = 1e-3);
-        approx::assert_abs_diff_eq!(b_top.get::<millimeter>(), 6.32535, epsilon = 1e-3);
+        approxim::assert_abs_diff_eq!(b_bottom.get::<millimeter>(), 9.29996, epsilon = 1e-3);
+        approxim::assert_abs_diff_eq!(b_top.get::<millimeter>(), 6.32535, epsilon = 1e-3);
     }
 }

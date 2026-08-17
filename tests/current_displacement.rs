@@ -6,15 +6,15 @@ fn test_phase_velocity() {
 
     let frequency = Frequency::new::<hertz>(1.0);
     let alpha = phase_velocity(frequency, el_conductivity, *VACUUM_PERMEABILITY);
-    approx::assert_abs_diff_eq!(alpha.get::<meter_per_second>(), 0.519875, epsilon = 1e-6);
+    approxim::assert_abs_diff_eq!(alpha.get::<meter_per_second>(), 0.519875, epsilon = 1e-6);
 
     let frequency = Frequency::new::<hertz>(10.0);
     let alpha = phase_velocity(frequency, el_conductivity, *VACUUM_PERMEABILITY);
-    approx::assert_abs_diff_eq!(alpha.get::<meter_per_second>(), 1.643989, epsilon = 1e-6);
+    approxim::assert_abs_diff_eq!(alpha.get::<meter_per_second>(), 1.643989, epsilon = 1e-6);
 
     let frequency = Frequency::new::<hertz>(50.0);
     let alpha = phase_velocity(frequency, el_conductivity, *VACUUM_PERMEABILITY);
-    approx::assert_abs_diff_eq!(alpha.get::<meter_per_second>(), 3.676073, epsilon = 1e-6);
+    approxim::assert_abs_diff_eq!(alpha.get::<meter_per_second>(), 3.676073, epsilon = 1e-6);
 }
 
 #[test]
@@ -29,8 +29,8 @@ fn test_current_displacement_coefficients_analytic_rectangular() {
         el_conductivity,
         rel_permeability,
     );
-    approx::assert_abs_diff_eq!(coeffs.resistance, 1.575749, epsilon = 1e-6);
-    approx::assert_abs_diff_eq!(coeffs.inductance, 0.838612, epsilon = 1e-6);
+    approxim::assert_abs_diff_eq!(coeffs.resistance, 1.575749, epsilon = 1e-6);
+    approxim::assert_abs_diff_eq!(coeffs.inductance, 0.838612, epsilon = 1e-6);
 
     let coeffs = CurrentDisplacementCoefficients::from_rectangular_open_slot(
         height,
@@ -38,8 +38,8 @@ fn test_current_displacement_coefficients_analytic_rectangular() {
         el_conductivity,
         rel_permeability,
     );
-    approx::assert_abs_diff_eq!(coeffs.resistance, 2.383342, epsilon = 1e-6);
-    approx::assert_abs_diff_eq!(coeffs.inductance, 0.631493, epsilon = 1e-6);
+    approxim::assert_abs_diff_eq!(coeffs.resistance, 2.383342, epsilon = 1e-6);
+    approxim::assert_abs_diff_eq!(coeffs.inductance, 0.631493, epsilon = 1e-6);
 }
 
 #[test]

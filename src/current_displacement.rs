@@ -37,7 +37,7 @@ with `ω = 2 * π * frequency`, `κ = el_conductivity` and `μ = permeability`.
 # Examples
 
 ```
-use approx;
+use approxim;
 use stem_slot::current_displacement::phase_velocity;
 use stem_slot::prelude::*;
 
@@ -46,15 +46,15 @@ let el_conductivity = ElectricalConductivity::new::<siemens_per_meter>(37.0 * 1e
 
 let frequency = Frequency::new::<hertz>(1.0);
 let alpha = phase_velocity(frequency, el_conductivity, *VACUUM_PERMEABILITY);
-approx::assert_abs_diff_eq!(alpha.get::<meter_per_second>(), 0.519875, epsilon = 1e-6);
+approxim::assert_abs_diff_eq!(alpha.get::<meter_per_second>(), 0.519875, epsilon = 1e-6);
 
 let frequency = Frequency::new::<hertz>(10.0);
 let alpha = phase_velocity(frequency, el_conductivity, *VACUUM_PERMEABILITY);
-approx::assert_abs_diff_eq!(alpha.get::<meter_per_second>(), 1.643989, epsilon = 1e-6);
+approxim::assert_abs_diff_eq!(alpha.get::<meter_per_second>(), 1.643989, epsilon = 1e-6);
 
 let frequency = Frequency::new::<hertz>(50.0);
 let alpha = phase_velocity(frequency, el_conductivity, *VACUUM_PERMEABILITY);
-approx::assert_abs_diff_eq!(alpha.get::<meter_per_second>(), 3.676073, epsilon = 1e-6);
+approxim::assert_abs_diff_eq!(alpha.get::<meter_per_second>(), 3.676073, epsilon = 1e-6);
 ```
  */
 pub fn phase_velocity(
@@ -109,7 +109,7 @@ impl CurrentDisplacementCoefficients {
     # Examples
 
     ```
-    use approx;
+    use approxim;
     use stem_slot::current_displacement::CurrentDisplacementCoefficients;
     use stem_slot::prelude::*;
 
@@ -120,15 +120,15 @@ impl CurrentDisplacementCoefficients {
     let coeffs = CurrentDisplacementCoefficients::from_rectangular_open_slot(
         height, Frequency::new::<hertz>(0.0), el_conductivity, 1.05
     );
-    approx::assert_abs_diff_eq!(coeffs.resistance, 1.0, epsilon=1e-6);
-    approx::assert_abs_diff_eq!(coeffs.inductance, 1.0, epsilon=1e-6);
+    approxim::assert_abs_diff_eq!(coeffs.resistance, 1.0, epsilon=1e-6);
+    approxim::assert_abs_diff_eq!(coeffs.inductance, 1.0, epsilon=1e-6);
 
     // AC coefficients
     let coeffs = CurrentDisplacementCoefficients::from_rectangular_open_slot(
         height, Frequency::new::<hertz>(50.0), el_conductivity, 1.05
     );
-    approx::assert_abs_diff_eq!(coeffs.resistance, 1.05113, epsilon=1e-6);
-    approx::assert_abs_diff_eq!(coeffs.inductance, 0.98541, epsilon=1e-6);
+    approxim::assert_abs_diff_eq!(coeffs.resistance, 1.05113, epsilon=1e-6);
+    approxim::assert_abs_diff_eq!(coeffs.inductance, 0.98541, epsilon=1e-6);
     ```
      */
     pub fn from_rectangular_open_slot(
@@ -320,7 +320,7 @@ impl CurrentDisplacementCalculator {
     # Examples
 
     ```
-    use approx::assert_abs_diff_eq;
+    use approxim::assert_abs_diff_eq;
     use stem_slot::prelude::*;
 
     let slot = RectangularSlot::new(

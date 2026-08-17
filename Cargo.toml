@@ -1,6 +1,6 @@
 [package]
 name = "stem_slot"
-version = "0.3.3"
+version = "0.4.0"
 edition = "2024"
 description = "Slot definition for stem - a Simulation Toolbox for Electric Motors."
 readme = "README.md"
@@ -10,11 +10,11 @@ repository = "https://github.com/StefanMathis/stem_slot.git"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-approx = { package = "approxim", version = "0.6" }
+approxim = { version = "0.6" }
 compare_variables = { version = "0.3.0", features = ["proc_macro"] }
 gauss-quad = "0.3"
 akima_spline = "0.1.7"
-planar_geo = { version = "0.5.2" }
+planar_geo = { version = "0.6.0" }
 stem_material = "0.3.5"
 cart_lin = "0.2.1"
 num = "0.4.0"
@@ -35,7 +35,7 @@ doc-images = ["dep:embed-doc-image"]
 
 [dev-dependencies]
 indoc = "1.0"
-serde_yaml = "0.8"
+yaml_serde = "0.10.6"
 cairo_viewport = { version = "0.3", features = ["image-compare"]}
 stem_slot = { path = ".", features = ["serde", "cairo"] }
 

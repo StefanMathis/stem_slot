@@ -65,9 +65,9 @@ provided that the values are within the specified limits. Additionally, the
 below.
 
 ```
-use approx::assert_abs_diff_eq;
+use approxim::assert_abs_diff_eq;
 use stem_slot::prelude::*;
-use serde_yaml;
+use yaml_serde;
 
 let str = indoc::indoc! {"
 width: 8 mm
@@ -77,7 +77,7 @@ opening_height: 2 mm
 consider_tooth_tip_leakage: true
 "};
 
-let slot: RectangularSlot = serde_yaml::from_str(&str).expect("valid dimensions");
+let slot: RectangularSlot = yaml_serde::from_str(&str).expect("valid dimensions");
 assert_abs_diff_eq!(slot.winding_area().get::<square_millimeter>(), 144.0, epsilon=1e-3);
 ```
  */
@@ -193,7 +193,7 @@ impl RectangularSlot {
 
         // Assert that the outline does not intersect itself
         if let Some(intersection) = outline
-            .intersections_polysegment_par(&outline, DEFAULT_EPSILON, DEFAULT_MAX_RELATIVE)
+            .intersections_polysegment_par(&outline)
             .find_map_any(|v| Some(v))
         {
             return Err(crate::error::Error::OutlineIntersection {

@@ -33,7 +33,7 @@ fn test_slot_outline() {
     let width = Length::new::<millimeter>(3.0);
     let height = Length::new::<millimeter>(20.0);
     let slot = RectangularSlot::new(width, opening_width, height, opening_height, true).unwrap();
-    approx::assert_abs_diff_eq!(
+    approxim::assert_abs_diff_eq!(
         slot.outline().length(),
         (2.0 * height + width).get::<meter>(),
         epsilon = 1e-6
@@ -41,18 +41,18 @@ fn test_slot_outline() {
 
     let contour = Contour::from(slot.outline().into_owned());
     let vertices: Vec<[f64; 2]> = contour.points().collect();
-    approx::assert_abs_diff_eq!(vertices[0][0], -opening_width.get::<meter>() / 2.0);
-    approx::assert_abs_diff_eq!(vertices[0][1], 0.0);
-    approx::assert_abs_diff_eq!(vertices[1][0], -opening_width.get::<meter>() / 2.0);
-    approx::assert_abs_diff_eq!(vertices[1][1], opening_height.get::<meter>());
-    approx::assert_abs_diff_eq!(vertices[2][0], -width.get::<meter>() / 2.0);
-    approx::assert_abs_diff_eq!(vertices[2][1], height.get::<meter>());
-    approx::assert_abs_diff_eq!(vertices[3][0], width.get::<meter>() / 2.0);
-    approx::assert_abs_diff_eq!(vertices[3][1], height.get::<meter>());
-    approx::assert_abs_diff_eq!(vertices[4][0], width.get::<meter>() / 2.0);
-    approx::assert_abs_diff_eq!(vertices[4][1], opening_height.get::<meter>());
-    approx::assert_abs_diff_eq!(vertices[5][0], opening_width.get::<meter>() / 2.0);
-    approx::assert_abs_diff_eq!(vertices[5][1], 0.0);
+    approxim::assert_abs_diff_eq!(vertices[0][0], -opening_width.get::<meter>() / 2.0);
+    approxim::assert_abs_diff_eq!(vertices[0][1], 0.0);
+    approxim::assert_abs_diff_eq!(vertices[1][0], -opening_width.get::<meter>() / 2.0);
+    approxim::assert_abs_diff_eq!(vertices[1][1], opening_height.get::<meter>());
+    approxim::assert_abs_diff_eq!(vertices[2][0], -width.get::<meter>() / 2.0);
+    approxim::assert_abs_diff_eq!(vertices[2][1], height.get::<meter>());
+    approxim::assert_abs_diff_eq!(vertices[3][0], width.get::<meter>() / 2.0);
+    approxim::assert_abs_diff_eq!(vertices[3][1], height.get::<meter>());
+    approxim::assert_abs_diff_eq!(vertices[4][0], width.get::<meter>() / 2.0);
+    approxim::assert_abs_diff_eq!(vertices[4][1], opening_height.get::<meter>());
+    approxim::assert_abs_diff_eq!(vertices[5][0], opening_width.get::<meter>() / 2.0);
+    approxim::assert_abs_diff_eq!(vertices[5][1], 0.0);
 }
 
 #[test]
@@ -113,43 +113,43 @@ fn test_slices() {
         let slices = slot.slices(2);
 
         let slice_1 = &slices[0];
-        approx::assert_abs_diff_eq!(slice_1.xmin(), -2.5e-3, epsilon = 1e-6);
-        approx::assert_abs_diff_eq!(slice_1.xmax(), 2.5e-3, epsilon = 1e-6);
-        approx::assert_abs_diff_eq!(slice_1.ymin(), 10.0e-3, epsilon = 1e-6);
-        approx::assert_abs_diff_eq!(slice_1.ymax(), 20.0e-3, epsilon = 1e-6);
+        approxim::assert_abs_diff_eq!(slice_1.xmin(), -2.5e-3, epsilon = 1e-6);
+        approxim::assert_abs_diff_eq!(slice_1.xmax(), 2.5e-3, epsilon = 1e-6);
+        approxim::assert_abs_diff_eq!(slice_1.ymin(), 10.0e-3, epsilon = 1e-6);
+        approxim::assert_abs_diff_eq!(slice_1.ymax(), 20.0e-3, epsilon = 1e-6);
 
         let slice_2 = &slices[1];
-        approx::assert_abs_diff_eq!(slice_2.xmin(), -2.5e-3, epsilon = 1e-6);
-        approx::assert_abs_diff_eq!(slice_2.xmax(), 2.5e-3, epsilon = 1e-6);
-        approx::assert_abs_diff_eq!(slice_2.ymin(), 0.0e-3, epsilon = 1e-6);
-        approx::assert_abs_diff_eq!(slice_2.ymax(), 10.0e-3, epsilon = 1e-6);
+        approxim::assert_abs_diff_eq!(slice_2.xmin(), -2.5e-3, epsilon = 1e-6);
+        approxim::assert_abs_diff_eq!(slice_2.xmax(), 2.5e-3, epsilon = 1e-6);
+        approxim::assert_abs_diff_eq!(slice_2.ymin(), 0.0e-3, epsilon = 1e-6);
+        approxim::assert_abs_diff_eq!(slice_2.ymax(), 10.0e-3, epsilon = 1e-6);
     }
     {
         let slices = slot.slices(4);
 
         let slice_1 = &slices[0];
-        approx::assert_abs_diff_eq!(slice_1.xmin(), -2.5e-3, epsilon = 1e-6);
-        approx::assert_abs_diff_eq!(slice_1.xmax(), 2.5e-3, epsilon = 1e-6);
-        approx::assert_abs_diff_eq!(slice_1.ymin(), 15.0e-3, epsilon = 1e-6);
-        approx::assert_abs_diff_eq!(slice_1.ymax(), 20.0e-3, epsilon = 1e-6);
+        approxim::assert_abs_diff_eq!(slice_1.xmin(), -2.5e-3, epsilon = 1e-6);
+        approxim::assert_abs_diff_eq!(slice_1.xmax(), 2.5e-3, epsilon = 1e-6);
+        approxim::assert_abs_diff_eq!(slice_1.ymin(), 15.0e-3, epsilon = 1e-6);
+        approxim::assert_abs_diff_eq!(slice_1.ymax(), 20.0e-3, epsilon = 1e-6);
 
         let slice_2 = &slices[1];
-        approx::assert_abs_diff_eq!(slice_2.xmin(), -2.5e-3, epsilon = 1e-6);
-        approx::assert_abs_diff_eq!(slice_2.xmax(), 2.5e-3, epsilon = 1e-6);
-        approx::assert_abs_diff_eq!(slice_2.ymin(), 10.0e-3, epsilon = 1e-6);
-        approx::assert_abs_diff_eq!(slice_2.ymax(), 15.0e-3, epsilon = 1e-6);
+        approxim::assert_abs_diff_eq!(slice_2.xmin(), -2.5e-3, epsilon = 1e-6);
+        approxim::assert_abs_diff_eq!(slice_2.xmax(), 2.5e-3, epsilon = 1e-6);
+        approxim::assert_abs_diff_eq!(slice_2.ymin(), 10.0e-3, epsilon = 1e-6);
+        approxim::assert_abs_diff_eq!(slice_2.ymax(), 15.0e-3, epsilon = 1e-6);
 
         let slice_3 = &slices[2];
-        approx::assert_abs_diff_eq!(slice_3.xmin(), -2.5e-3, epsilon = 1e-6);
-        approx::assert_abs_diff_eq!(slice_3.xmax(), 2.5e-3, epsilon = 1e-6);
-        approx::assert_abs_diff_eq!(slice_3.ymin(), 5.0e-3, epsilon = 1e-6);
-        approx::assert_abs_diff_eq!(slice_3.ymax(), 10.0e-3, epsilon = 1e-6);
+        approxim::assert_abs_diff_eq!(slice_3.xmin(), -2.5e-3, epsilon = 1e-6);
+        approxim::assert_abs_diff_eq!(slice_3.xmax(), 2.5e-3, epsilon = 1e-6);
+        approxim::assert_abs_diff_eq!(slice_3.ymin(), 5.0e-3, epsilon = 1e-6);
+        approxim::assert_abs_diff_eq!(slice_3.ymax(), 10.0e-3, epsilon = 1e-6);
 
         let slice_4 = &slices[3];
-        approx::assert_abs_diff_eq!(slice_4.xmin(), -2.5e-3, epsilon = 1e-6);
-        approx::assert_abs_diff_eq!(slice_4.xmax(), 2.5e-3, epsilon = 1e-6);
-        approx::assert_abs_diff_eq!(slice_4.ymin(), 0.0e-3, epsilon = 1e-6);
-        approx::assert_abs_diff_eq!(slice_4.ymax(), 5.0e-3, epsilon = 1e-6);
+        approxim::assert_abs_diff_eq!(slice_4.xmin(), -2.5e-3, epsilon = 1e-6);
+        approxim::assert_abs_diff_eq!(slice_4.xmax(), 2.5e-3, epsilon = 1e-6);
+        approxim::assert_abs_diff_eq!(slice_4.ymin(), 0.0e-3, epsilon = 1e-6);
+        approxim::assert_abs_diff_eq!(slice_4.ymax(), 5.0e-3, epsilon = 1e-6);
     }
 }
 
@@ -164,14 +164,14 @@ fn test_slot_layer_outline() {
     let outline = 0.001 * (19.0 + 19.0 + 3.0 + 2.0); // two times body height + slot bottom + slot top
 
     assert!(slot.is_open());
-    approx::assert_abs_diff_eq!(
+    approxim::assert_abs_diff_eq!(
         slot.outline().length(),
         outline + 2.0 * slot.opening_height().get::<meter>(),
         epsilon = 1e-6
     );
 
     // Sum up the partial slot outlines
-    approx::assert_abs_diff_eq!(
+    approxim::assert_abs_diff_eq!(
         slot.layer_outlines(0, &CoilLayout::Single)
             .length()
             .get::<meter>(),
@@ -188,7 +188,7 @@ fn test_slot_layer_outline() {
         .length()
         .get::<meter>();
     assert!(pt1 == pt2); // Both outlines cover one half of the slot
-    approx::assert_abs_diff_eq!(pt1 + pt2, outline, epsilon = 1e-6);
+    approxim::assert_abs_diff_eq!(pt1 + pt2, outline, epsilon = 1e-6);
 
     let pt1 = slot
         .layer_outlines(0, &CoilLayout::DoubleVertical)
@@ -199,7 +199,7 @@ fn test_slot_layer_outline() {
         .length()
         .get::<meter>();
     assert!(pt1 > pt2); // pt1 is much larger since it includes the slot bottom
-    approx::assert_abs_diff_eq!((pt1 + pt2), outline, epsilon = 1e-6);
+    approxim::assert_abs_diff_eq!((pt1 + pt2), outline, epsilon = 1e-6);
 
     let pt1 = slot
         .layer_outlines(0, &CoilLayout::Quadruple)
@@ -217,7 +217,7 @@ fn test_slot_layer_outline() {
         .layer_outlines(3, &CoilLayout::Quadruple)
         .length()
         .get::<meter>();
-    approx::assert_abs_diff_eq!(pt1 + pt2 + pt3 + pt4, outline, epsilon = 1e-6);
+    approxim::assert_abs_diff_eq!(pt1 + pt2 + pt3 + pt4, outline, epsilon = 1e-6);
 
     let pt1 = slot
         .layer_outlines(0, &CoilLayout::MultiVertical(4))
@@ -235,7 +235,7 @@ fn test_slot_layer_outline() {
         .layer_outlines(3, &CoilLayout::MultiVertical(4))
         .length()
         .get::<meter>();
-    approx::assert_abs_diff_eq!(pt1 + pt2 + pt3 + pt4, outline, epsilon = 1e-6);
+    approxim::assert_abs_diff_eq!(pt1 + pt2 + pt3 + pt4, outline, epsilon = 1e-6);
 }
 
 #[test]
@@ -260,7 +260,7 @@ fn test_current_displacement_coefficients() {
                 rel_permeability * *VACUUM_PERMEABILITY,
             );
         let alpha_height = f64::from(alpha * slot.height());
-        approx::assert_abs_diff_eq!(alpha_height, 1.709211, epsilon = 1e-6);
+        approxim::assert_abs_diff_eq!(alpha_height, 1.709211, epsilon = 1e-6);
 
         // Use the analytic approach
         let coeffs = slot.current_displacement_coefficients(100).eval(
@@ -268,8 +268,8 @@ fn test_current_displacement_coefficients() {
             el_conductivity,
             rel_permeability,
         );
-        approx::assert_abs_diff_eq!(coeffs.resistance, 1.576327, epsilon = 1e-6);
-        approx::assert_abs_diff_eq!(coeffs.inductance, 0.840828, epsilon = 1e-6);
+        approxim::assert_abs_diff_eq!(coeffs.resistance, 1.576327, epsilon = 1e-6);
+        approxim::assert_abs_diff_eq!(coeffs.inductance, 0.840828, epsilon = 1e-6);
     }
     {
         // Use the numeric approach
@@ -284,13 +284,13 @@ fn test_current_displacement_coefficients() {
 
             {
                 let coeffs = calc.eval(frequency, el_conductivity, rel_permeability);
-                approx::assert_abs_diff_eq!(coeffs.resistance, 1.576327, epsilon = 1e-6);
-                approx::assert_abs_diff_eq!(coeffs.inductance, 0.840828, epsilon = 1e-6);
+                approxim::assert_abs_diff_eq!(coeffs.resistance, 1.576327, epsilon = 1e-6);
+                approxim::assert_abs_diff_eq!(coeffs.inductance, 0.840828, epsilon = 1e-6);
             }
             {
                 let coeffs = calc.eval(frequency, el_conductivity, rel_permeability);
-                approx::assert_abs_diff_eq!(coeffs.resistance, 1.576327, epsilon = 1e-6);
-                approx::assert_abs_diff_eq!(coeffs.inductance, 0.840828, epsilon = 1e-6);
+                approxim::assert_abs_diff_eq!(coeffs.resistance, 1.576327, epsilon = 1e-6);
+                approxim::assert_abs_diff_eq!(coeffs.inductance, 0.840828, epsilon = 1e-6);
             }
         }
     }
@@ -309,7 +309,7 @@ fn test_self_inductance_leakage_coefficient() {
 
     // Single-layer winding
     let coil_layout = CoilLayout::Single;
-    approx::assert_abs_diff_eq!(
+    approxim::assert_abs_diff_eq!(
         slot.self_inductance_leakage_coefficient(0, &coil_layout),
         f64::from((height - opening_height) / (3.0 * width)),
         epsilon = 1e-6
@@ -317,12 +317,12 @@ fn test_self_inductance_leakage_coefficient() {
 
     // Double-layer winding
     let coil_layout = CoilLayout::DoubleHorizontal;
-    approx::assert_abs_diff_eq!(
+    approxim::assert_abs_diff_eq!(
         slot.self_inductance_leakage_coefficient(0, &coil_layout),
         f64::from((height - opening_height) / (3.0 * width)),
         epsilon = 1e-6
     );
-    approx::assert_abs_diff_eq!(
+    approxim::assert_abs_diff_eq!(
         slot.self_inductance_leakage_coefficient(1, &coil_layout),
         f64::from((height - opening_height) / (3.0 * width)),
         epsilon = 1e-6
@@ -330,12 +330,12 @@ fn test_self_inductance_leakage_coefficient() {
 
     let coil_layout = CoilLayout::DoubleVertical;
     let layer_height = 0.5 * (slot.height() - slot.opening_height());
-    approx::assert_abs_diff_eq!(
+    approxim::assert_abs_diff_eq!(
         slot.self_inductance_leakage_coefficient(0, &coil_layout),
         f64::from(layer_height / (3.0 * width) + layer_height / width),
         epsilon = 1e-6
     );
-    approx::assert_abs_diff_eq!(
+    approxim::assert_abs_diff_eq!(
         slot.self_inductance_leakage_coefficient(1, &coil_layout),
         f64::from(layer_height / (3.0 * width)),
         epsilon = 1e-6
@@ -355,12 +355,12 @@ fn test_mutual_inductance_leakage_coefficient() {
 
     // Double-layer winding
     let coil_layout = CoilLayout::DoubleHorizontal;
-    approx::assert_abs_diff_eq!(
+    approxim::assert_abs_diff_eq!(
         slot.mutual_inductance_leakage_coefficient(0, 1, &coil_layout),
         f64::from((height - opening_height) / (3.0 * width)),
         epsilon = 1e-6
     );
-    approx::assert_abs_diff_eq!(
+    approxim::assert_abs_diff_eq!(
         slot.mutual_inductance_leakage_coefficient(1, 0, &coil_layout),
         f64::from((height - opening_height) / (3.0 * width)),
         epsilon = 1e-6
@@ -368,12 +368,12 @@ fn test_mutual_inductance_leakage_coefficient() {
 
     let coil_layout = CoilLayout::DoubleVertical;
     let layer_height = 0.5 * (slot.height() - slot.opening_height());
-    approx::assert_abs_diff_eq!(
+    approxim::assert_abs_diff_eq!(
         slot.mutual_inductance_leakage_coefficient(0, 1, &coil_layout),
         f64::from(layer_height / (2.0 * width)),
         epsilon = 1e-6
     );
-    approx::assert_abs_diff_eq!(
+    approxim::assert_abs_diff_eq!(
         slot.mutual_inductance_leakage_coefficient(1, 0, &coil_layout),
         f64::from(layer_height / (2.0 * width)),
         epsilon = 1e-6
@@ -381,12 +381,12 @@ fn test_mutual_inductance_leakage_coefficient() {
 
     let coil_layout = CoilLayout::MultiVertical(3);
     let layer_height = (slot.height() - slot.opening_height()) / 3.0;
-    approx::assert_abs_diff_eq!(
+    approxim::assert_abs_diff_eq!(
         slot.mutual_inductance_leakage_coefficient(0, 1, &coil_layout),
         f64::from(layer_height / (2.0 * width) + layer_height / width),
         epsilon = 1e-6
     );
-    approx::assert_abs_diff_eq!(
+    approxim::assert_abs_diff_eq!(
         slot.mutual_inductance_leakage_coefficient(1, 0, &coil_layout),
         f64::from(layer_height / (2.0 * width) + layer_height / width),
         epsilon = 1e-6
@@ -403,22 +403,22 @@ fn test_leakage_coefficient_matrix() {
 
     let coil_layout = CoilLayout::DoubleHorizontal;
     let matrix = slot.leakage_coefficient_matrix(&coil_layout);
-    approx::assert_abs_diff_eq!(
+    approxim::assert_abs_diff_eq!(
         slot.mutual_inductance_leakage_coefficient(0, 0, &coil_layout),
         matrix[(0, 0)],
         epsilon = 1e-6
     );
-    approx::assert_abs_diff_eq!(
+    approxim::assert_abs_diff_eq!(
         slot.mutual_inductance_leakage_coefficient(1, 0, &coil_layout),
         matrix[(1, 0)],
         epsilon = 1e-6
     );
-    approx::assert_abs_diff_eq!(
+    approxim::assert_abs_diff_eq!(
         slot.mutual_inductance_leakage_coefficient(0, 1, &coil_layout),
         matrix[(0, 1)],
         epsilon = 1e-6
     );
-    approx::assert_abs_diff_eq!(
+    approxim::assert_abs_diff_eq!(
         slot.mutual_inductance_leakage_coefficient(1, 1, &coil_layout),
         matrix[(1, 1)],
         epsilon = 1e-6
@@ -426,22 +426,22 @@ fn test_leakage_coefficient_matrix() {
 
     let coil_layout = CoilLayout::DoubleVertical;
     let matrix = slot.leakage_coefficient_matrix(&coil_layout);
-    approx::assert_abs_diff_eq!(
+    approxim::assert_abs_diff_eq!(
         slot.mutual_inductance_leakage_coefficient(0, 0, &coil_layout),
         matrix[(0, 0)],
         epsilon = 1e-6
     );
-    approx::assert_abs_diff_eq!(
+    approxim::assert_abs_diff_eq!(
         slot.mutual_inductance_leakage_coefficient(1, 0, &coil_layout),
         matrix[(1, 0)],
         epsilon = 1e-6
     );
-    approx::assert_abs_diff_eq!(
+    approxim::assert_abs_diff_eq!(
         slot.mutual_inductance_leakage_coefficient(0, 1, &coil_layout),
         matrix[(0, 1)],
         epsilon = 1e-6
     );
-    approx::assert_abs_diff_eq!(
+    approxim::assert_abs_diff_eq!(
         slot.mutual_inductance_leakage_coefficient(1, 1, &coil_layout),
         matrix[(1, 1)],
         epsilon = 1e-6
@@ -455,9 +455,9 @@ fn test_serialize_and_deserialize() {
     let width = Length::new::<millimeter>(3.0);
     let height = Length::new::<millimeter>(20.0);
     let slot = RectangularSlot::new(width, opening_width, height, opening_height, true).unwrap();
-    let serialized = serde_yaml::to_string(&slot).expect("can be serialized");
-    let slot_de: RectangularSlot = serde_yaml::from_str(&serialized).expect("can be deserialized");
-    approx::assert_abs_diff_eq!(
+    let serialized = yaml_serde::to_string(&slot).expect("can be serialized");
+    let slot_de: RectangularSlot = yaml_serde::from_str(&serialized).expect("can be deserialized");
+    approxim::assert_abs_diff_eq!(
         slot.area().get::<square_millimeter>(),
         slot_de.area().get::<square_millimeter>(),
         epsilon = DEFAULT_EPSILON
@@ -473,7 +473,7 @@ fn test_deserialize() {
         opening_height: 0.5 mm
         consider_tooth_tip_leakage: true
         "};
-    assert!(serde_yaml::from_str::<RectangularSlot>(&yaml).is_ok());
+    assert!(yaml_serde::from_str::<RectangularSlot>(&yaml).is_ok());
 }
 
 #[test]
@@ -486,7 +486,7 @@ fn test_deserialize_with_bad_parameters() {
             opening_height: 0.5 mm
             consider_tooth_tip_leakage: true
             "};
-        assert!(serde_yaml::from_str::<RectangularSlot>(&yaml).is_err());
+        assert!(yaml_serde::from_str::<RectangularSlot>(&yaml).is_err());
     }
 
     {
@@ -497,6 +497,6 @@ fn test_deserialize_with_bad_parameters() {
             opening_height: 2.0  mm           # <== OPENING_HEIGHT MUST SMALLER THAN HEIGHT
             consider_tooth_tip_leakage: true
             "};
-        assert!(serde_yaml::from_str::<RectangularSlot>(&yaml).is_err());
+        assert!(yaml_serde::from_str::<RectangularSlot>(&yaml).is_err());
     }
 }

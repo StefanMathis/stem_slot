@@ -69,7 +69,7 @@ multi-layered winding:
 
 ```rust
 use std::f64::consts::PI;
-use approx::assert_abs_diff_eq;
+use approxim::assert_abs_diff_eq;
 use stem_slot::{prelude::*, semi_trapezoid::SemiTrapezoidWithoutSlopesBuilder};
 
 // Trapezoid slot shown in the image above

@@ -44,17 +44,17 @@ fn test_properties() {
         .try_into()
         .unwrap();
 
-        approx::assert_abs_diff_eq!(slot.area().get::<square_millimeter>(), area, epsilon = 1e-5);
+        approxim::assert_abs_diff_eq!(slot.area().get::<square_millimeter>(), area, epsilon = 1e-5);
 
         assert!(slot.is_open());
-        approx::assert_abs_diff_eq!(
+        approxim::assert_abs_diff_eq!(
             slot.outline().length(),
             outline + 2.0 * slot.opening_height().get::<meter>(),
             epsilon = 1e-6
         );
 
         // Sum up the partial slot outlines
-        approx::assert_abs_diff_eq!(
+        approxim::assert_abs_diff_eq!(
             slot.layer_outlines(0, &CoilLayout::Single)
                 .length()
                 .get::<meter>(),
@@ -70,8 +70,8 @@ fn test_properties() {
             .layer_outlines(1, &CoilLayout::DoubleHorizontal)
             .length()
             .get::<meter>();
-        approx::assert_abs_diff_eq!(pt1, pt2, epsilon = 1e-6); // Both outlines cover one half of the slot
-        approx::assert_abs_diff_eq!(pt1 + pt2, outline, epsilon = 1e-6);
+        approxim::assert_abs_diff_eq!(pt1, pt2, epsilon = 1e-6); // Both outlines cover one half of the slot
+        approxim::assert_abs_diff_eq!(pt1 + pt2, outline, epsilon = 1e-6);
 
         let pt1 = slot
             .layer_outlines(0, &CoilLayout::DoubleVertical)
@@ -82,7 +82,7 @@ fn test_properties() {
             .length()
             .get::<meter>();
         assert!(pt1 > pt2); // pt1 is much larger since it includes the slot bottom
-        approx::assert_abs_diff_eq!(pt1 + pt2, outline, epsilon = 1e-6);
+        approxim::assert_abs_diff_eq!(pt1 + pt2, outline, epsilon = 1e-6);
 
         let pt1 = slot
             .layer_outlines(0, &CoilLayout::MultiVertical(2))
@@ -93,7 +93,7 @@ fn test_properties() {
             .length()
             .get::<meter>();
         assert!(pt1 > pt2); // pt1 is much larger since it includes the slot bottom
-        approx::assert_abs_diff_eq!(pt1 + pt2, outline, epsilon = 1e-6);
+        approxim::assert_abs_diff_eq!(pt1 + pt2, outline, epsilon = 1e-6);
 
         let pt1 = slot
             .layer_outlines(0, &CoilLayout::Quadruple)
@@ -111,7 +111,7 @@ fn test_properties() {
             .layer_outlines(3, &CoilLayout::Quadruple)
             .length()
             .get::<meter>();
-        approx::assert_abs_diff_eq!(pt1 + pt2 + pt3 + pt4, outline, epsilon = 1e-6);
+        approxim::assert_abs_diff_eq!(pt1 + pt2 + pt3 + pt4, outline, epsilon = 1e-6);
     }
     {
         let slot: SemiTrapezoidSlot = SemiTrapezoidWithoutSlopesBuilder {
@@ -130,13 +130,13 @@ fn test_properties() {
 
         assert!(!slot.is_open());
 
-        approx::assert_abs_diff_eq!(
+        approxim::assert_abs_diff_eq!(
             slot.area().get::<square_millimeter>(),
             area - 4.0,
             epsilon = 1e-5
         );
 
-        approx::assert_abs_diff_eq!(slot.outline().length(), outline + 0.002, epsilon = 1e-6);
+        approxim::assert_abs_diff_eq!(slot.outline().length(), outline + 0.002, epsilon = 1e-6);
     }
 }
 
@@ -157,43 +157,43 @@ fn test_width_at() {
         .try_into()
         .unwrap();
 
-        approx::assert_abs_diff_eq!(
+        approxim::assert_abs_diff_eq!(
             0.0,
             slot.width_at(Length::new::<millimeter>(30.0))
                 .get::<millimeter>(),
             epsilon = 1e-6
         );
-        approx::assert_abs_diff_eq!(
+        approxim::assert_abs_diff_eq!(
             0.0,
             slot.width_at(Length::new::<millimeter>(-30.0))
                 .get::<millimeter>(),
             epsilon = 1e-6
         );
-        approx::assert_abs_diff_eq!(
+        approxim::assert_abs_diff_eq!(
             2.0,
             slot.width_at(Length::new::<millimeter>(0.0))
                 .get::<millimeter>(),
             epsilon = 1e-6
         );
-        approx::assert_abs_diff_eq!(
+        approxim::assert_abs_diff_eq!(
             7.7080992,
             slot.width_at(Length::new::<millimeter>(2.0))
                 .get::<millimeter>(),
             epsilon = 1e-6
         );
-        approx::assert_abs_diff_eq!(
+        approxim::assert_abs_diff_eq!(
             8.0,
             slot.width_at(Length::new::<millimeter>(6.0))
                 .get::<millimeter>(),
             epsilon = 1e-6
         );
-        approx::assert_abs_diff_eq!(
+        approxim::assert_abs_diff_eq!(
             8.0,
             slot.width_at(Length::new::<millimeter>(12.0))
                 .get::<millimeter>(),
             epsilon = 1e-6
         );
-        approx::assert_abs_diff_eq!(
+        approxim::assert_abs_diff_eq!(
             0.0,
             slot.width_at(Length::new::<millimeter>(20.0))
                 .get::<millimeter>(),
@@ -227,37 +227,37 @@ fn test_width_at() {
         .try_into()
         .unwrap();
 
-        approx::assert_abs_diff_eq!(
+        approxim::assert_abs_diff_eq!(
             0.0,
             slot.width_at(Length::new::<millimeter>(30.0))
                 .get::<millimeter>(),
             epsilon = 1e-6
         );
-        approx::assert_abs_diff_eq!(
+        approxim::assert_abs_diff_eq!(
             0.0,
             slot.width_at(Length::new::<millimeter>(-30.0))
                 .get::<millimeter>(),
             epsilon = 1e-6
         );
-        approx::assert_abs_diff_eq!(
+        approxim::assert_abs_diff_eq!(
             8.0,
             slot.width_at(Length::new::<millimeter>(0.0))
                 .get::<millimeter>(),
             epsilon = 1e-6
         );
-        approx::assert_abs_diff_eq!(
+        approxim::assert_abs_diff_eq!(
             8.0,
             slot.width_at(Length::new::<millimeter>(2.0))
                 .get::<millimeter>(),
             epsilon = 1e-6
         );
-        approx::assert_abs_diff_eq!(
+        approxim::assert_abs_diff_eq!(
             20.0,
             slot.width_at(Length::new::<millimeter>(12.0))
                 .get::<millimeter>(),
             epsilon = 1e-6
         );
-        approx::assert_abs_diff_eq!(
+        approxim::assert_abs_diff_eq!(
             24.0,
             slot.width_at(Length::new::<millimeter>(20.0))
                 .get::<millimeter>(),
@@ -289,22 +289,22 @@ fn test_geometric_parameters() {
         .try_into()
         .expect("valid parameters");
 
-        approx::assert_abs_diff_eq!(
+        approxim::assert_abs_diff_eq!(
             slot.bottom_height().get::<millimeter>(),
             2.035763,
             epsilon = 1e-5
         );
-        approx::assert_abs_diff_eq!(
+        approxim::assert_abs_diff_eq!(
             slot.bottom_side_width().get::<millimeter>(),
             15.603976,
             epsilon = 1e-5
         );
-        approx::assert_abs_diff_eq!(
+        approxim::assert_abs_diff_eq!(
             slot.top_height().get::<millimeter>(),
             1.9642365,
             epsilon = 1e-5
         );
-        approx::assert_abs_diff_eq!(
+        approxim::assert_abs_diff_eq!(
             slot.top_side_width().get::<millimeter>(),
             13.854202,
             epsilon = 1e-5
@@ -345,8 +345,8 @@ fn test_current_displacement_coefficients() {
             el_conductivity,
             rel_permeability,
         );
-        approx::assert_abs_diff_eq!(coeffs.resistance, 1.948575, epsilon = 1e-6);
-        approx::assert_abs_diff_eq!(coeffs.inductance, 0.847564, epsilon = 1e-6);
+        approxim::assert_abs_diff_eq!(coeffs.resistance, 1.948575, epsilon = 1e-6);
+        approxim::assert_abs_diff_eq!(coeffs.inductance, 0.847564, epsilon = 1e-6);
     }
     {
         let slot: SemiTrapezoidSlot = SemiTrapezoidAnglesSideHeightBuilder {
@@ -375,8 +375,8 @@ fn test_current_displacement_coefficients() {
             el_conductivity,
             rel_permeability,
         );
-        approx::assert_abs_diff_eq!(coeffs.resistance, 1.8392036, epsilon = 1e-6);
-        approx::assert_abs_diff_eq!(coeffs.inductance, 0.7980932, epsilon = 1e-6);
+        approxim::assert_abs_diff_eq!(coeffs.resistance, 1.8392036, epsilon = 1e-6);
+        approxim::assert_abs_diff_eq!(coeffs.inductance, 0.7980932, epsilon = 1e-6);
     }
 }
 
@@ -438,28 +438,28 @@ fn test_semi_trapezoid_side_height() {
     .try_into()
     .unwrap();
 
-    approx::assert_abs_diff_eq!(
+    approxim::assert_abs_diff_eq!(
         132.38,
         slot.winding_area().get::<square_millimeter>(),
         epsilon = 1e-2
     );
-    approx::assert_abs_diff_eq!(
+    approxim::assert_abs_diff_eq!(
         132.38 + 1.5,
         slot.area().get::<square_millimeter>(),
         epsilon = 1e-2
     );
 
-    approx::assert_abs_diff_eq!(
+    approxim::assert_abs_diff_eq!(
         slot.bottom_width().get::<millimeter>(),
         slot.bottom_side_width().get::<millimeter>(),
         epsilon = 1e-6
     );
-    approx::assert_abs_diff_eq!(
+    approxim::assert_abs_diff_eq!(
         6.33381,
         slot.top_width().get::<millimeter>(),
         epsilon = 1e-3
     );
-    approx::assert_abs_diff_eq!(
+    approxim::assert_abs_diff_eq!(
         9.297,
         slot.bottom_width().get::<millimeter>(),
         epsilon = 1e-3
@@ -488,7 +488,7 @@ fn test_leakage_coefficients() {
     .try_into()
     .unwrap();
 
-    approx::assert_abs_diff_eq!(
+    approxim::assert_abs_diff_eq!(
         Contour::from(slot.outline_winding_area()).area(),
         0.000149206323,
         epsilon = 1e-8
@@ -497,48 +497,48 @@ fn test_leakage_coefficients() {
     // Winding area
     let winding_area_leakage_coeff = 0.86432;
     let coil_layout = CoilLayout::Single;
-    approx::assert_abs_diff_eq!(
+    approxim::assert_abs_diff_eq!(
         winding_area_leakage_coeff,
         slot.self_inductance_leakage_coefficient(0, &coil_layout),
         epsilon = 0.001
     );
 
     let coil_layout = CoilLayout::DoubleHorizontal;
-    approx::assert_abs_diff_eq!(
+    approxim::assert_abs_diff_eq!(
         winding_area_leakage_coeff,
         slot.self_inductance_leakage_coefficient(0, &coil_layout),
         epsilon = 0.001
     );
-    approx::assert_abs_diff_eq!(
+    approxim::assert_abs_diff_eq!(
         winding_area_leakage_coeff,
         slot.self_inductance_leakage_coefficient(1, &coil_layout),
         epsilon = 0.001
     );
 
     let coil_layout = CoilLayout::DoubleVertical;
-    approx::assert_abs_diff_eq!(
+    approxim::assert_abs_diff_eq!(
         1.57181,
         slot.self_inductance_leakage_coefficient(0, &coil_layout),
         epsilon = 0.001
     );
-    approx::assert_abs_diff_eq!(
+    approxim::assert_abs_diff_eq!(
         0.47081,
         slot.self_inductance_leakage_coefficient(1, &coil_layout),
         epsilon = 0.001
     );
-    approx::assert_abs_diff_eq!(
+    approxim::assert_abs_diff_eq!(
         2.04262,
         slot.self_inductance_leakage_coefficient(0, &coil_layout)
             + slot.self_inductance_leakage_coefficient(1, &coil_layout),
         epsilon = 0.001
     );
 
-    approx::assert_abs_diff_eq!(
+    approxim::assert_abs_diff_eq!(
         0.6749,
         slot.mutual_inductance_leakage_coefficient(0, 1, &coil_layout),
         epsilon = 0.001
     );
-    approx::assert_abs_diff_eq!(
+    approxim::assert_abs_diff_eq!(
         0.6749,
         slot.mutual_inductance_leakage_coefficient(1, 0, &coil_layout),
         epsilon = 0.001
@@ -617,10 +617,10 @@ fn test_serialize_and_deserialize() {
     }
     .try_into()
     .unwrap();
-    let serialized = serde_yaml::to_string(&slot).expect("can be serialized");
+    let serialized = yaml_serde::to_string(&slot).expect("can be serialized");
     let slot_de: SemiTrapezoidSlot =
-        serde_yaml::from_str(&serialized).expect("can be deserialized");
-    approx::assert_abs_diff_eq!(
+        yaml_serde::from_str(&serialized).expect("can be deserialized");
+    approxim::assert_abs_diff_eq!(
         slot.area().get::<square_millimeter>(),
         slot_de.area().get::<square_millimeter>(),
         epsilon = DEFAULT_EPSILON
@@ -645,8 +645,8 @@ fn test_tooth_width_deserialize() {
               consider_tooth_tip_leakage: false
               "};
 
-    let slot: SemiTrapezoidSlot = serde_yaml::from_str(yaml).unwrap();
-    approx::assert_abs_diff_eq!(
+    let slot: SemiTrapezoidSlot = yaml_serde::from_str(yaml).unwrap();
+    approxim::assert_abs_diff_eq!(
         296.42,
         slot.winding_area().get::<square_millimeter>(),
         epsilon = 1e-2
@@ -675,8 +675,8 @@ fn test_semi_trapezoid_no_slopes_deserialize() {
                 consider_tooth_tip_leakage: true
                 "};
 
-    let slot: SemiTrapezoidSlot = serde_yaml::from_str(yaml).unwrap();
-    approx::assert_abs_diff_eq!(
+    let slot: SemiTrapezoidSlot = yaml_serde::from_str(yaml).unwrap();
+    approxim::assert_abs_diff_eq!(
         149.21,
         slot.winding_area().get::<square_millimeter>(),
         epsilon = 1e-2
@@ -719,9 +719,9 @@ fn test_semi_trapezoid_top_side_width_deserialize() {
         consider_tooth_tip_leakage: true
         "};
 
-    let slot: SemiTrapezoidSlot = serde_yaml::from_str(yaml).unwrap();
-    approx::assert_abs_diff_eq!(slot.top_height().get::<millimeter>(), 0.5, epsilon = 1e-3);
-    approx::assert_abs_diff_eq!(
+    let slot: SemiTrapezoidSlot = yaml_serde::from_str(yaml).unwrap();
+    approxim::assert_abs_diff_eq!(slot.top_height().get::<millimeter>(), 0.5, epsilon = 1e-3);
+    approxim::assert_abs_diff_eq!(
         slot.top_side_width().get::<millimeter>(),
         8.0,
         epsilon = 1e-2
@@ -781,11 +781,11 @@ fn test_contour_main_body() {
 
     {
         let contour = Contour::from(slot.outline().into_owned());
-        approx::assert_abs_diff_eq!(contour.area(), 7.350393e-5, epsilon = 1e-9);
+        approxim::assert_abs_diff_eq!(contour.area(), 7.350393e-5, epsilon = 1e-9);
     }
     {
         let contour = Contour::from(slot.outline_winding_area());
-        approx::assert_abs_diff_eq!(contour.area(), 7.150393e-5, epsilon = 1e-9);
+        approxim::assert_abs_diff_eq!(contour.area(), 7.150393e-5, epsilon = 1e-9);
     }
 }
 
@@ -811,16 +811,16 @@ fn test_inner_slot() {
     .try_into()
     .unwrap();
 
-    approx::assert_abs_diff_eq!(slot.bottom_side_angle(), PI, epsilon = 1e-6);
-    approx::assert_abs_diff_eq!(slot.bottom_angle(), FRAC_PI_2 + PI / 28.0, epsilon = 1e-3);
+    approxim::assert_abs_diff_eq!(slot.bottom_side_angle(), PI, epsilon = 1e-6);
+    approxim::assert_abs_diff_eq!(slot.bottom_angle(), FRAC_PI_2 + PI / 28.0, epsilon = 1e-3);
 
-    approx::assert_abs_diff_eq!(slot.top_side_angle(), 1.61124591, epsilon = 1e-3);
-    approx::assert_abs_diff_eq!(slot.top_angle(), 2.9889433, epsilon = 1e-3);
+    approxim::assert_abs_diff_eq!(slot.top_side_angle(), 1.61124591, epsilon = 1e-3);
+    approxim::assert_abs_diff_eq!(slot.top_angle(), 2.9889433, epsilon = 1e-3);
 
     assert!(slot.bottom_side_width() < slot.top_side_width());
 
     // Difference must be equal side_height * tan(slot_angle / 2)
-    approx::assert_abs_diff_eq!(
+    approxim::assert_abs_diff_eq!(
         (slot.bottom_side_width() - slot.top_side_width()).get::<millimeter>(),
         2.0 * (0.5 * slot.slot_angle()).tan() * slot.side_height().get::<millimeter>(),
         epsilon = 1e-3
@@ -903,18 +903,18 @@ fn test_semi_trapezoid_inner_stator() {
         None,
     );
 
-    approx::assert_abs_diff_eq!(
+    approxim::assert_abs_diff_eq!(
         132.25,
         slot.winding_area().get::<square_millimeter>(),
         epsilon = 1e-2
     );
-    approx::assert_abs_diff_eq!(
+    approxim::assert_abs_diff_eq!(
         132.25 + 1.5,
         slot.area().get::<square_millimeter>(),
         epsilon = 1e-2
     );
 
-    approx::assert_abs_diff_eq!(
+    approxim::assert_abs_diff_eq!(
         slot.bottom_width().get::<millimeter>(),
         slot.bottom_side_width().get::<millimeter>(),
         epsilon = 1e-6
@@ -956,20 +956,20 @@ fn test_semi_trapezoid_creation_no_slopes() {
     .unwrap();
 
     // Check some geometric parameters
-    approx::assert_abs_diff_eq!(
+    approxim::assert_abs_diff_eq!(
         149.21,
         slot.winding_area().get::<square_millimeter>(),
         epsilon = 1e-2
     );
-    approx::assert_abs_diff_eq!(
+    approxim::assert_abs_diff_eq!(
         149.21 + 4.0,
         slot.area().get::<square_millimeter>(),
         epsilon = 1e-2
     );
-    approx::assert_abs_diff_eq!(85.0 / 180.0 * PI, slot.bottom_angle(), epsilon = 1e-5);
-    approx::assert_abs_diff_eq!(95.0 / 180.0 * PI, slot.top_angle(), epsilon = 1e-5);
+    approxim::assert_abs_diff_eq!(85.0 / 180.0 * PI, slot.bottom_angle(), epsilon = 1e-5);
+    approxim::assert_abs_diff_eq!(95.0 / 180.0 * PI, slot.top_angle(), epsilon = 1e-5);
 
-    approx::assert_abs_diff_eq!(
+    approxim::assert_abs_diff_eq!(
         slot.bottom_width().get::<millimeter>(),
         slot.bottom_side_width().get::<millimeter>(),
         epsilon = 1e-6
@@ -1058,7 +1058,7 @@ fn test_plot_slopes() {
         assert!(slot.bottom_side_width() > slot.top_side_width());
 
         // Difference must be equal side_height * tan(slot_angle / 2)
-        approx::assert_abs_diff_eq!(
+        approxim::assert_abs_diff_eq!(
             (slot.bottom_side_width() - slot.top_side_width()).get::<millimeter>(),
             2.0 * (0.5 * slot.slot_angle()).tan() * slot.side_height().get::<millimeter>(),
             epsilon = 1e-3
@@ -1094,7 +1094,7 @@ fn test_plot_slopes() {
         assert!(slot.bottom_side_width() < slot.top_side_width());
 
         // Difference must be equal side_height * tan(slot_angle / 2)
-        approx::assert_abs_diff_eq!(
+        approxim::assert_abs_diff_eq!(
             (slot.bottom_side_width() - slot.top_side_width()).get::<millimeter>(),
             2.0 * (0.5 * slot.slot_angle()).tan() * slot.side_height().get::<millimeter>(),
             epsilon = 1e-3
@@ -1130,29 +1130,29 @@ fn test_plot_slopes() {
         assert!(slot.bottom_side_width() > slot.top_side_width());
 
         // Difference must be equal side_height * tan(slot_angle / 2)
-        approx::assert_abs_diff_eq!(
+        approxim::assert_abs_diff_eq!(
             (slot.bottom_side_width() - slot.top_side_width()).get::<millimeter>(),
             2.0 * (0.5 * slot.slot_angle()).tan() * slot.side_height().get::<millimeter>(),
             epsilon = 1e-3
         );
 
-        approx::assert_abs_diff_eq!(
+        approxim::assert_abs_diff_eq!(
             slot.bottom_side_width().get::<millimeter>(),
             9.281,
             epsilon = 1e-3
         );
-        approx::assert_abs_diff_eq!(
+        approxim::assert_abs_diff_eq!(
             slot.top_side_width().get::<millimeter>(),
             7.531,
             epsilon = 1e-3
         );
 
-        approx::assert_abs_diff_eq!(
+        approxim::assert_abs_diff_eq!(
             slot.bottom_height().get::<millimeter>(),
             2.946,
             epsilon = 1e-3
         );
-        approx::assert_abs_diff_eq!(slot.top_height().get::<millimeter>(), 1.053, epsilon = 1e-3);
+        approxim::assert_abs_diff_eq!(slot.top_height().get::<millimeter>(), 1.053, epsilon = 1e-3);
 
         compare_to_reference(
             slot.drawables(&CoilLayout::SingleFilled).as_slice(),
@@ -1184,29 +1184,29 @@ fn test_plot_slopes() {
         assert!(slot.bottom_side_width() > slot.top_side_width());
 
         // Difference must be equal side_height * tan(slot_angle / 2)
-        approx::assert_abs_diff_eq!(
+        approxim::assert_abs_diff_eq!(
             (slot.bottom_side_width() - slot.top_side_width()).get::<millimeter>(),
             2.0 * (0.5 * slot.slot_angle()).tan() * slot.side_height().get::<millimeter>(),
             epsilon = 1e-3
         );
 
-        approx::assert_abs_diff_eq!(
+        approxim::assert_abs_diff_eq!(
             slot.bottom_side_width().get::<millimeter>(),
             14.281,
             epsilon = 1e-3
         );
-        approx::assert_abs_diff_eq!(
+        approxim::assert_abs_diff_eq!(
             slot.top_side_width().get::<millimeter>(),
             12.531,
             epsilon = 1e-3
         );
 
-        approx::assert_abs_diff_eq!(
+        approxim::assert_abs_diff_eq!(
             slot.bottom_height().get::<millimeter>(),
             2.946,
             epsilon = 1e-3
         );
-        approx::assert_abs_diff_eq!(slot.top_height().get::<millimeter>(), 1.053, epsilon = 1e-3);
+        approxim::assert_abs_diff_eq!(slot.top_height().get::<millimeter>(), 1.053, epsilon = 1e-3);
 
         compare_to_reference(
             slot.drawables(&CoilLayout::SingleFilled).as_slice(),
@@ -1239,28 +1239,28 @@ fn test_compare_builders_outer_rotor() {
     .expect("valid parameters");
 
     {
-        approx::assert_abs_diff_eq!(
+        approxim::assert_abs_diff_eq!(
             ref_slot.bottom_side_width().get::<millimeter>(),
             15.603976,
             epsilon = 1e-6
         );
-        approx::assert_abs_diff_eq!(
+        approxim::assert_abs_diff_eq!(
             ref_slot.top_side_width().get::<millimeter>(),
             13.854202,
             epsilon = 1e-6
         );
 
-        approx::assert_abs_diff_eq!(
+        approxim::assert_abs_diff_eq!(
             ref_slot.bottom_height().get::<millimeter>(),
             2.0357634,
             epsilon = 1e-6
         );
-        approx::assert_abs_diff_eq!(
+        approxim::assert_abs_diff_eq!(
             ref_slot.top_height().get::<millimeter>(),
             1.964236,
             epsilon = 1e-6
         );
-        approx::assert_abs_diff_eq!(
+        approxim::assert_abs_diff_eq!(
             ref_slot.side_height().get::<millimeter>(),
             10.0,
             epsilon = 1e-6
@@ -1287,28 +1287,28 @@ fn test_compare_builders_outer_rotor() {
         .try_into()
         .expect("valid parameters");
 
-        approx::assert_abs_diff_eq!(
+        approxim::assert_abs_diff_eq!(
             slot.bottom_side_width().get::<millimeter>(),
             15.603976,
             epsilon = 1e-6
         );
-        approx::assert_abs_diff_eq!(
+        approxim::assert_abs_diff_eq!(
             slot.top_side_width().get::<millimeter>(),
             13.854202,
             epsilon = 1e-6
         );
 
-        approx::assert_abs_diff_eq!(
+        approxim::assert_abs_diff_eq!(
             slot.bottom_height().get::<millimeter>(),
             2.0357634,
             epsilon = 1e-6
         );
-        approx::assert_abs_diff_eq!(
+        approxim::assert_abs_diff_eq!(
             slot.top_height().get::<millimeter>(),
             1.964236,
             epsilon = 1e-6
         );
-        approx::assert_abs_diff_eq!(slot.side_height().get::<millimeter>(), 10.0, epsilon = 1e-6);
+        approxim::assert_abs_diff_eq!(slot.side_height().get::<millimeter>(), 10.0, epsilon = 1e-6);
     }
     {
         let slot: SemiTrapezoidSlot = SemiTrapezoidAnglesBottomHeightBuilder {
@@ -1331,28 +1331,28 @@ fn test_compare_builders_outer_rotor() {
         .try_into()
         .expect("valid parameters");
 
-        approx::assert_abs_diff_eq!(
+        approxim::assert_abs_diff_eq!(
             slot.bottom_side_width().get::<millimeter>(),
             15.603976,
             epsilon = 1e-6
         );
-        approx::assert_abs_diff_eq!(
+        approxim::assert_abs_diff_eq!(
             slot.top_side_width().get::<millimeter>(),
             13.854202,
             epsilon = 1e-6
         );
 
-        approx::assert_abs_diff_eq!(
+        approxim::assert_abs_diff_eq!(
             slot.bottom_height().get::<millimeter>(),
             2.0357634,
             epsilon = 1e-6
         );
-        approx::assert_abs_diff_eq!(
+        approxim::assert_abs_diff_eq!(
             slot.top_height().get::<millimeter>(),
             1.964236,
             epsilon = 1e-6
         );
-        approx::assert_abs_diff_eq!(slot.side_height().get::<millimeter>(), 10.0, epsilon = 1e-6);
+        approxim::assert_abs_diff_eq!(slot.side_height().get::<millimeter>(), 10.0, epsilon = 1e-6);
     }
     {
         let slot: SemiTrapezoidSlot = SemiTrapezoidAnglesTopSideWidthBuilder {
@@ -1375,28 +1375,28 @@ fn test_compare_builders_outer_rotor() {
         .try_into()
         .expect("valid parameters");
 
-        approx::assert_abs_diff_eq!(
+        approxim::assert_abs_diff_eq!(
             slot.bottom_side_width().get::<millimeter>(),
             15.603976,
             epsilon = 1e-6
         );
-        approx::assert_abs_diff_eq!(
+        approxim::assert_abs_diff_eq!(
             slot.top_side_width().get::<millimeter>(),
             13.854202,
             epsilon = 1e-6
         );
 
-        approx::assert_abs_diff_eq!(
+        approxim::assert_abs_diff_eq!(
             slot.bottom_height().get::<millimeter>(),
             2.0357634,
             epsilon = 1e-6
         );
-        approx::assert_abs_diff_eq!(
+        approxim::assert_abs_diff_eq!(
             slot.top_height().get::<millimeter>(),
             1.964236,
             epsilon = 1e-6
         );
-        approx::assert_abs_diff_eq!(slot.side_height().get::<millimeter>(), 10.0, epsilon = 1e-6);
+        approxim::assert_abs_diff_eq!(slot.side_height().get::<millimeter>(), 10.0, epsilon = 1e-6);
     }
     {
         let slot: SemiTrapezoidSlot = SemiTrapezoidAnglesBottomSideWidthBuilder {
@@ -1419,28 +1419,28 @@ fn test_compare_builders_outer_rotor() {
         .try_into()
         .expect("valid parameters");
 
-        approx::assert_abs_diff_eq!(
+        approxim::assert_abs_diff_eq!(
             slot.bottom_side_width().get::<millimeter>(),
             15.603976,
             epsilon = 1e-6
         );
-        approx::assert_abs_diff_eq!(
+        approxim::assert_abs_diff_eq!(
             slot.top_side_width().get::<millimeter>(),
             13.854202,
             epsilon = 1e-6
         );
 
-        approx::assert_abs_diff_eq!(
+        approxim::assert_abs_diff_eq!(
             slot.bottom_height().get::<millimeter>(),
             2.0357634,
             epsilon = 1e-6
         );
-        approx::assert_abs_diff_eq!(
+        approxim::assert_abs_diff_eq!(
             slot.top_height().get::<millimeter>(),
             1.964236,
             epsilon = 1e-6
         );
-        approx::assert_abs_diff_eq!(slot.side_height().get::<millimeter>(), 10.0, epsilon = 1e-6);
+        approxim::assert_abs_diff_eq!(slot.side_height().get::<millimeter>(), 10.0, epsilon = 1e-6);
     }
 }
 
@@ -1467,28 +1467,28 @@ fn test_compare_builders_inner_rotor() {
     .expect("valid parameters");
 
     {
-        approx::assert_abs_diff_eq!(
+        approxim::assert_abs_diff_eq!(
             ref_slot.bottom_side_width().get::<millimeter>(),
             13.622510,
             epsilon = 1e-6
         );
-        approx::assert_abs_diff_eq!(
+        approxim::assert_abs_diff_eq!(
             ref_slot.top_side_width().get::<millimeter>(),
             15.372283,
             epsilon = 1e-6
         );
 
-        approx::assert_abs_diff_eq!(
+        approxim::assert_abs_diff_eq!(
             ref_slot.bottom_height().get::<millimeter>(),
             1.6792250,
             epsilon = 1e-6
         );
-        approx::assert_abs_diff_eq!(
+        approxim::assert_abs_diff_eq!(
             ref_slot.top_height().get::<millimeter>(),
             2.320774,
             epsilon = 1e-6
         );
-        approx::assert_abs_diff_eq!(
+        approxim::assert_abs_diff_eq!(
             ref_slot.side_height().get::<millimeter>(),
             10.0,
             epsilon = 1e-6
@@ -1515,28 +1515,28 @@ fn test_compare_builders_inner_rotor() {
         .try_into()
         .expect("valid parameters");
 
-        approx::assert_abs_diff_eq!(
+        approxim::assert_abs_diff_eq!(
             slot.bottom_side_width().get::<millimeter>(),
             13.622510,
             epsilon = 1e-6
         );
-        approx::assert_abs_diff_eq!(
+        approxim::assert_abs_diff_eq!(
             slot.top_side_width().get::<millimeter>(),
             15.372283,
             epsilon = 1e-6
         );
 
-        approx::assert_abs_diff_eq!(
+        approxim::assert_abs_diff_eq!(
             slot.bottom_height().get::<millimeter>(),
             1.6792250,
             epsilon = 1e-6
         );
-        approx::assert_abs_diff_eq!(
+        approxim::assert_abs_diff_eq!(
             slot.top_height().get::<millimeter>(),
             2.320774,
             epsilon = 1e-6
         );
-        approx::assert_abs_diff_eq!(slot.side_height().get::<millimeter>(), 10.0, epsilon = 1e-6);
+        approxim::assert_abs_diff_eq!(slot.side_height().get::<millimeter>(), 10.0, epsilon = 1e-6);
     }
     {
         let slot: SemiTrapezoidSlot = SemiTrapezoidAnglesBottomHeightBuilder {
@@ -1559,28 +1559,28 @@ fn test_compare_builders_inner_rotor() {
         .try_into()
         .expect("valid parameters");
 
-        approx::assert_abs_diff_eq!(
+        approxim::assert_abs_diff_eq!(
             slot.bottom_side_width().get::<millimeter>(),
             13.622510,
             epsilon = 1e-6
         );
-        approx::assert_abs_diff_eq!(
+        approxim::assert_abs_diff_eq!(
             slot.top_side_width().get::<millimeter>(),
             15.372283,
             epsilon = 1e-6
         );
 
-        approx::assert_abs_diff_eq!(
+        approxim::assert_abs_diff_eq!(
             slot.bottom_height().get::<millimeter>(),
             1.6792250,
             epsilon = 1e-6
         );
-        approx::assert_abs_diff_eq!(
+        approxim::assert_abs_diff_eq!(
             slot.top_height().get::<millimeter>(),
             2.320774,
             epsilon = 1e-6
         );
-        approx::assert_abs_diff_eq!(slot.side_height().get::<millimeter>(), 10.0, epsilon = 1e-6);
+        approxim::assert_abs_diff_eq!(slot.side_height().get::<millimeter>(), 10.0, epsilon = 1e-6);
     }
     {
         let slot: SemiTrapezoidSlot = SemiTrapezoidAnglesTopSideWidthBuilder {
@@ -1603,28 +1603,28 @@ fn test_compare_builders_inner_rotor() {
         .try_into()
         .expect("valid parameters");
 
-        approx::assert_abs_diff_eq!(
+        approxim::assert_abs_diff_eq!(
             slot.bottom_side_width().get::<millimeter>(),
             13.622510,
             epsilon = 1e-6
         );
-        approx::assert_abs_diff_eq!(
+        approxim::assert_abs_diff_eq!(
             slot.top_side_width().get::<millimeter>(),
             15.372283,
             epsilon = 1e-6
         );
 
-        approx::assert_abs_diff_eq!(
+        approxim::assert_abs_diff_eq!(
             slot.bottom_height().get::<millimeter>(),
             1.6792250,
             epsilon = 1e-6
         );
-        approx::assert_abs_diff_eq!(
+        approxim::assert_abs_diff_eq!(
             slot.top_height().get::<millimeter>(),
             2.320774,
             epsilon = 1e-6
         );
-        approx::assert_abs_diff_eq!(slot.side_height().get::<millimeter>(), 10.0, epsilon = 1e-6);
+        approxim::assert_abs_diff_eq!(slot.side_height().get::<millimeter>(), 10.0, epsilon = 1e-6);
     }
     {
         let slot: SemiTrapezoidSlot = SemiTrapezoidAnglesBottomSideWidthBuilder {
@@ -1647,28 +1647,28 @@ fn test_compare_builders_inner_rotor() {
         .try_into()
         .expect("valid parameters");
 
-        approx::assert_abs_diff_eq!(
+        approxim::assert_abs_diff_eq!(
             slot.bottom_side_width().get::<millimeter>(),
             13.622510,
             epsilon = 1e-6
         );
-        approx::assert_abs_diff_eq!(
+        approxim::assert_abs_diff_eq!(
             slot.top_side_width().get::<millimeter>(),
             15.372283,
             epsilon = 1e-6
         );
 
-        approx::assert_abs_diff_eq!(
+        approxim::assert_abs_diff_eq!(
             slot.bottom_height().get::<millimeter>(),
             1.6792250,
             epsilon = 1e-6
         );
-        approx::assert_abs_diff_eq!(
+        approxim::assert_abs_diff_eq!(
             slot.top_height().get::<millimeter>(),
             2.320774,
             epsilon = 1e-6
         );
-        approx::assert_abs_diff_eq!(slot.side_height().get::<millimeter>(), 10.0, epsilon = 1e-6);
+        approxim::assert_abs_diff_eq!(slot.side_height().get::<millimeter>(), 10.0, epsilon = 1e-6);
     }
 }
 
@@ -1695,7 +1695,7 @@ fn compare_builders_from_tooth_width() {
             consider_tooth_tip_leakage: true,
         };
         let slot = SemiTrapezoidSlot::try_from(builder).expect("valid parameters");
-        approx::assert_abs_diff_eq!(
+        approxim::assert_abs_diff_eq!(
             slot.area().get::<square_millimeter>(),
             73.2420,
             epsilon = 1e-3
@@ -1716,7 +1716,7 @@ fn compare_builders_from_tooth_width() {
             consider_tooth_tip_leakage: true,
         };
         let slot = SemiTrapezoidSlot::try_from(builder).expect("valid parameters");
-        approx::assert_abs_diff_eq!(
+        approxim::assert_abs_diff_eq!(
             slot.area().get::<square_millimeter>(),
             73.2420,
             epsilon = 1e-3

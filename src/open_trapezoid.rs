@@ -60,7 +60,7 @@ implementations:
 - [`OpenTrapezoidFromToothWidthRotBuilder`]
 
 ```
-use approx;
+use approxim;
 use std::f64::consts::PI;
 use stem_slot::prelude::*;
 use stem_slot::open_trapezoid::OpenTrapezoidWithoutSlopesBuilder;
@@ -74,7 +74,7 @@ let builder = OpenTrapezoidWithoutSlopesBuilder {
     consider_tooth_tip_leakage: true,
 };
 let slot = OpenTrapezoidSlot::try_from(builder).expect("valid inputs");
-approx::assert_abs_diff_eq!(slot.opening_width().get::<millimeter>(), 5.0, epsilon=1e-3);
+approxim::assert_abs_diff_eq!(slot.opening_width().get::<millimeter>(), 5.0, epsilon=1e-3);
 ```
 
 The conversion fails if a parameter is out of bounds or if the resulting slot
@@ -96,9 +96,9 @@ need for a tag). Its serialized form is that of the
 [`OpenTrapezoidSlotAngleBuilder`] struct.
 
 ```
-use approx;
+use approxim;
 use stem_slot::prelude::*;
-use serde_yaml;
+use yaml_serde;
 
 // Parameters of an OpenTrapezoidSlotAngleBuilder
 let str = indoc::indoc! {"
@@ -114,8 +114,8 @@ bottom_side_radius: 1 mm
 consider_tooth_tip_leakage: true
 "};
 
-let slot: OpenTrapezoidSlot = serde_yaml::from_str(&str).expect("valid dimensions");
-approx::assert_abs_diff_eq!(slot.opening_width().get::<millimeter>(), 5.0, epsilon=1e-3);
+let slot: OpenTrapezoidSlot = yaml_serde::from_str(&str).expect("valid dimensions");
+approxim::assert_abs_diff_eq!(slot.opening_width().get::<millimeter>(), 5.0, epsilon=1e-3);
 
 // Parameters of an OpenTrapezoidWithoutSlopesBuilder
 let str = indoc::indoc! {"
@@ -127,8 +127,8 @@ bottom_radius: 2 mm
 consider_tooth_tip_leakage: true
 "};
 
-let slot: OpenTrapezoidSlot = serde_yaml::from_str(&str).expect("valid dimensions");
-approx::assert_abs_diff_eq!(slot.opening_width().get::<millimeter>(), 5.0, epsilon=1e-3);
+let slot: OpenTrapezoidSlot = yaml_serde::from_str(&str).expect("valid dimensions");
+approxim::assert_abs_diff_eq!(slot.opening_width().get::<millimeter>(), 5.0, epsilon=1e-3);
 ```
  */
 #[derive(Clone, Debug)]
@@ -167,7 +167,7 @@ impl OpenTrapezoidSlot {
     # Examples
 
     ```
-    use approx::assert_abs_diff_eq;
+    use approxim::assert_abs_diff_eq;
     use stem_slot::prelude::*;
 
     let slot = OpenTrapezoidSlot::new(
@@ -266,7 +266,7 @@ impl OpenTrapezoidSlot {
     ///
     /// ```
     /// use std::f64::consts::PI;
-    /// use approx::assert_abs_diff_eq;
+    /// use approxim::assert_abs_diff_eq;
     /// use stem_slot::prelude::*;
     /// use stem_slot::open_trapezoid::OpenTrapezoidWithBottomAngleBuilder;
     ///
@@ -301,7 +301,7 @@ impl OpenTrapezoidSlot {
     ///
     /// ```
     /// use std::f64::consts::PI;
-    /// use approx::assert_abs_diff_eq;
+    /// use approxim::assert_abs_diff_eq;
     /// use stem_slot::prelude::*;
     /// use stem_slot::open_trapezoid::OpenTrapezoidWithBottomAngleBuilder;
     ///
@@ -415,7 +415,7 @@ conversion attempt will return an
 # Examples
 
 ```
-use approx::assert_abs_diff_eq;
+use approxim::assert_abs_diff_eq;
 use std::f64::consts::PI;
 use stem_slot::prelude::*;
 use stem_slot::open_trapezoid::OpenTrapezoidWidthsAndHeightsBuilder;
@@ -546,7 +546,7 @@ impl TryFrom<OpenTrapezoidWidthsAndHeightsBuilder> for OpenTrapezoidSlot {
 
         // Set parameters which may be calculated by an algorithm and are close
         // to zero to exactly zero.
-        if approx::relative_eq!(
+        if approxim::relative_eq!(
             bottom_side_width.get::<meter>(),
             0.0,
             epsilon = DEFAULT_EPSILON,
@@ -554,7 +554,7 @@ impl TryFrom<OpenTrapezoidWidthsAndHeightsBuilder> for OpenTrapezoidSlot {
         ) {
             bottom_side_width = zero;
         }
-        if approx::relative_eq!(
+        if approxim::relative_eq!(
             bottom_height.get::<meter>(),
             0.0,
             epsilon = DEFAULT_EPSILON,
@@ -562,7 +562,7 @@ impl TryFrom<OpenTrapezoidWidthsAndHeightsBuilder> for OpenTrapezoidSlot {
         ) {
             bottom_height = zero;
         }
-        if approx::relative_eq!(
+        if approxim::relative_eq!(
             side_height.get::<meter>(),
             0.0,
             epsilon = DEFAULT_EPSILON,
@@ -636,7 +636,7 @@ impl TryFrom<OpenTrapezoidWidthsAndHeightsBuilder> for OpenTrapezoidSlot {
 
         // Assert that the outline does not intersect itself
         if let Some(intersection) = outline
-            .intersections_polysegment_par(&outline, DEFAULT_EPSILON, DEFAULT_MAX_RELATIVE)
+            .intersections_polysegment_par(&outline)
             .find_map_any(|v| Some(v))
         {
             return Err(crate::error::Error::OutlineIntersection {
@@ -694,7 +694,7 @@ conversion attempt will return an
 # Examples
 
 ```
-use approx::assert_abs_diff_eq;
+use approxim::assert_abs_diff_eq;
 use std::f64::consts::PI;
 use stem_slot::prelude::*;
 use stem_slot::open_trapezoid::OpenTrapezoidSlotAngleBuilder;
@@ -856,7 +856,7 @@ conversion attempt will return an
 # Examples
 
 ```
-use approx::assert_abs_diff_eq;
+use approxim::assert_abs_diff_eq;
 use std::f64::consts::PI;
 use stem_slot::prelude::*;
 use stem_slot::open_trapezoid::OpenTrapezoidSlotAngleHeightBuilder;
@@ -1018,7 +1018,7 @@ conversion attempt will return an
 # Examples
 
 ```
-use approx::assert_abs_diff_eq;
+use approxim::assert_abs_diff_eq;
 use std::f64::consts::PI;
 use stem_slot::prelude::*;
 use stem_slot::open_trapezoid::OpenTrapezoidWithoutSlopesBuilder;
@@ -1141,7 +1141,7 @@ conversion attempt will return an
 # Examples
 
 ```
-use approx::assert_abs_diff_eq;
+use approxim::assert_abs_diff_eq;
 use std::f64::consts::PI;
 use stem_slot::prelude::*;
 use stem_slot::open_trapezoid::OpenTrapezoidWithBottomAngleBuilder;
@@ -1260,20 +1260,19 @@ impl TryFrom<OpenTrapezoidWithBottomAngleBuilder> for OpenTrapezoidSlot {
             slot_side_angle,
         );
 
-        let intersection: [f64; 2] =
-            match l1.intersections_primitive(&l2, DEFAULT_EPSILON, DEFAULT_MAX_RELATIVE) {
-                PrimitiveIntersections::One(p) => p,
-                _ => {
-                    return Err(Comparison::new(
-                        ComparisonValue::new(bottom_angle, Some("bottom_angle")),
-                        ComparisonOperator::Equal,
-                        ComparisonValue::new(slot_side_angle, Some("slot_side_angle")),
-                        ComparisonOperator::Equal,
-                        None,
-                    )
-                    .into());
-                }
-            };
+        let intersection: [f64; 2] = match l1.intersections_primitive(&l2) {
+            PrimitiveIntersections::One(p) => p,
+            _ => {
+                return Err(Comparison::new(
+                    ComparisonValue::new(bottom_angle, Some("bottom_angle")),
+                    ComparisonOperator::Equal,
+                    ComparisonValue::new(slot_side_angle, Some("slot_side_angle")),
+                    ComparisonOperator::Equal,
+                    None,
+                )
+                .into());
+            }
+        };
 
         let side_height = Length::new::<meter>(intersection[1]) - builder.opening_height;
         let bottom_height = builder.height - side_height - builder.opening_height;
@@ -1326,7 +1325,7 @@ conversion attempt will return an
 # Examples
 
 ```
-use approx::assert_abs_diff_eq;
+use approxim::assert_abs_diff_eq;
 use stem_slot::prelude::*;
 use stem_slot::open_trapezoid::OpenTrapezoidFromToothWidthRotBuilder;
 

@@ -14,12 +14,12 @@ fn test_semi_regular_polygon_side_length() {
         12,
     )
     .unwrap();
-    approx::assert_abs_diff_eq!(first_side, second_side);
+    approxim::assert_abs_diff_eq!(first_side, second_side);
 
     // Now for an irregular polygon
     let first_side = 1.0;
     let second_side = semi_regular_polygon_side_length(first_side, 2.0, 12).unwrap();
-    approx::assert_abs_diff_eq!(1.070466, second_side, epsilon = 1e-6);
+    approxim::assert_abs_diff_eq!(1.070466, second_side, epsilon = 1e-6);
 
     // And now some failed attempts
     assert!(semi_regular_polygon_side_length(-1.0, 2.0, 12).is_none());
@@ -36,22 +36,22 @@ fn test_deserialize_bottom_with_width_and_height() {
         bottom_height: 1.0 m
         slot_angle: 10.0 deg
         "};
-    let bottom_angle: BottomAngle = serde_yaml::from_str(data).unwrap();
-    approx::assert_abs_diff_eq!(bottom_angle.value(), 0.75 * PI, epsilon = 1e-15);
+    let bottom_angle: BottomAngle = yaml_serde::from_str(data).unwrap();
+    approxim::assert_abs_diff_eq!(bottom_angle.value(), 0.75 * PI, epsilon = 1e-15);
 
     let data = indoc! {"
         ---
         10.0 deg
         "};
-    let bottom_angle: BottomAngle = serde_yaml::from_str(data).unwrap();
-    approx::assert_abs_diff_eq!(bottom_angle.value(), TAU / 36.0, epsilon = 1e-15);
+    let bottom_angle: BottomAngle = yaml_serde::from_str(data).unwrap();
+    approxim::assert_abs_diff_eq!(bottom_angle.value(), TAU / 36.0, epsilon = 1e-15);
 
     let data = indoc! {"
         ---
         1.0
         "};
-    let bottom_angle: BottomAngle = serde_yaml::from_str(data).unwrap();
-    approx::assert_abs_diff_eq!(bottom_angle.value(), 1.0, epsilon = 1e-15);
+    let bottom_angle: BottomAngle = yaml_serde::from_str(data).unwrap();
+    approxim::assert_abs_diff_eq!(bottom_angle.value(), 1.0, epsilon = 1e-15);
 }
 
 #[test]
@@ -63,22 +63,22 @@ fn test_deserialize_top_with_width_and_height() {
         top_height: 1.0
         slot_angle: 10.0 deg
         "};
-    let top_angle: TopAngle = serde_yaml::from_str(data).unwrap();
-    approx::assert_abs_diff_eq!(top_angle.value(), 0.75 * PI, epsilon = 1e-15);
+    let top_angle: TopAngle = yaml_serde::from_str(data).unwrap();
+    approxim::assert_abs_diff_eq!(top_angle.value(), 0.75 * PI, epsilon = 1e-15);
 
     let data = indoc! {"
         ---
         10.0 deg
         "};
-    let top_angle: TopAngle = serde_yaml::from_str(data).unwrap();
-    approx::assert_abs_diff_eq!(top_angle.value(), TAU / 36.0, epsilon = 1e-15);
+    let top_angle: TopAngle = yaml_serde::from_str(data).unwrap();
+    approxim::assert_abs_diff_eq!(top_angle.value(), TAU / 36.0, epsilon = 1e-15);
 
     let data = indoc! {"
         ---
         1.0
         "};
-    let top_angle: TopAngle = serde_yaml::from_str(data).unwrap();
-    approx::assert_abs_diff_eq!(top_angle.value(), 1.0, epsilon = 1e-15);
+    let top_angle: TopAngle = yaml_serde::from_str(data).unwrap();
+    approxim::assert_abs_diff_eq!(top_angle.value(), 1.0, epsilon = 1e-15);
 }
 
 #[test]
@@ -86,7 +86,7 @@ fn test_angle_bottom_from_width_height() {
     let slot_angle = TAU / 36.0; // 10°
 
     // Case: Vertical slope
-    approx::assert_abs_diff_eq!(
+    approxim::assert_abs_diff_eq!(
         BottomAngle::FromWidthAndHeight {
             bottom_width: Length::new::<millimeter>(1.0),
             bottom_side_width: Length::new::<millimeter>(1.0),
@@ -99,7 +99,7 @@ fn test_angle_bottom_from_width_height() {
     );
 
     // Case: No slope
-    approx::assert_abs_diff_eq!(
+    approxim::assert_abs_diff_eq!(
         BottomAngle::FromWidthAndHeight {
             bottom_width: Length::new::<millimeter>(1.0),
             bottom_side_width: Length::new::<millimeter>(1.0),
@@ -112,7 +112,7 @@ fn test_angle_bottom_from_width_height() {
     );
 
     // Case: gentle slope
-    approx::assert_abs_diff_eq!(
+    approxim::assert_abs_diff_eq!(
         2.677945,
         BottomAngle::FromWidthAndHeight {
             bottom_width: Length::new::<millimeter>(1.0),
@@ -125,7 +125,7 @@ fn test_angle_bottom_from_width_height() {
     );
 
     // Case: slope with 45°
-    approx::assert_abs_diff_eq!(
+    approxim::assert_abs_diff_eq!(
         0.75 * PI,
         BottomAngle::FromWidthAndHeight {
             bottom_width: Length::new::<millimeter>(1.0),
@@ -138,7 +138,7 @@ fn test_angle_bottom_from_width_height() {
     );
 
     // Case: steep slope
-    approx::assert_abs_diff_eq!(
+    approxim::assert_abs_diff_eq!(
         2.03444393,
         BottomAngle::FromWidthAndHeight {
             bottom_width: Length::new::<millimeter>(1.0),
@@ -156,7 +156,7 @@ fn test_top_angle_from_width_height() {
     let slot_angle = TAU / 36.0; // 10°
 
     // Case: Vertical slope (bottom_width = bottom_side_width)
-    approx::assert_abs_diff_eq!(
+    approxim::assert_abs_diff_eq!(
         FRAC_PI_2,
         TopAngle::FromWidthAndHeight {
             top_width: Length::new::<millimeter>(1.0),
@@ -169,7 +169,7 @@ fn test_top_angle_from_width_height() {
     );
 
     // Case: No slope (bottom_width = bottom_side_width)
-    approx::assert_abs_diff_eq!(
+    approxim::assert_abs_diff_eq!(
         FRAC_PI_2 + 0.5 * slot_angle,
         TopAngle::FromWidthAndHeight {
             top_width: Length::new::<millimeter>(1.0),
@@ -182,7 +182,7 @@ fn test_top_angle_from_width_height() {
     );
 
     // Case: slope with 60°
-    approx::assert_abs_diff_eq!(
+    approxim::assert_abs_diff_eq!(
         2.677945,
         TopAngle::FromWidthAndHeight {
             top_width: Length::new::<millimeter>(1.0),
@@ -195,7 +195,7 @@ fn test_top_angle_from_width_height() {
     );
 
     // Case: slope with 45°
-    approx::assert_abs_diff_eq!(
+    approxim::assert_abs_diff_eq!(
         0.75 * PI,
         TopAngle::FromWidthAndHeight {
             top_width: Length::new::<millimeter>(1.0),
@@ -208,7 +208,7 @@ fn test_top_angle_from_width_height() {
     );
 
     // Case: slope with 60°
-    approx::assert_abs_diff_eq!(
+    approxim::assert_abs_diff_eq!(
         2.034443,
         TopAngle::FromWidthAndHeight {
             top_width: Length::new::<millimeter>(1.0),

@@ -68,7 +68,7 @@ implementations:
 - [`SemiTrapezoidFromToothWidthRotWithoutSlopesBuilder`]
 
 ```
-use approx;
+use approxim;
 use std::f64::consts::PI;
 use stem_slot::prelude::*;
 use stem_slot::semi_trapezoid::SemiTrapezoidWithoutSlopesBuilder;
@@ -85,7 +85,7 @@ let builder = SemiTrapezoidWithoutSlopesBuilder {
     consider_tooth_tip_leakage: true,
 };
 let slot = SemiTrapezoidSlot::try_from(builder).expect("valid inputs");
-approx::assert_abs_diff_eq!(slot.opening_width().get::<millimeter>(), 2.0, epsilon=1e-3);
+approxim::assert_abs_diff_eq!(slot.opening_width().get::<millimeter>(), 2.0, epsilon=1e-3);
 ```
 
 The conversion fails if a parameter is out of bounds or if the resulting slot
@@ -107,9 +107,9 @@ need for a tag). Its serialized form is that of the
 [`SemiTrapezoidWidthsAndHeightsBuilder`] struct.
 
 ```
-use approx;
+use approxim;
 use stem_slot::prelude::*;
-use serde_yaml;
+use yaml_serde;
 
 // Parameters of a SemiTrapezoidAnglesSideHeightBuilder
 let str = indoc::indoc! {"
@@ -130,8 +130,8 @@ opening_radius: 1 mm
 consider_tooth_tip_leakage: true
 "};
 
-let slot: SemiTrapezoidSlot = serde_yaml::from_str(&str).expect("valid dimensions");
-approx::assert_abs_diff_eq!(slot.opening_width().get::<millimeter>(), 2.0, epsilon=1e-3);
+let slot: SemiTrapezoidSlot = yaml_serde::from_str(&str).expect("valid dimensions");
+approxim::assert_abs_diff_eq!(slot.opening_width().get::<millimeter>(), 2.0, epsilon=1e-3);
 
 // Parameters of a SemiTrapezoidWithoutSlopesBuilder
 let str = indoc::indoc! {"
@@ -146,8 +146,8 @@ opening_radius: 1 mm
 consider_tooth_tip_leakage: true
 "};
 
-let slot: SemiTrapezoidSlot = serde_yaml::from_str(&str).expect("valid dimensions");
-approx::assert_abs_diff_eq!(slot.opening_width().get::<millimeter>(), 2.0, epsilon=1e-3);
+let slot: SemiTrapezoidSlot = yaml_serde::from_str(&str).expect("valid dimensions");
+approxim::assert_abs_diff_eq!(slot.opening_width().get::<millimeter>(), 2.0, epsilon=1e-3);
 ```
  */
 #[derive(Clone, Debug)]
@@ -198,7 +198,7 @@ impl SemiTrapezoidSlot {
     # Examples
 
     ```
-    use approx::assert_abs_diff_eq;
+    use approxim::assert_abs_diff_eq;
     use std::f64::consts::PI;
     use stem_slot::prelude::*;
 
@@ -455,7 +455,7 @@ conversion attempt will return an
 # Examples
 
 ```
-use approx::assert_abs_diff_eq;
+use approxim::assert_abs_diff_eq;
 use std::f64::consts::PI;
 use stem_slot::prelude::*;
 use stem_slot::semi_trapezoid::SemiTrapezoidWidthsAndHeightsBuilder;
@@ -666,7 +666,7 @@ impl TryFrom<SemiTrapezoidWidthsAndHeightsBuilder> for SemiTrapezoidSlot {
 
         // Set parameters which may be calculated by an algorithm and are close
         // to zero to exactly zero.
-        if approx::relative_eq!(
+        if approxim::relative_eq!(
             bottom_side_width.get::<meter>(),
             0.0,
             epsilon = DEFAULT_EPSILON,
@@ -674,7 +674,7 @@ impl TryFrom<SemiTrapezoidWidthsAndHeightsBuilder> for SemiTrapezoidSlot {
         ) {
             bottom_side_width = zero;
         }
-        if approx::relative_eq!(
+        if approxim::relative_eq!(
             top_side_width.get::<meter>(),
             0.0,
             epsilon = DEFAULT_EPSILON,
@@ -682,7 +682,7 @@ impl TryFrom<SemiTrapezoidWidthsAndHeightsBuilder> for SemiTrapezoidSlot {
         ) {
             top_side_width = zero;
         }
-        if approx::relative_eq!(
+        if approxim::relative_eq!(
             bottom_height.get::<meter>(),
             0.0,
             epsilon = DEFAULT_EPSILON,
@@ -690,7 +690,7 @@ impl TryFrom<SemiTrapezoidWidthsAndHeightsBuilder> for SemiTrapezoidSlot {
         ) {
             bottom_height = zero;
         }
-        if approx::relative_eq!(
+        if approxim::relative_eq!(
             side_height.get::<meter>(),
             0.0,
             epsilon = DEFAULT_EPSILON,
@@ -698,7 +698,7 @@ impl TryFrom<SemiTrapezoidWidthsAndHeightsBuilder> for SemiTrapezoidSlot {
         ) {
             side_height = zero;
         }
-        if approx::relative_eq!(
+        if approxim::relative_eq!(
             top_height.get::<meter>(),
             0.0,
             epsilon = DEFAULT_EPSILON,
@@ -745,7 +745,7 @@ impl TryFrom<SemiTrapezoidWidthsAndHeightsBuilder> for SemiTrapezoidSlot {
         ]);
         radii.push(top_radius.get::<meter>());
 
-        if approx::relative_ne!(
+        if approxim::relative_ne!(
             top_side_width.get::<meter>(),
             top_width.get::<meter>(),
             epsilon = DEFAULT_EPSILON,
@@ -787,11 +787,7 @@ impl TryFrom<SemiTrapezoidWidthsAndHeightsBuilder> for SemiTrapezoidSlot {
         let outline = if is_open {
             // Assert that the outline does not intersect itself
             if let Some(intersection) = left_outline_half
-                .intersections_polysegment_par(
-                    &left_outline_half,
-                    DEFAULT_EPSILON,
-                    DEFAULT_MAX_RELATIVE,
-                )
+                .intersections_polysegment_par(&left_outline_half)
                 .find_map_any(|v| Some(v))
             {
                 return Err(crate::error::Error::OutlineIntersection {
@@ -805,7 +801,7 @@ impl TryFrom<SemiTrapezoidWidthsAndHeightsBuilder> for SemiTrapezoidSlot {
 
             // Assert that the contour does not intersect itself
             if let Some(intersection) = contour
-                .intersections_contour_par(&contour, DEFAULT_EPSILON, DEFAULT_MAX_RELATIVE)
+                .intersections_contour_par(&contour)
                 .find_map_any(|v| Some(v))
             {
                 return Err(crate::error::Error::OutlineIntersection {
@@ -834,7 +830,7 @@ impl TryFrom<SemiTrapezoidWidthsAndHeightsBuilder> for SemiTrapezoidSlot {
         for segment in outline.segments() {
             if let Segment::ArcSegment(arc_segment) = segment {
                 let current_param = &mut nonzero_radii[i];
-                if approx::relative_ne!(
+                if approxim::relative_ne!(
                     arc_segment.radius(),
                     (*current_param).get::<meter>(),
                     epsilon = DEFAULT_EPSILON,
@@ -928,7 +924,7 @@ the [`side_height`](SemiTrapezoidSlot::side_height) as shown in the image below:
 # Examples
 
 ```
-use approx::assert_abs_diff_eq;
+use approxim::assert_abs_diff_eq;
 use std::f64::consts::PI;
 use stem_slot::prelude::*;
 use stem_slot::semi_trapezoid::SemiTrapezoidAnglesSideHeightBuilder;
@@ -1118,14 +1114,14 @@ impl TryFrom<SemiTrapezoidAnglesSideHeightBuilder> for SemiTrapezoidSlot {
         let (top_height, bottom_side_width, top_side_width) = {
             let dh = (height - side_height - opening_height).get::<meter>();
             let angle_quotient = (bottom_angle - FRAC_PI_2).tan() / (top_angle - FRAC_PI_2).tan();
-            if approx::relative_eq!(
+            if approxim::relative_eq!(
                 dh,
                 0.0,
                 epsilon = DEFAULT_EPSILON,
                 max_relative = DEFAULT_MAX_RELATIVE
             ) {
                 (Length::new::<meter>(0.0), bottom_width, top_width)
-            } else if approx::relative_eq!(
+            } else if approxim::relative_eq!(
                 angle_quotient,
                 -1.0,
                 epsilon = DEFAULT_EPSILON,
@@ -1207,7 +1203,7 @@ conversion attempt will return an
 # Examples
 
 ```
-use approx::assert_abs_diff_eq;
+use approxim::assert_abs_diff_eq;
 use std::f64::consts::PI;
 use stem_slot::prelude::*;
 use stem_slot::semi_trapezoid::SemiTrapezoidWithoutSlopesBuilder;
@@ -1378,7 +1374,7 @@ conversion attempt will return an
 # Examples
 
 ```
-use approx::assert_abs_diff_eq;
+use approxim::assert_abs_diff_eq;
 use std::f64::consts::PI;
 use stem_slot::prelude::*;
 use stem_slot::semi_trapezoid::SemiTrapezoidAnglesTopHeightBuilder;
@@ -1557,7 +1553,7 @@ impl TryFrom<SemiTrapezoidAnglesTopHeightBuilder> for SemiTrapezoidSlot {
         let top_side_width = builder.top_width
             + 2.0 * builder.top_height * (builder.top_angle.value() - FRAC_PI_2).tan();
 
-        let side_height = if approx::relative_eq!(
+        let side_height = if approxim::relative_eq!(
             builder.bottom_angle.value(),
             FRAC_PI_2 - builder.slot_angle / 2.0
         ) {
@@ -1578,29 +1574,28 @@ impl TryFrom<SemiTrapezoidAnglesTopHeightBuilder> for SemiTrapezoidSlot {
                 FRAC_PI_2 - builder.slot_angle / 2.0,
             );
 
-            let intersection: [f64; 2] =
-                match l1.intersections_primitive(&l2, DEFAULT_EPSILON, DEFAULT_MAX_RELATIVE) {
-                    PrimitiveIntersections::One(p) => p,
-                    _ => {
-                        return Err(Comparison::new(
-                            ComparisonValue::new(
-                                calculate_bottom_side_angle(
-                                    builder.bottom_angle.value(),
-                                    builder.slot_angle,
-                                ),
-                                Some("bottom_side_angle"),
+            let intersection: [f64; 2] = match l1.intersections_primitive(&l2) {
+                PrimitiveIntersections::One(p) => p,
+                _ => {
+                    return Err(Comparison::new(
+                        ComparisonValue::new(
+                            calculate_bottom_side_angle(
+                                builder.bottom_angle.value(),
+                                builder.slot_angle,
                             ),
-                            ComparisonOperator::Equal,
-                            ComparisonValue::new(
-                                FRAC_PI_2 - builder.slot_angle / 2.0,
-                                Some("side_angle"),
-                            ),
-                            ComparisonOperator::Equal,
-                            None,
-                        )
-                        .into());
-                    }
-                };
+                            Some("bottom_side_angle"),
+                        ),
+                        ComparisonOperator::Equal,
+                        ComparisonValue::new(
+                            FRAC_PI_2 - builder.slot_angle / 2.0,
+                            Some("side_angle"),
+                        ),
+                        ComparisonOperator::Equal,
+                        None,
+                    )
+                    .into());
+                }
+            };
 
             Length::new::<meter>(intersection[1]) - builder.top_height - builder.opening_height
         };
@@ -1658,7 +1653,7 @@ conversion attempt will return an
 # Examples
 
 ```
-use approx::assert_abs_diff_eq;
+use approxim::assert_abs_diff_eq;
 use std::f64::consts::PI;
 use stem_slot::prelude::*;
 use stem_slot::semi_trapezoid::SemiTrapezoidAnglesBottomHeightBuilder;
@@ -1837,7 +1832,7 @@ impl TryFrom<SemiTrapezoidAnglesBottomHeightBuilder> for SemiTrapezoidSlot {
         let bottom_side_width = builder.bottom_width
             + 2.0 * builder.bottom_height * (builder.bottom_angle.value() - FRAC_PI_2).tan();
 
-        let side_height = if approx::relative_eq!(
+        let side_height = if approxim::relative_eq!(
             (PI - builder.top_angle.value()).rem_euclid(TAU),
             (FRAC_PI_2 - builder.slot_angle / 2.0).rem_euclid(TAU)
         ) {
@@ -1858,29 +1853,28 @@ impl TryFrom<SemiTrapezoidAnglesBottomHeightBuilder> for SemiTrapezoidSlot {
                 FRAC_PI_2 - builder.slot_angle / 2.0,
             );
 
-            let intersection: [f64; 2] =
-                match l1.intersections_primitive(&l2, DEFAULT_EPSILON, DEFAULT_MAX_RELATIVE) {
-                    PrimitiveIntersections::One(p) => p,
-                    _ => {
-                        return Err(Comparison::new(
-                            ComparisonValue::new(
-                                calculate_bottom_side_angle(
-                                    builder.bottom_angle.value(),
-                                    builder.slot_angle,
-                                ),
-                                Some("bottom_side_angle"),
+            let intersection: [f64; 2] = match l1.intersections_primitive(&l2) {
+                PrimitiveIntersections::One(p) => p,
+                _ => {
+                    return Err(Comparison::new(
+                        ComparisonValue::new(
+                            calculate_bottom_side_angle(
+                                builder.bottom_angle.value(),
+                                builder.slot_angle,
                             ),
-                            ComparisonOperator::Equal,
-                            ComparisonValue::new(
-                                FRAC_PI_2 - builder.slot_angle / 2.0,
-                                Some("side_angle"),
-                            ),
-                            ComparisonOperator::Equal,
-                            None,
-                        )
-                        .into());
-                    }
-                };
+                            Some("bottom_side_angle"),
+                        ),
+                        ComparisonOperator::Equal,
+                        ComparisonValue::new(
+                            FRAC_PI_2 - builder.slot_angle / 2.0,
+                            Some("side_angle"),
+                        ),
+                        ComparisonOperator::Equal,
+                        None,
+                    )
+                    .into());
+                }
+            };
 
             builder.height - Length::new::<meter>(intersection[1]) - builder.bottom_height
         };
@@ -1939,7 +1933,7 @@ conversion attempt will return an
 # Examples
 
 ```
-use approx::assert_abs_diff_eq;
+use approxim::assert_abs_diff_eq;
 use std::f64::consts::PI;
 use stem_slot::prelude::*;
 use stem_slot::semi_trapezoid::SemiTrapezoidAnglesTopSideWidthBuilder;
@@ -2167,7 +2161,7 @@ conversion attempt will return an
 # Examples
 
 ```
-use approx::assert_abs_diff_eq;
+use approxim::assert_abs_diff_eq;
 use std::f64::consts::PI;
 use stem_slot::prelude::*;
 use stem_slot::semi_trapezoid::SemiTrapezoidAnglesBottomSideWidthBuilder;
@@ -2404,7 +2398,7 @@ slot angle, see the field docstring). Once those are known, the
 # Examples
 
 ```
-use approx::assert_abs_diff_eq;
+use approxim::assert_abs_diff_eq;
 use std::f64::consts::PI;
 use stem_slot::prelude::*;
 use stem_slot::semi_trapezoid::SemiTrapezoidFromToothWidthRotBuilder;
@@ -2697,7 +2691,7 @@ have no slopes. With those parameters, the
 # Examples
 
 ```
-use approx::assert_abs_diff_eq;
+use approxim::assert_abs_diff_eq;
 use std::f64::consts::PI;
 use stem_slot::prelude::*;
 use stem_slot::semi_trapezoid::SemiTrapezoidFromToothWidthRotWithoutSlopesBuilder;

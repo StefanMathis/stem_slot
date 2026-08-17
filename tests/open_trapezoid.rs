@@ -42,12 +42,12 @@ fn test_shrunk_fillet_radii() {
         consider_tooth_tip_leakage: true,
     };
     let slot = OpenTrapezoidSlot::try_from(builder).unwrap();
-    approx::assert_abs_diff_eq!(
+    approxim::assert_abs_diff_eq!(
         slot.bottom_radius().get::<millimeter>(),
         5.4681,
         epsilon = 1e-3
     );
-    approx::assert_abs_diff_eq!(
+    approxim::assert_abs_diff_eq!(
         slot.bottom_side_radius().get::<millimeter>(),
         0.5,
         epsilon = 1e-6
@@ -69,12 +69,12 @@ fn test_width_and_height() {
             consider_tooth_tip_leakage: true,
         };
         let slot = OpenTrapezoidSlot::try_from(builder).expect("valid parameters");
-        approx::assert_abs_diff_eq!(
+        approxim::assert_abs_diff_eq!(
             slot.area().get::<square_millimeter>(),
             140.045,
             epsilon = 1e-3
         );
-        approx::assert_abs_diff_eq!(slot.slot_angle(), 0.1125570725, epsilon = 1e-8);
+        approxim::assert_abs_diff_eq!(slot.slot_angle(), 0.1125570725, epsilon = 1e-8);
     }
     {
         let builder = OpenTrapezoidWidthsAndHeightsBuilder {
@@ -89,12 +89,12 @@ fn test_width_and_height() {
             consider_tooth_tip_leakage: true,
         };
         let slot = OpenTrapezoidSlot::try_from(builder).expect("valid parameters");
-        approx::assert_abs_diff_eq!(
+        approxim::assert_abs_diff_eq!(
             slot.area().get::<square_millimeter>(),
             140.045,
             epsilon = 1e-3
         );
-        approx::assert_abs_diff_eq!(slot.slot_angle(), 0.11255, epsilon = 1e-3);
+        approxim::assert_abs_diff_eq!(slot.slot_angle(), 0.11255, epsilon = 1e-3);
     }
 }
 
@@ -116,45 +116,45 @@ fn test_angle_bottom() {
     };
     let slot = OpenTrapezoidSlot::try_from(builder).unwrap();
 
-    approx::assert_abs_diff_eq!(slot.slot_angle(), 10.0 * PI / 180.0, epsilon = 1e-6);
-    approx::assert_abs_diff_eq!(slot.bottom_side_angle(), 120.0 * PI / 180.0, epsilon = 1e-6);
-    approx::assert_abs_diff_eq!(slot.outline().length(), 0.0465666, epsilon = 1e-6);
-    approx::assert_abs_diff_eq!(
+    approxim::assert_abs_diff_eq!(slot.slot_angle(), 10.0 * PI / 180.0, epsilon = 1e-6);
+    approxim::assert_abs_diff_eq!(slot.bottom_side_angle(), 120.0 * PI / 180.0, epsilon = 1e-6);
+    approxim::assert_abs_diff_eq!(slot.outline().length(), 0.0465666, epsilon = 1e-6);
+    approxim::assert_abs_diff_eq!(
         slot.area().get::<square_millimeter>(),
         132.78895,
         epsilon = 1e-3
     );
 
     // Check some geometric parameters
-    approx::assert_abs_diff_eq!(
+    approxim::assert_abs_diff_eq!(
         122.4,
         slot.winding_area().get::<square_millimeter>(),
         epsilon = 1e-1
     );
-    approx::assert_abs_diff_eq!(
+    approxim::assert_abs_diff_eq!(
         132.7,
         slot.area().get::<square_millimeter>(),
         epsilon = 1e-1
     );
-    approx::assert_abs_diff_eq!(
+    approxim::assert_abs_diff_eq!(
         16.8455,
         slot.side_height().get::<millimeter>(),
         epsilon = 1e-3
     );
-    approx::assert_abs_diff_eq!(
+    approxim::assert_abs_diff_eq!(
         1.154,
         slot.bottom_height().get::<millimeter>(),
         epsilon = 1e-3
     );
 
     // Check the slot leakage coefficients
-    approx::assert_abs_diff_eq!(
+    approxim::assert_abs_diff_eq!(
         1.08016,
         slot.self_inductance_leakage_coefficient(0, &CoilLayout::Single),
         epsilon = 0.001
     );
-    approx::assert_abs_diff_eq!(0.4, slot.leakage_coefficient_opening(), epsilon = 0.001);
-    approx::assert_abs_diff_eq!(
+    approxim::assert_abs_diff_eq!(0.4, slot.leakage_coefficient_opening(), epsilon = 0.001);
+    approxim::assert_abs_diff_eq!(
         -0.06939,
         slot.leakage_coefficient_tooth_tip(Length::new::<millimeter>(1.0)),
         epsilon = 0.001
@@ -242,12 +242,12 @@ fn test_open_slot_bottom_height() {
     .unwrap();
 
     // Check some geometric parameters
-    approx::assert_abs_diff_eq!(
+    approxim::assert_abs_diff_eq!(
         16.8455,
         slot.side_height().get::<millimeter>(),
         epsilon = 1e-3
     );
-    approx::assert_abs_diff_eq!(
+    approxim::assert_abs_diff_eq!(
         122.4,
         slot.winding_area().get::<square_millimeter>(),
         epsilon = 1e-1
@@ -279,7 +279,7 @@ fn test_open_slot_bottom_slope_width() {
     .unwrap();
 
     // Check some geometric parameters
-    approx::assert_abs_diff_eq!(
+    approxim::assert_abs_diff_eq!(
         122.4,
         slot.winding_area().get::<square_millimeter>(),
         epsilon = 1e-1
@@ -429,10 +429,10 @@ fn test_serialize_and_deserialize() {
     }
     .try_into()
     .unwrap();
-    let serialized = serde_yaml::to_string(&slot).expect("can be serialized");
+    let serialized = yaml_serde::to_string(&slot).expect("can be serialized");
     let slot_de: OpenTrapezoidSlot =
-        serde_yaml::from_str(&serialized).expect("can be deserialized");
-    approx::assert_abs_diff_eq!(
+        yaml_serde::from_str(&serialized).expect("can be deserialized");
+    approxim::assert_abs_diff_eq!(
         slot.area().get::<square_millimeter>(),
         slot_de.area().get::<square_millimeter>(),
         epsilon = 1e-6
@@ -451,7 +451,7 @@ fn test_deserialize() {
                 bottom_radius: 1 mm
                 consider_tooth_tip_leakage: false
                 "};
-        let slot: OpenTrapezoidSlot = serde_yaml::from_str(yaml).unwrap();
+        let slot: OpenTrapezoidSlot = yaml_serde::from_str(yaml).unwrap();
 
         let drawables = slot.drawables(&CoilLayout::DoubleHorizontal);
         compare_to_reference(
@@ -470,7 +470,7 @@ fn test_deserialize() {
                         bottom_radius: 1 mm
                         consider_tooth_tip_leakage: false
                         "};
-        let slot: OpenTrapezoidSlot = serde_yaml::from_str(yaml).unwrap();
+        let slot: OpenTrapezoidSlot = yaml_serde::from_str(yaml).unwrap();
 
         let drawables = slot.drawables(&CoilLayout::DoubleHorizontal);
         compare_to_reference(
@@ -489,7 +489,7 @@ fn test_deserialize() {
                         bottom_radius: 1 mm
                         consider_tooth_tip_leakage: false
                         "};
-        let slot: OpenTrapezoidSlot = serde_yaml::from_str(yaml).unwrap();
+        let slot: OpenTrapezoidSlot = yaml_serde::from_str(yaml).unwrap();
 
         let drawables = slot.drawables(&CoilLayout::DoubleHorizontal);
         compare_to_reference(
