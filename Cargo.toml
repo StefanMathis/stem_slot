@@ -15,7 +15,7 @@ compare_variables = { version = "0.3.0", features = ["proc_macro"] }
 gauss-quad = "0.3"
 akima_spline = "0.1.7"
 planar_geo = { version = "0.6.0" }
-stem_material = "0.3.5"
+stem_material = "0.4.0"
 cart_lin = "0.2.1"
 num = "0.4.0"
 rayon = "1.5"
