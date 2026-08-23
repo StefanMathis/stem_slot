@@ -5,14 +5,14 @@ stem_slot
 docs/main.md and (if available docs/end.md). Do not modify this file, instead
 modify the components. -->
 
-[`Slot`]: https://docs.rs/stem_slot/0.4.0/stem_slot/slot/trait.Slot.html
-[`Slot::current_displacement_coefficients]: https://docs.rs/stem_slot/0.4.0/stem_slot/slot/trait.Slot.html#tymethod.current_displacement_coefficients
-[`Slot::leakage_coefficient_opening]: https://docs.rs/stem_slot/0.4.0/stem_slot/slot/trait.Slot.html#tymethod.leakage_coefficient_opening
-[`RectangularSlot`]: https://docs.rs/stem_slot/0.4.0/stem_slot/rectangular/struct.RectangularSlot.html
-[`OpenTrapezoidSlot`]: https://docs.rs/stem_slot/0.4.0/stem_slot/open_trapezoid/struct.OpenTrapezoidSlot.html
-[`SemiTrapezoidSlot`]: https://docs.rs/stem_slot/0.4.0/stem_slot/semi_trapezoid/struct.SemiTrapezoidSlot.html
-[`Slot::leakage_coefficient_opening`]: https://docs.rs/stem_slot/0.4.0/stem_slot/slot/trait.Slot.html#method.leakage_coefficient_opening
-[`Slot::current_displacement_coefficients`]: https://docs.rs/stem_slot/0.4.0/stem_slot/slot/trait.Slot.html#method.current_displacement_coefficients
+[`Slot`]: https://docs.rs/stem_slot/0.4.1/stem_slot/slot/trait.Slot.html
+[`Slot::current_displacement_coefficients]: https://docs.rs/stem_slot/0.4.1/stem_slot/slot/trait.Slot.html#tymethod.current_displacement_coefficients
+[`Slot::leakage_coefficient_opening]: https://docs.rs/stem_slot/0.4.1/stem_slot/slot/trait.Slot.html#tymethod.leakage_coefficient_opening
+[`RectangularSlot`]: https://docs.rs/stem_slot/0.4.1/stem_slot/rectangular/struct.RectangularSlot.html
+[`OpenTrapezoidSlot`]: https://docs.rs/stem_slot/0.4.1/stem_slot/open_trapezoid/struct.OpenTrapezoidSlot.html
+[`SemiTrapezoidSlot`]: https://docs.rs/stem_slot/0.4.1/stem_slot/semi_trapezoid/struct.SemiTrapezoidSlot.html
+[`Slot::leakage_coefficient_opening`]: https://docs.rs/stem_slot/0.4.1/stem_slot/slot/trait.Slot.html#method.leakage_coefficient_opening
+[`Slot::current_displacement_coefficients`]: https://docs.rs/stem_slot/0.4.1/stem_slot/slot/trait.Slot.html#method.current_displacement_coefficients
 
 [double_layer_coil_layout.svg]: https://raw.githubusercontent.com/StefanMathis/stem_slot/refs/heads/main/docs/img/double_layer_coil_layout.svg
 [slot_types_showcase.svg]: https://raw.githubusercontent.com/StefanMathis/stem_slot/refs/heads/main/docs/img/slot_types_showcase.svg
@@ -23,11 +23,15 @@ modify the components. -->
 
 Slot definition definition for stem - a Simulation Toolbox for Electric Motors.
 
-The full API documentation is available at <https://docs.rs/stem_slot/0.4.0/stem_slot>.
+The full API documentation is available at <https://docs.rs/stem_slot/0.4.1/stem_slot>.
 
 > **Feedback welcome!**  
 > Found a bug, missing docs, or have a feature request?  
 > Please open an issue on [GitHub](https://github.com/StefanMathis/stem_slot.git).
+
+This crate is part of the stem (Simulation Toolbox for Electric Motors)
+framework. See the [stem book](https://stefanmathis.github.io/stem_book/) for an
+introduction.
 
 Magnetic cores of electric motor often feature "grooves" along the air gap where
 the coils of electric windings are located. These grooves are typically called
@@ -158,6 +162,13 @@ it is possible to serialize the quantities of a wire as value-unit strings using
 the [serialize_with_units](https://docs.rs/dyn_quantity/latest/dyn_quantity/quantity/serde_impl/fn.serialize_with_units.html) function.
 
 See the chapter [serialization and deserialization](https://stefanmathis.github.io/stem_book/serialization_and_deserialization.html) of the [stem book](https://stefanmathis.github.io/stem_book/)
+for details.
+
+# Visualization
+
+If the `cairo` feature is enabled, the slot shapes can be drawn onto a
+[cairo](cairographics.org) context using the drawing mechanics from the
+[planar_geo](https://crates.io/crates/planar_geo) crate. See its documentation
 for details.
 
 # Acknowledgments

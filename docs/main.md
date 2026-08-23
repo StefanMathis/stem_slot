@@ -2,6 +2,10 @@
 > Found a bug, missing docs, or have a feature request?  
 > Please open an issue on [GitHub](https://github.com/StefanMathis/stem_slot.git).
 
+This crate is part of the stem (Simulation Toolbox for Electric Motors)
+framework. See the [stem book](https://stefanmathis.github.io/stem_book/) for an
+introduction.
+
 Magnetic cores of electric motor often feature "grooves" along the air gap where
 the coils of electric windings are located. These grooves are typically called
 "slots". The image below shows the rotor core of an asynchronous machine with
@@ -131,6 +135,13 @@ it is possible to serialize the quantities of a wire as value-unit strings using
 the [serialize_with_units](https://docs.rs/dyn_quantity/latest/dyn_quantity/quantity/serde_impl/fn.serialize_with_units.html) function.
 
 See the chapter [serialization and deserialization](https://stefanmathis.github.io/stem_book/serialization_and_deserialization.html) of the [stem book](https://stefanmathis.github.io/stem_book/)
+for details.
+
+# Visualization
+
+If the `cairo` feature is enabled, the slot shapes can be drawn onto a
+[cairo](cairographics.org) context using the drawing mechanics from the
+[planar_geo](https://crates.io/crates/planar_geo) crate. See its documentation
 for details.
 
 # Acknowledgments
