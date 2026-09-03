@@ -1,6 +1,6 @@
 [package]
 name = "stem_slot"
-version = "0.4.1"
+version = "0.4.2"
 edition = "2024"
 description = "Slot definition for stem - a Simulation Toolbox for Electric Motors."
 readme = "README.md"
@@ -22,6 +22,7 @@ rayon = "1.5"
 lazy_static = "1"
 deserialize_untagged_verbose_error = { version = "0.1.5", optional = true }
 serde = { version = "1", features = ["derive", "rc"], optional = true }
+stem_coil_layout = { path = "../stem_coil_layout" }
 dyn-clone = "1"
 typetag = { version = "^0.2", optional = true }
 embed-doc-image = { version = "0.1.4", optional = true }

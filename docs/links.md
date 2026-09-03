@@ -21,7 +21,7 @@ modify the components. -->
 
 [![Documentation](https://docs.rs/stem_slot/badge.svg)](https://docs.rs/stem_slot)
 
-Slot definition definition for stem - a Simulation Toolbox for Electric Motors.
+Slot definition for stem - a Simulation Toolbox for Electric Motors.
 
 The full API documentation is available at <https://docs.rs/stem_slot/{{VERSION}}/stem_slot>.
 

@@ -23,7 +23,6 @@ doc = ::embed_doc_image::embed_image!("magnetic_core.png", "docs/img/magnetic_co
 #![doc = include_str!("../docs/main.md")]
 #![deny(missing_docs)]
 
-pub mod coil_layout;
 pub mod current_displacement;
 pub mod error;
 pub mod open_trapezoid;
@@ -31,6 +30,7 @@ pub mod rectangular;
 pub mod semi_trapezoid;
 pub mod slot;
 pub use planar_geo;
+pub use stem_coil_layout;
 pub use stem_material;
 
 /**
@@ -75,7 +75,6 @@ pub mod prelude {
     module.
      */
 
-    pub use crate::coil_layout::CoilLayout;
     pub use crate::current_displacement::{
         CurrentDisplacementCalculator, CurrentDisplacementCoefficients,
     };
@@ -84,6 +83,7 @@ pub mod prelude {
     pub use crate::semi_trapezoid::SemiTrapezoidSlot;
     pub use crate::slot::{BottomAngle, Slot, TopAngle};
     pub use planar_geo;
+    pub use stem_coil_layout::*;
     pub use stem_material;
 
     // Prevent rustdoc from documenting the stem_material dependency
