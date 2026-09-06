@@ -746,7 +746,7 @@ pub trait Slot: Send + Sync + std::fmt::Debug + DynClone + Any + 'static {
             }
             CoilLayout::MultiVertical(layers) => {
                 let contour: Contour = self.outline_winding_area().into();
-                let layers = layers.clone();
+                let layers = layers.clone().get();
                 let mut contours: Vec<Contour> = Vec::with_capacity(layers as usize);
                 let mut shape_contour = contour;
 
@@ -1086,7 +1086,7 @@ pub trait Slot: Send + Sync + std::fmt::Debug + DynClone + Any + 'static {
     ```
      */
     fn leakage_coefficient_matrix(&self, coil_layout: &CoilLayout) -> CoefficientMatrix {
-        let layers = coil_layout.layers();
+        let layers = coil_layout.layers().get();
         let dim = layers as usize;
         let mut matrix = CoefficientMatrix::new(dim);
 
@@ -2348,12 +2348,13 @@ fn layer_bounds<S: Slot + ?Sized>(
             }
         }
         CoilLayout::MultiVertical(layers) => {
+            let layers = layers.get();
             let delta_height =
-                (slot.height() - slot.opening_height()).get::<meter>() / *layers as f64;
+                (slot.height() - slot.opening_height()).get::<meter>() / layers as f64;
 
             let [mult_min, mult_max] = if layer == 0 {
                 [0.0, 1.0]
-            } else if layer + 1 == *layers {
+            } else if layer + 1 == layers {
                 [1.0, 0.0]
             } else {
                 [0.0, 0.0]
@@ -2362,9 +2363,9 @@ fn layer_bounds<S: Slot + ?Sized>(
             return BoundingBox::new(
                 slot_bounds_no_opening.xmin() - x_offset,
                 slot_bounds_no_opening.xmax() + x_offset,
-                (*layers - layer - 1) as f64 * delta_height + slot.opening_height().get::<meter>()
+                (layers - layer - 1) as f64 * delta_height + slot.opening_height().get::<meter>()
                     - mult_min * y_offset,
-                (*layers - layer) as f64 * delta_height
+                (layers - layer) as f64 * delta_height
                     + slot.opening_height().get::<meter>()
                     + mult_max * y_offset,
             );

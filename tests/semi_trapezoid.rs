@@ -85,11 +85,11 @@ fn test_properties() {
         approxim::assert_abs_diff_eq!(pt1 + pt2, outline, epsilon = 1e-6);
 
         let pt1 = slot
-            .layer_outlines(0, &CoilLayout::MultiVertical(2))
+            .layer_outlines(0, &CoilLayout::MultiVertical(2.try_into().unwrap()))
             .length()
             .get::<meter>();
         let pt2 = slot
-            .layer_outlines(1, &CoilLayout::MultiVertical(2))
+            .layer_outlines(1, &CoilLayout::MultiVertical(2.try_into().unwrap()))
             .length()
             .get::<meter>();
         assert!(pt1 > pt2); // pt1 is much larger since it includes the slot bottom

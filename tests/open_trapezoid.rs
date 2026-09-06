@@ -366,21 +366,21 @@ fn test_multilayer_vertical() {
     .try_into()
     .unwrap();
 
-    let drawables = slot.drawables(&CoilLayout::MultiVertical(1));
+    let drawables = slot.drawables(&CoilLayout::MultiVertical(1.try_into().unwrap()));
     compare_to_reference(
         drawables.as_slice(),
         "tests/img/open_trapezoid_slot_1_vertical.png",
         None,
     );
 
-    let drawables = slot.drawables(&CoilLayout::MultiVertical(2));
+    let drawables = slot.drawables(&CoilLayout::MultiVertical(2.try_into().unwrap()));
     compare_to_reference(
         drawables.as_slice(),
         "tests/img/open_trapezoid_slot_2_vertical.png",
         None,
     );
 
-    let drawables = slot.drawables(&CoilLayout::MultiVertical(3));
+    let drawables = slot.drawables(&CoilLayout::MultiVertical(3.try_into().unwrap()));
     let view = Viewport::from_bounded_entities(drawables.iter(), SideLength::Long(500)).unwrap();
     compare_to_reference(
         drawables.as_slice(),
@@ -406,7 +406,7 @@ fn test_multilayer_vertical() {
         Some(view),
     );
 
-    let drawables = slot.drawables(&CoilLayout::MultiVertical(4));
+    let drawables = slot.drawables(&CoilLayout::MultiVertical(4.try_into().unwrap()));
     compare_to_reference(
         drawables.as_slice(),
         "tests/img/open_trapezoid_slot_4_vertical.png",

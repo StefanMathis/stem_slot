@@ -220,19 +220,19 @@ fn test_slot_layer_outline() {
     approxim::assert_abs_diff_eq!(pt1 + pt2 + pt3 + pt4, outline, epsilon = 1e-6);
 
     let pt1 = slot
-        .layer_outlines(0, &CoilLayout::MultiVertical(4))
+        .layer_outlines(0, &CoilLayout::MultiVertical(4.try_into().unwrap()))
         .length()
         .get::<meter>();
     let pt2 = slot
-        .layer_outlines(1, &CoilLayout::MultiVertical(4))
+        .layer_outlines(1, &CoilLayout::MultiVertical(4.try_into().unwrap()))
         .length()
         .get::<meter>();
     let pt3 = slot
-        .layer_outlines(2, &CoilLayout::MultiVertical(4))
+        .layer_outlines(2, &CoilLayout::MultiVertical(4.try_into().unwrap()))
         .length()
         .get::<meter>();
     let pt4 = slot
-        .layer_outlines(3, &CoilLayout::MultiVertical(4))
+        .layer_outlines(3, &CoilLayout::MultiVertical(4.try_into().unwrap()))
         .length()
         .get::<meter>();
     approxim::assert_abs_diff_eq!(pt1 + pt2 + pt3 + pt4, outline, epsilon = 1e-6);
@@ -379,7 +379,7 @@ fn test_mutual_inductance_leakage_coefficient() {
         epsilon = 1e-6
     );
 
-    let coil_layout = CoilLayout::MultiVertical(3);
+    let coil_layout = CoilLayout::MultiVertical(3.try_into().unwrap());
     let layer_height = (slot.height() - slot.opening_height()) / 3.0;
     approxim::assert_abs_diff_eq!(
         slot.mutual_inductance_leakage_coefficient(0, 1, &coil_layout),
