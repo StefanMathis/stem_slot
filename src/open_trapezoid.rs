@@ -63,7 +63,6 @@ implementations:
 use approxim;
 use std::f64::consts::PI;
 use stem_slot::prelude::*;
-use stem_slot::open_trapezoid::OpenTrapezoidWithoutSlopesBuilder;
 
 let builder = OpenTrapezoidWithoutSlopesBuilder {
     opening_width: Length::new::<millimeter>(5.0),
@@ -268,7 +267,6 @@ impl OpenTrapezoidSlot {
     /// use std::f64::consts::PI;
     /// use approxim::assert_abs_diff_eq;
     /// use stem_slot::prelude::*;
-    /// use stem_slot::open_trapezoid::OpenTrapezoidWithBottomAngleBuilder;
     ///
     /// let builder = OpenTrapezoidWithBottomAngleBuilder {
     ///     opening_width: Length::new::<millimeter>(5.0),
@@ -303,7 +301,6 @@ impl OpenTrapezoidSlot {
     /// use std::f64::consts::PI;
     /// use approxim::assert_abs_diff_eq;
     /// use stem_slot::prelude::*;
-    /// use stem_slot::open_trapezoid::OpenTrapezoidWithBottomAngleBuilder;
     ///
     /// let builder = OpenTrapezoidWithBottomAngleBuilder {
     ///     opening_width: Length::new::<millimeter>(5.0),
@@ -418,7 +415,6 @@ conversion attempt will return an
 use approxim::assert_abs_diff_eq;
 use std::f64::consts::PI;
 use stem_slot::prelude::*;
-use stem_slot::open_trapezoid::OpenTrapezoidWidthsAndHeightsBuilder;
 
 let builder = OpenTrapezoidWidthsAndHeightsBuilder {
     bottom_width: Length::new::<millimeter>(9.0),
@@ -697,7 +693,6 @@ conversion attempt will return an
 use approxim::assert_abs_diff_eq;
 use std::f64::consts::PI;
 use stem_slot::prelude::*;
-use stem_slot::open_trapezoid::OpenTrapezoidSlotAngleBuilder;
 
 let builder = OpenTrapezoidSlotAngleBuilder {
     bottom_width: Length::new::<millimeter>(9.0),
@@ -859,7 +854,6 @@ conversion attempt will return an
 use approxim::assert_abs_diff_eq;
 use std::f64::consts::PI;
 use stem_slot::prelude::*;
-use stem_slot::open_trapezoid::OpenTrapezoidSlotAngleHeightBuilder;
 
 let builder = OpenTrapezoidSlotAngleHeightBuilder {
     bottom_width: Length::new::<millimeter>(9.0),
@@ -1021,7 +1015,6 @@ conversion attempt will return an
 use approxim::assert_abs_diff_eq;
 use std::f64::consts::PI;
 use stem_slot::prelude::*;
-use stem_slot::open_trapezoid::OpenTrapezoidWithoutSlopesBuilder;
 
 let builder = OpenTrapezoidWithoutSlopesBuilder {
     opening_width: Length::new::<millimeter>(7.0),
@@ -1144,7 +1137,6 @@ conversion attempt will return an
 use approxim::assert_abs_diff_eq;
 use std::f64::consts::PI;
 use stem_slot::prelude::*;
-use stem_slot::open_trapezoid::OpenTrapezoidWithBottomAngleBuilder;
 
 let builder = OpenTrapezoidWithBottomAngleBuilder {
     bottom_width: Length::new::<millimeter>(9.0),
@@ -1327,7 +1319,6 @@ conversion attempt will return an
 ```
 use approxim::assert_abs_diff_eq;
 use stem_slot::prelude::*;
-use stem_slot::open_trapezoid::OpenTrapezoidFromToothWidthRotBuilder;
 
 let builder = OpenTrapezoidFromToothWidthRotBuilder {
     tooth_width: Length::new::<millimeter>(6.0),

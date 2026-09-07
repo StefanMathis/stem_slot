@@ -4,7 +4,7 @@ use planar_geo::{
     prelude::*,
 };
 use std::{f64::consts::PI, path::PathBuf};
-use stem_slot::{prelude::*, semi_trapezoid::*};
+use stem_slot::prelude::*;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     slices_comp()?;

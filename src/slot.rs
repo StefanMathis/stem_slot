@@ -270,7 +270,6 @@ pub trait Slot: Send + Sync + std::fmt::Debug + DynClone + Any + 'static {
     /// use std::f64::consts::FRAC_PI_2;
     ///
     /// use stem_slot::prelude::*;
-    /// use stem_slot::semi_trapezoid::SemiTrapezoidAnglesBottomHeightBuilder;
     ///
     /// // Slot shown in the image
     /// let slot_angle = 2.0 * (FRAC_PI_2 - (16.0f64).atan2(4.0));
@@ -577,7 +576,6 @@ pub trait Slot: Send + Sync + std::fmt::Debug + DynClone + Any + 'static {
     /// use std::f64::consts::PI;
     /// use approxim::assert_abs_diff_eq;
     /// use stem_slot::prelude::*;
-    /// use stem_slot::semi_trapezoid::SemiTrapezoidWithoutSlopesBuilder;
     ///
     /// let slot: SemiTrapezoidSlot = SemiTrapezoidWithoutSlopesBuilder {
     ///     bottom_width: Length::new::<millimeter>(10.0),

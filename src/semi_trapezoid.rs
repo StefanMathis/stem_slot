@@ -71,7 +71,6 @@ implementations:
 use approxim;
 use std::f64::consts::PI;
 use stem_slot::prelude::*;
-use stem_slot::semi_trapezoid::SemiTrapezoidWithoutSlopesBuilder;
 
 let builder = SemiTrapezoidWithoutSlopesBuilder {
     bottom_width: Length::new::<millimeter>(8.0),
@@ -458,7 +457,6 @@ conversion attempt will return an
 use approxim::assert_abs_diff_eq;
 use std::f64::consts::PI;
 use stem_slot::prelude::*;
-use stem_slot::semi_trapezoid::SemiTrapezoidWidthsAndHeightsBuilder;
 
 let slot: SemiTrapezoidSlot = SemiTrapezoidWidthsAndHeightsBuilder {
     bottom_width: Length::new::<millimeter>(10.0),
@@ -927,7 +925,6 @@ the [`side_height`](SemiTrapezoidSlot::side_height) as shown in the image below:
 use approxim::assert_abs_diff_eq;
 use std::f64::consts::PI;
 use stem_slot::prelude::*;
-use stem_slot::semi_trapezoid::SemiTrapezoidAnglesSideHeightBuilder;
 
 let slot: SemiTrapezoidSlot = SemiTrapezoidAnglesSideHeightBuilder {
     bottom_width: Length::new::<millimeter>(10.0),
@@ -1206,7 +1203,6 @@ conversion attempt will return an
 use approxim::assert_abs_diff_eq;
 use std::f64::consts::PI;
 use stem_slot::prelude::*;
-use stem_slot::semi_trapezoid::SemiTrapezoidWithoutSlopesBuilder;
 
 let slot: SemiTrapezoidSlot = SemiTrapezoidWithoutSlopesBuilder {
     bottom_width: Length::new::<millimeter>(16.0),
@@ -1377,7 +1373,6 @@ conversion attempt will return an
 use approxim::assert_abs_diff_eq;
 use std::f64::consts::PI;
 use stem_slot::prelude::*;
-use stem_slot::semi_trapezoid::SemiTrapezoidAnglesTopHeightBuilder;
 
 let slot: SemiTrapezoidSlot = SemiTrapezoidAnglesTopHeightBuilder {
     bottom_width: Length::new::<millimeter>(10.0),
@@ -1656,7 +1651,6 @@ conversion attempt will return an
 use approxim::assert_abs_diff_eq;
 use std::f64::consts::PI;
 use stem_slot::prelude::*;
-use stem_slot::semi_trapezoid::SemiTrapezoidAnglesBottomHeightBuilder;
 
 let slot: SemiTrapezoidSlot = SemiTrapezoidAnglesBottomHeightBuilder {
     bottom_width: Length::new::<millimeter>(10.0),
@@ -1936,7 +1930,6 @@ conversion attempt will return an
 use approxim::assert_abs_diff_eq;
 use std::f64::consts::PI;
 use stem_slot::prelude::*;
-use stem_slot::semi_trapezoid::SemiTrapezoidAnglesTopSideWidthBuilder;
 
 let slot: SemiTrapezoidSlot = SemiTrapezoidAnglesTopSideWidthBuilder {
     bottom_width: Length::new::<millimeter>(10.0),
@@ -2164,7 +2157,6 @@ conversion attempt will return an
 use approxim::assert_abs_diff_eq;
 use std::f64::consts::PI;
 use stem_slot::prelude::*;
-use stem_slot::semi_trapezoid::SemiTrapezoidAnglesBottomSideWidthBuilder;
 
 let slot: SemiTrapezoidSlot = SemiTrapezoidAnglesBottomSideWidthBuilder {
     bottom_width: Length::new::<millimeter>(10.0),
@@ -2401,7 +2393,6 @@ slot angle, see the field docstring). Once those are known, the
 use approxim::assert_abs_diff_eq;
 use std::f64::consts::PI;
 use stem_slot::prelude::*;
-use stem_slot::semi_trapezoid::SemiTrapezoidFromToothWidthRotBuilder;
 
 let builder = SemiTrapezoidFromToothWidthRotBuilder {
     tooth_width: Length::new::<millimeter>(6.0),
@@ -2694,7 +2685,6 @@ have no slopes. With those parameters, the
 use approxim::assert_abs_diff_eq;
 use std::f64::consts::PI;
 use stem_slot::prelude::*;
-use stem_slot::semi_trapezoid::SemiTrapezoidFromToothWidthRotWithoutSlopesBuilder;
 
 let builder = SemiTrapezoidFromToothWidthRotWithoutSlopesBuilder {
     tooth_width: Length::new::<millimeter>(6.0),

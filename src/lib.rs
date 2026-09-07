@@ -78,9 +78,19 @@ pub mod prelude {
     pub use crate::current_displacement::{
         CurrentDisplacementCalculator, CurrentDisplacementCoefficients,
     };
-    pub use crate::open_trapezoid::OpenTrapezoidSlot;
+    pub use crate::open_trapezoid::{
+        OpenTrapezoidFromToothWidthRotBuilder, OpenTrapezoidSlot, OpenTrapezoidSlotAngleBuilder,
+        OpenTrapezoidSlotAngleHeightBuilder, OpenTrapezoidWidthsAndHeightsBuilder,
+        OpenTrapezoidWithBottomAngleBuilder, OpenTrapezoidWithoutSlopesBuilder,
+    };
     pub use crate::rectangular::RectangularSlot;
-    pub use crate::semi_trapezoid::SemiTrapezoidSlot;
+    pub use crate::semi_trapezoid::{
+        SemiTrapezoidAnglesBottomHeightBuilder, SemiTrapezoidAnglesBottomSideWidthBuilder,
+        SemiTrapezoidAnglesSideHeightBuilder, SemiTrapezoidAnglesTopHeightBuilder,
+        SemiTrapezoidAnglesTopSideWidthBuilder, SemiTrapezoidFromToothWidthRotBuilder,
+        SemiTrapezoidFromToothWidthRotWithoutSlopesBuilder, SemiTrapezoidSlot,
+        SemiTrapezoidWidthsAndHeightsBuilder, SemiTrapezoidWithoutSlopesBuilder,
+    };
     pub use crate::slot::{BottomAngle, Slot, TopAngle};
     pub use planar_geo;
     pub use stem_coil_layout::*;
