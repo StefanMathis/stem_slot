@@ -1492,12 +1492,14 @@ pub trait Slot: Send + Sync + std::fmt::Debug + DynClone + Any + 'static {
                     let d = (n_slices_section - ii as f64) - 0.5;
                     let x = pt2[0].abs() - d * delta_x / n_slices_section;
                     let y_middle = pt2[1] + d * slice_height;
-                    bbs.push(BoundingBox::new(
+                    if let Some(bb) = BoundingBox::try_new(
                         -x,
                         x,
                         y_middle - 0.5 * slice_height,
                         y_middle + 0.5 * slice_height,
-                    ));
+                    ) {
+                        bbs.push(bb);
+                    };
                 }
 
                 // Prepare the next iteration
