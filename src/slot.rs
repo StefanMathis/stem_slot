@@ -45,7 +45,7 @@ different [`CoilLayout`]s (e.g. [`Slot::mutual_inductance_leakage_coefficient`])
 or the current displacement coefficients via
 [`Slot::current_displacement_coefficients`].
 
-# Implementation
+# Implementation notes
 
 Implementing the trait requires the definition of a couple methods like
 [`Slot::outline`] describing the geometric extents of the slot.
