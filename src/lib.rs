@@ -30,7 +30,7 @@ pub mod rectangular;
 pub mod semi_trapezoid;
 pub mod slot;
 pub use planar_geo;
-pub use stem_coil_layout;
+pub use stem_types;
 pub use stem_material;
 
 /**
@@ -93,7 +93,7 @@ pub mod prelude {
     };
     pub use crate::slot::{BottomAngle, Slot, TopAngle};
     pub use planar_geo;
-    pub use stem_coil_layout::*;
+    pub use stem_types::*;
     pub use stem_material;
 
     // Prevent rustdoc from documenting the stem_material dependency

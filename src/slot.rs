@@ -28,7 +28,7 @@ use crate::SLOT_STYLE;
 use serde::{Deserialize, Serialize};
 
 use crate::current_displacement::CurrentDisplacementCalculator;
-use stem_coil_layout::CoilLayout;
+use stem_types::CoilLayout;
 
 /**
 A trait for defining slots of electrical machines.

@@ -23,7 +23,7 @@ rayon = "1.5"
 lazy_static = "1"
 deserialize_untagged_verbose_error = { version = "0.1.8", optional = true }
 serde = { version = "1", features = ["derive", "rc"], optional = true }
-stem_coil_layout = { path = "../stem_coil_layout" }
+stem_types = { path = "../stem_types" }
 dyn-clone = "1"
 typetag = { version = "^0.2", optional = true }
 embed-doc-image = { version = "0.1.4", optional = true }
