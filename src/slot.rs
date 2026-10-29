@@ -811,8 +811,8 @@ pub trait Slot: Send + Sync + std::fmt::Debug + DynClone + Any + 'static {
     The conductors inside a slot are grouped into "layers", which are positioned
     as specified in the `coil_layout`. When an AC current passes through the
     conductors of one of these layers, the resulting magnetic field acts as an
-    inductance according to Lenz' rule. This so-called self-inductance can be
-    calculates as:
+    inductance according to Lenz' rule.  Assuming a symmetric sinusoidal
+    multiphase current systen, this so-called self-inductance is:
 
     ```text
     Ls = μ0 * l_ax * w_sp² * lambda_s
@@ -893,7 +893,8 @@ pub trait Slot: Send + Sync + std::fmt::Debug + DynClone + Any + 'static {
     according to the given `coil_layout`. When an AC current passes through the
     conductors of one of these layers, the resulting magnetic field acts as an
     inductance according to Lenz' rule both for the layer itself as well as for
-    other layers in the slot. This inductance can be calculated as
+    other layers in the slot. Assuming a symmetric sinusoidal multiphase current
+    systen, this inductance is:
 
     ```text
     Lo = μ0 * l_ax * w_l * w_e * lambda_o
