@@ -1784,7 +1784,7 @@ let data = indoc! {"
     ---
     135.0 deg
     "};
-let bottom_angle: BottomAngle = yaml_serde::from_str(data).unwrap();
+let bottom_angle: BottomAngle = serde_yaml::from_str(data).unwrap();
 assert_abs_diff_eq!(bottom_angle.value(), 0.75 * PI, epsilon = 1e-10);
 
 // Deserialize from parameters
@@ -1795,7 +1795,7 @@ let data = indoc! {"
     bottom_height: 1.0 m
     slot_angle: 10.0 deg
     "};
-let bottom_angle: BottomAngle = yaml_serde::from_str(data).unwrap();
+let bottom_angle: BottomAngle = serde_yaml::from_str(data).unwrap();
 approxim::assert_abs_diff_eq!(bottom_angle.value(), 0.75 * PI, epsilon = 1e-10);
 ```
 
@@ -2018,7 +2018,7 @@ let data = indoc! {"
     ---
     135.0 deg
     "};
-let top_angle: TopAngle = yaml_serde::from_str(data).unwrap();
+let top_angle: TopAngle = serde_yaml::from_str(data).unwrap();
 assert_abs_diff_eq!(top_angle.value(), 0.75 * PI, epsilon = 1e-10);
 
 // Deserialize from parameters
@@ -2029,7 +2029,7 @@ let data = indoc! {"
     top_height: 1.0 m
     slot_angle: 10.0 deg
     "};
-let top_angle: TopAngle = yaml_serde::from_str(data).unwrap();
+let top_angle: TopAngle = serde_yaml::from_str(data).unwrap();
 approxim::assert_abs_diff_eq!(top_angle.value(), 0.75 * PI, epsilon = 1e-10);
 ```
 

@@ -267,7 +267,8 @@ This allows for a comparison between the numeric and the analytic approach:
 Müller, Germar; Vogt, Karl; Ponick, Bernd: Berechnung elektrischer
 Maschinen, 6th edition (2008), Wiley-VCH, Weinheim
  */
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct CurrentDisplacementCalculator {
     area: Area,
     slices: Vec<Slice>,
@@ -477,7 +478,8 @@ impl CurrentDisplacementCalculator {
 }
 
 /// A single "slice" of the slot used in [`CurrentDisplacementCalculator`].
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 struct Slice {
     height: Length,
     width: Length,

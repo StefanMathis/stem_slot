@@ -108,7 +108,7 @@ need for a tag). Its serialized form is that of the
 ```
 use approxim;
 use stem_slot::prelude::*;
-use yaml_serde;
+use serde_yaml;
 
 // Parameters of a SemiTrapezoidAnglesSideHeightBuilder
 let str = indoc::indoc! {"
@@ -129,7 +129,7 @@ opening_radius: 1 mm
 consider_tooth_tip_leakage: true
 "};
 
-let slot: SemiTrapezoidSlot = yaml_serde::from_str(&str).expect("valid dimensions");
+let slot: SemiTrapezoidSlot = serde_yaml::from_str(&str).expect("valid dimensions");
 approxim::assert_abs_diff_eq!(slot.opening_width().get::<millimeter>(), 2.0, epsilon=1e-3);
 
 // Parameters of a SemiTrapezoidWithoutSlopesBuilder
@@ -145,7 +145,7 @@ opening_radius: 1 mm
 consider_tooth_tip_leakage: true
 "};
 
-let slot: SemiTrapezoidSlot = yaml_serde::from_str(&str).expect("valid dimensions");
+let slot: SemiTrapezoidSlot = serde_yaml::from_str(&str).expect("valid dimensions");
 approxim::assert_abs_diff_eq!(slot.opening_width().get::<millimeter>(), 2.0, epsilon=1e-3);
 ```
  */

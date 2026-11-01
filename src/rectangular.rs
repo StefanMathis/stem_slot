@@ -67,7 +67,7 @@ below.
 ```
 use approxim::assert_abs_diff_eq;
 use stem_slot::prelude::*;
-use yaml_serde;
+use serde_yaml;
 
 let str = indoc::indoc! {"
 width: 8 mm
@@ -77,7 +77,7 @@ opening_height: 2 mm
 consider_tooth_tip_leakage: true
 "};
 
-let slot: RectangularSlot = yaml_serde::from_str(&str).expect("valid dimensions");
+let slot: RectangularSlot = serde_yaml::from_str(&str).expect("valid dimensions");
 assert_abs_diff_eq!(slot.winding_area().get::<square_millimeter>(), 144.0, epsilon=1e-3);
 ```
  */

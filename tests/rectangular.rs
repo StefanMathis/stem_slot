@@ -455,8 +455,8 @@ fn test_serialize_and_deserialize() {
     let width = Length::new::<millimeter>(3.0);
     let height = Length::new::<millimeter>(20.0);
     let slot = RectangularSlot::new(width, opening_width, height, opening_height, true).unwrap();
-    let serialized = yaml_serde::to_string(&slot).expect("can be serialized");
-    let slot_de: RectangularSlot = yaml_serde::from_str(&serialized).expect("can be deserialized");
+    let serialized = serde_yaml::to_string(&slot).expect("can be serialized");
+    let slot_de: RectangularSlot = serde_yaml::from_str(&serialized).expect("can be deserialized");
     approxim::assert_abs_diff_eq!(
         slot.area().get::<square_millimeter>(),
         slot_de.area().get::<square_millimeter>(),
@@ -473,7 +473,7 @@ fn test_deserialize() {
         opening_height: 0.5 mm
         consider_tooth_tip_leakage: true
         "};
-    assert!(yaml_serde::from_str::<RectangularSlot>(&yaml).is_ok());
+    assert!(serde_yaml::from_str::<RectangularSlot>(&yaml).is_ok());
 }
 
 #[test]
@@ -486,7 +486,7 @@ fn test_deserialize_with_bad_parameters() {
             opening_height: 0.5 mm
             consider_tooth_tip_leakage: true
             "};
-        assert!(yaml_serde::from_str::<RectangularSlot>(&yaml).is_err());
+        assert!(serde_yaml::from_str::<RectangularSlot>(&yaml).is_err());
     }
 
     {
@@ -497,6 +497,6 @@ fn test_deserialize_with_bad_parameters() {
             opening_height: 2.0  mm           # <== OPENING_HEIGHT MUST SMALLER THAN HEIGHT
             consider_tooth_tip_leakage: true
             "};
-        assert!(yaml_serde::from_str::<RectangularSlot>(&yaml).is_err());
+        assert!(serde_yaml::from_str::<RectangularSlot>(&yaml).is_err());
     }
 }

@@ -617,9 +617,9 @@ fn test_serialize_and_deserialize() {
     }
     .try_into()
     .unwrap();
-    let serialized = yaml_serde::to_string(&slot).expect("can be serialized");
+    let serialized = serde_yaml::to_string(&slot).expect("can be serialized");
     let slot_de: SemiTrapezoidSlot =
-        yaml_serde::from_str(&serialized).expect("can be deserialized");
+        serde_yaml::from_str(&serialized).expect("can be deserialized");
     approxim::assert_abs_diff_eq!(
         slot.area().get::<square_millimeter>(),
         slot_de.area().get::<square_millimeter>(),
@@ -645,7 +645,7 @@ fn test_tooth_width_deserialize() {
               consider_tooth_tip_leakage: false
               "};
 
-    let slot: SemiTrapezoidSlot = yaml_serde::from_str(yaml).unwrap();
+    let slot: SemiTrapezoidSlot = serde_yaml::from_str(yaml).unwrap();
     approxim::assert_abs_diff_eq!(
         296.42,
         slot.winding_area().get::<square_millimeter>(),
@@ -675,7 +675,7 @@ fn test_semi_trapezoid_no_slopes_deserialize() {
                 consider_tooth_tip_leakage: true
                 "};
 
-    let slot: SemiTrapezoidSlot = yaml_serde::from_str(yaml).unwrap();
+    let slot: SemiTrapezoidSlot = serde_yaml::from_str(yaml).unwrap();
     approxim::assert_abs_diff_eq!(
         149.21,
         slot.winding_area().get::<square_millimeter>(),
@@ -719,7 +719,7 @@ fn test_semi_trapezoid_top_side_width_deserialize() {
         consider_tooth_tip_leakage: true
         "};
 
-    let slot: SemiTrapezoidSlot = yaml_serde::from_str(yaml).unwrap();
+    let slot: SemiTrapezoidSlot = serde_yaml::from_str(yaml).unwrap();
     approxim::assert_abs_diff_eq!(slot.top_height().get::<millimeter>(), 0.5, epsilon = 1e-3);
     approxim::assert_abs_diff_eq!(
         slot.top_side_width().get::<millimeter>(),

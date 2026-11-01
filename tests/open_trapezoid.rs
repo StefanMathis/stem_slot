@@ -429,9 +429,9 @@ fn test_serialize_and_deserialize() {
     }
     .try_into()
     .unwrap();
-    let serialized = yaml_serde::to_string(&slot).expect("can be serialized");
+    let serialized = serde_yaml::to_string(&slot).expect("can be serialized");
     let slot_de: OpenTrapezoidSlot =
-        yaml_serde::from_str(&serialized).expect("can be deserialized");
+        serde_yaml::from_str(&serialized).expect("can be deserialized");
     approxim::assert_abs_diff_eq!(
         slot.area().get::<square_millimeter>(),
         slot_de.area().get::<square_millimeter>(),
@@ -451,7 +451,7 @@ fn test_deserialize() {
                 bottom_radius: 1 mm
                 consider_tooth_tip_leakage: false
                 "};
-        let slot: OpenTrapezoidSlot = yaml_serde::from_str(yaml).unwrap();
+        let slot: OpenTrapezoidSlot = serde_yaml::from_str(yaml).unwrap();
 
         let drawables = slot.drawables(&CoilLayout::DoubleHorizontal);
         compare_to_reference(
@@ -470,7 +470,7 @@ fn test_deserialize() {
                         bottom_radius: 1 mm
                         consider_tooth_tip_leakage: false
                         "};
-        let slot: OpenTrapezoidSlot = yaml_serde::from_str(yaml).unwrap();
+        let slot: OpenTrapezoidSlot = serde_yaml::from_str(yaml).unwrap();
 
         let drawables = slot.drawables(&CoilLayout::DoubleHorizontal);
         compare_to_reference(
@@ -489,7 +489,7 @@ fn test_deserialize() {
                         bottom_radius: 1 mm
                         consider_tooth_tip_leakage: false
                         "};
-        let slot: OpenTrapezoidSlot = yaml_serde::from_str(yaml).unwrap();
+        let slot: OpenTrapezoidSlot = serde_yaml::from_str(yaml).unwrap();
 
         let drawables = slot.drawables(&CoilLayout::DoubleHorizontal);
         compare_to_reference(

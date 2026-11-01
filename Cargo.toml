@@ -37,7 +37,7 @@ doc-images = ["dep:embed-doc-image"]
 
 [dev-dependencies]
 indoc = "1.0"
-yaml_serde = "0.10.6"
+serde_yaml = "0.8"
 cairo_viewport = { version = "0.3", features = ["image-compare"]}
 stem_slot = { path = ".", features = ["serde", "cairo"] }
 
