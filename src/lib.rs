@@ -6,7 +6,9 @@
 [`OpenTrapezoidSlot`]: crate::open_trapezoid::OpenTrapezoidSlot
 [`SemiTrapezoidSlot`]: crate::semi_trapezoid::SemiTrapezoidSlot
 
-Slot definition for stem - a Simulation Toolbox for Electric Motors.
+Slot definition for stem – a Simulation Toolbox for Electric Motors. The
+[stem book](https://stefanmathis.github.io/stem_book/) provides a comprehensive
+guide to the framework, while this crate's documentation describes its API.
 
  */
 #![cfg_attr(feature = "doc-images",
@@ -30,8 +32,8 @@ pub mod rectangular;
 pub mod semi_trapezoid;
 pub mod slot;
 pub use planar_geo;
-pub use stem_types;
 pub use stem_material;
+pub use stem_types;
 
 /**
 Standard [`Color`](planar_geo::draw::Color) for drawing slots.
@@ -93,8 +95,8 @@ pub mod prelude {
     };
     pub use crate::slot::{BottomAngle, Slot, TopAngle};
     pub use planar_geo;
-    pub use stem_types::*;
     pub use stem_material;
+    pub use stem_types::*;
 
     // Prevent rustdoc from documenting the stem_material dependency
     #[doc(hidden)]

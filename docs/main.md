@@ -2,10 +2,6 @@
 > Found a bug, missing docs, or have a feature request?  
 > Please open an issue on [GitHub](https://github.com/StefanMathis/stem_slot.git).
 
-This crate is part of the stem (Simulation Toolbox for Electric Motors)
-framework. See the [stem book](https://stefanmathis.github.io/stem_book/) for an
-introduction.
-
 Magnetic cores of electric motor often feature "grooves" along the air gap where
 the coils of electric windings are located. These grooves are typically called
 "slots". The image below shows the rotor core of an asynchronous machine with

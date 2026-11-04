@@ -21,17 +21,15 @@ modify the components. -->
 
 [![Documentation](https://docs.rs/stem_slot/badge.svg)](https://docs.rs/stem_slot)
 
-Slot definition for stem - a Simulation Toolbox for Electric Motors.
+Slot definition for stem – a Simulation Toolbox for Electric Motors. The
+[stem book](https://stefanmathis.github.io/stem_book/) provides a comprehensive
+guide to the framework, while this crate's documentation describes its API.
 
 The full API documentation is available at <https://docs.rs/stem_slot/0.4.2/stem_slot>.
 
 > **Feedback welcome!**  
 > Found a bug, missing docs, or have a feature request?  
 > Please open an issue on [GitHub](https://github.com/StefanMathis/stem_slot.git).
-
-This crate is part of the stem (Simulation Toolbox for Electric Motors)
-framework. See the [stem book](https://stefanmathis.github.io/stem_book/) for an
-introduction.
 
 Magnetic cores of electric motor often feature "grooves" along the air gap where
 the coils of electric windings are located. These grooves are typically called
