@@ -695,7 +695,7 @@ pub trait Slot: Send + Sync + std::fmt::Debug + DynClone + Any + 'static {
                 let mut ps_lr: Option<Polysegment> = None; // Contour of the lower-right layer
                 let mut ps_ur: Option<Polysegment> = None; // Contour of the upper-right layer
 
-                let eps = std::f64::EPSILON.sqrt();
+                let eps = f64::EPSILON.sqrt();
 
                 // Identify which quarter is the upper left one, the lower left one, the upper
                 // right one and the upper left one
