@@ -99,10 +99,13 @@ of `Deserialize` and `Serialize`.
 use std::borrow::Cow;
 
 use planar_geo::prelude::*;
-use serde::{Deserialize, Serialize};
 use stem_slot::prelude::*;
 
-#[derive(Clone, Debug, Deserialize, Serialize)]
+#[cfg(feature = "serde")]
+use serde::{Deserialize, Serialize};
+
+#[derive(Clone, Debug)]
+#[cfg_attr(feature = "serde", derive(Deserialize, Serialize))]
 struct MyRectangularSlot {
     width: Length,
     opening_width: Length,
@@ -110,7 +113,7 @@ struct MyRectangularSlot {
     opening_height: Length,
 }
 
-#[typetag::serde] // <-- Needed if the serde feature is enabled
+#[cfg_attr(feature = "serde", typetag::serde)]
 impl Slot for MyRectangularSlot {
     fn opening_width(&self) -> Length {
         return self.opening_width;
@@ -1774,6 +1777,8 @@ This enum can be created via [`From`] from a [`f64`] (wrapping the float in
 This enum is serialized / deserialized as an untagged enum:
 
 ```
+# #[cfg(feature = "serde")]
+# {
 use std::f64::consts::PI;
 use approxim::assert_abs_diff_eq;
 use indoc::indoc;
@@ -1797,6 +1802,7 @@ let data = indoc! {"
     "};
 let bottom_angle: BottomAngle = serde_yaml::from_str(data).unwrap();
 approxim::assert_abs_diff_eq!(bottom_angle.value(), 0.75 * PI, epsilon = 1e-10);
+# }
 ```
 
 Of course, the untagged representation can of course also be used when
@@ -2008,6 +2014,8 @@ This enum can be created via [`From`] from a [`f64`] (wrapping the float in
 This enum is serialized / deserialized as an untagged enum:
 
 ```
+# #[cfg(feature = "serde")]
+# {
 use std::f64::consts::PI;
 use approxim::assert_abs_diff_eq;
 use indoc::indoc;
@@ -2031,6 +2039,7 @@ let data = indoc! {"
     "};
 let top_angle: TopAngle = serde_yaml::from_str(data).unwrap();
 approxim::assert_abs_diff_eq!(top_angle.value(), 0.75 * PI, epsilon = 1e-10);
+# }
 ```
 
 Of course, the untagged representation can of course also be used when

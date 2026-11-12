@@ -65,6 +65,8 @@ provided that the values are within the specified limits. Additionally, the
 below.
 
 ```
+# #[cfg(feature = "serde")]
+# {
 use approxim::assert_abs_diff_eq;
 use stem_slot::prelude::*;
 use serde_yaml;
@@ -79,6 +81,7 @@ consider_tooth_tip_leakage: true
 
 let slot: RectangularSlot = serde_yaml::from_str(&str).expect("valid dimensions");
 assert_abs_diff_eq!(slot.winding_area().get::<square_millimeter>(), 144.0, epsilon=1e-3);
+# }
 ```
  */
 #[derive(Clone, Debug)]

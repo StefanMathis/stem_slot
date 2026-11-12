@@ -1,6 +1,5 @@
 use std::f64::consts::{FRAC_PI_2, PI, TAU};
 
-use indoc::indoc;
 use stem_slot::prelude::*;
 use stem_slot::slot::*;
 
@@ -25,60 +24,6 @@ fn test_semi_regular_polygon_side_length() {
     assert!(semi_regular_polygon_side_length(-1.0, 2.0, 12).is_none());
     assert!(semi_regular_polygon_side_length(1.0, -2.0, 12).is_none());
     assert!(semi_regular_polygon_side_length(1.0, 2.0, 11).is_none());
-}
-
-#[test]
-fn test_deserialize_bottom_with_width_and_height() {
-    let data = indoc! {"
-        ---
-        bottom_width: 1.0 m
-        bottom_side_width: 3.0 m
-        bottom_height: 1.0 m
-        slot_angle: 10.0 deg
-        "};
-    let bottom_angle: BottomAngle = serde_yaml::from_str(data).unwrap();
-    approxim::assert_abs_diff_eq!(bottom_angle.value(), 0.75 * PI, epsilon = 1e-15);
-
-    let data = indoc! {"
-        ---
-        10.0 deg
-        "};
-    let bottom_angle: BottomAngle = serde_yaml::from_str(data).unwrap();
-    approxim::assert_abs_diff_eq!(bottom_angle.value(), TAU / 36.0, epsilon = 1e-15);
-
-    let data = indoc! {"
-        ---
-        1.0
-        "};
-    let bottom_angle: BottomAngle = serde_yaml::from_str(data).unwrap();
-    approxim::assert_abs_diff_eq!(bottom_angle.value(), 1.0, epsilon = 1e-15);
-}
-
-#[test]
-fn test_deserialize_top_with_width_and_height() {
-    let data = indoc! {"
-        ---
-        top_width: 1.0
-        top_side_width: 3.0
-        top_height: 1.0
-        slot_angle: 10.0 deg
-        "};
-    let top_angle: TopAngle = serde_yaml::from_str(data).unwrap();
-    approxim::assert_abs_diff_eq!(top_angle.value(), 0.75 * PI, epsilon = 1e-15);
-
-    let data = indoc! {"
-        ---
-        10.0 deg
-        "};
-    let top_angle: TopAngle = serde_yaml::from_str(data).unwrap();
-    approxim::assert_abs_diff_eq!(top_angle.value(), TAU / 36.0, epsilon = 1e-15);
-
-    let data = indoc! {"
-        ---
-        1.0
-        "};
-    let top_angle: TopAngle = serde_yaml::from_str(data).unwrap();
-    approxim::assert_abs_diff_eq!(top_angle.value(), 1.0, epsilon = 1e-15);
 }
 
 #[test]
@@ -219,4 +164,65 @@ fn test_top_angle_from_width_height() {
         .value(),
         epsilon = 1e-6
     );
+}
+
+#[cfg(feature = "serde")]
+mod serde_tests {
+
+    use super::*;
+    use indoc::indoc;
+
+    #[test]
+    fn test_deserialize_bottom_with_width_and_height() {
+        let data = indoc! {"
+        ---
+        bottom_width: 1.0 m
+        bottom_side_width: 3.0 m
+        bottom_height: 1.0 m
+        slot_angle: 10.0 deg
+        "};
+        let bottom_angle: BottomAngle = serde_yaml::from_str(data).unwrap();
+        approxim::assert_abs_diff_eq!(bottom_angle.value(), 0.75 * PI, epsilon = 1e-15);
+
+        let data = indoc! {"
+        ---
+        10.0 deg
+        "};
+        let bottom_angle: BottomAngle = serde_yaml::from_str(data).unwrap();
+        approxim::assert_abs_diff_eq!(bottom_angle.value(), TAU / 36.0, epsilon = 1e-15);
+
+        let data = indoc! {"
+        ---
+        1.0
+        "};
+        let bottom_angle: BottomAngle = serde_yaml::from_str(data).unwrap();
+        approxim::assert_abs_diff_eq!(bottom_angle.value(), 1.0, epsilon = 1e-15);
+    }
+
+    #[test]
+    fn test_deserialize_top_with_width_and_height() {
+        let data = indoc! {"
+        ---
+        top_width: 1.0
+        top_side_width: 3.0
+        top_height: 1.0
+        slot_angle: 10.0 deg
+        "};
+        let top_angle: TopAngle = serde_yaml::from_str(data).unwrap();
+        approxim::assert_abs_diff_eq!(top_angle.value(), 0.75 * PI, epsilon = 1e-15);
+
+        let data = indoc! {"
+        ---
+        10.0 deg
+        "};
+        let top_angle: TopAngle = serde_yaml::from_str(data).unwrap();
+        approxim::assert_abs_diff_eq!(top_angle.value(), TAU / 36.0, epsilon = 1e-15);
+
+        let data = indoc! {"
+        ---
+        1.0
+        "};
+        let top_angle: TopAngle = serde_yaml::from_str(data).unwrap();
+        approxim::assert_abs_diff_eq!(top_angle.value(), 1.0, epsilon = 1e-15);
+    }
 }

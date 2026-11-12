@@ -1,30 +1,7 @@
 use std::f64::consts::TAU;
 
-use cairo_viewport::*;
-use indoc::indoc;
 use planar_geo::prelude::*;
 use stem_slot::{current_displacement::phase_velocity, prelude::*};
-
-fn compare_to_reference<P: AsRef<std::path::Path>>(
-    drawables: &[DrawableCow<'_>],
-    path: P,
-    view: Option<Viewport>,
-) {
-    let view = view.unwrap_or(
-        Viewport::from_bounded_entities(drawables.iter(), SideLength::Long(500)).unwrap(),
-    );
-    let callback = |path: &std::path::Path| {
-        return view.write_to_file(path, move |cr| {
-            cr.set_source_rgb(1.0, 1.0, 1.0);
-            cr.paint()?;
-            for drawable in drawables.iter() {
-                drawable.draw(cr)?;
-            }
-            return Ok(());
-        });
-    };
-    assert!(compare_or_create(path, callback, 0.99).is_ok());
-}
 
 #[test]
 fn test_slot_outline() {
@@ -53,50 +30,6 @@ fn test_slot_outline() {
     approxim::assert_abs_diff_eq!(vertices[4][1], opening_height.get::<meter>());
     approxim::assert_abs_diff_eq!(vertices[5][0], opening_width.get::<meter>() / 2.0);
     approxim::assert_abs_diff_eq!(vertices[5][1], 0.0);
-}
-
-#[test]
-fn test_plot() {
-    {
-        let opening_height = Length::new::<millimeter>(1.0);
-        let opening_width = Length::new::<millimeter>(3.0);
-        let width = Length::new::<millimeter>(8.0);
-        let height = Length::new::<millimeter>(20.0);
-        let slot =
-            RectangularSlot::new(width, opening_width, height, opening_height, true).unwrap();
-
-        compare_to_reference(
-            slot.drawables(&CoilLayout::SingleFilled).as_slice(),
-            "tests/img/rectangular_w_opening.png",
-            None,
-        );
-
-        compare_to_reference(
-            slot.drawables(&CoilLayout::Single).as_slice(),
-            "tests/img/rectangular_wo_opening.png",
-            None,
-        );
-    }
-    {
-        let opening_height = Length::new::<millimeter>(1.0);
-        let opening_width = Length::new::<millimeter>(0.0);
-        let width = Length::new::<millimeter>(8.0);
-        let height = Length::new::<millimeter>(20.0);
-        let slot =
-            RectangularSlot::new(width, opening_width, height, opening_height, true).unwrap();
-
-        compare_to_reference(
-            slot.drawables(&CoilLayout::SingleFilled).as_slice(),
-            "tests/img/rectangular_wo_opening.png",
-            None,
-        );
-
-        compare_to_reference(
-            slot.drawables(&CoilLayout::Single).as_slice(),
-            "tests/img/rectangular_wo_opening.png",
-            None,
-        );
-    }
 }
 
 #[test]
@@ -448,55 +381,132 @@ fn test_leakage_coefficient_matrix() {
     );
 }
 
-#[test]
-fn test_serialize_and_deserialize() {
-    let opening_height = Length::new::<millimeter>(1.0);
-    let opening_width = Length::new::<millimeter>(3.0);
-    let width = Length::new::<millimeter>(3.0);
-    let height = Length::new::<millimeter>(20.0);
-    let slot = RectangularSlot::new(width, opening_width, height, opening_height, true).unwrap();
-    let serialized = serde_yaml::to_string(&slot).expect("can be serialized");
-    let slot_de: RectangularSlot = serde_yaml::from_str(&serialized).expect("can be deserialized");
-    approxim::assert_abs_diff_eq!(
-        slot.area().get::<square_millimeter>(),
-        slot_de.area().get::<square_millimeter>(),
-        epsilon = DEFAULT_EPSILON
-    );
-}
+#[cfg(feature = "serde")]
+mod serde_tests {
 
-#[test]
-fn test_deserialize() {
-    let yaml = indoc! {"
+    use super::*;
+    use indoc::indoc;
+
+    #[test]
+    fn test_serialize_and_deserialize() {
+        let opening_height = Length::new::<millimeter>(1.0);
+        let opening_width = Length::new::<millimeter>(3.0);
+        let width = Length::new::<millimeter>(3.0);
+        let height = Length::new::<millimeter>(20.0);
+        let slot =
+            RectangularSlot::new(width, opening_width, height, opening_height, true).unwrap();
+        let serialized = serde_yaml::to_string(&slot).expect("can be serialized");
+        let slot_de: RectangularSlot =
+            serde_yaml::from_str(&serialized).expect("can be deserialized");
+        approxim::assert_abs_diff_eq!(
+            slot.area().get::<square_millimeter>(),
+            slot_de.area().get::<square_millimeter>(),
+            epsilon = DEFAULT_EPSILON
+        );
+    }
+
+    #[test]
+    fn test_deserialize() {
+        let yaml = indoc! {"
         width: 1.0 mm
         opening_width: 1.0 mm
         height: 1.0 mm
         opening_height: 0.5 mm
         consider_tooth_tip_leakage: true
         "};
-    assert!(serde_yaml::from_str::<RectangularSlot>(&yaml).is_ok());
-}
+        assert!(serde_yaml::from_str::<RectangularSlot>(&yaml).is_ok());
+    }
 
-#[test]
-fn test_deserialize_with_bad_parameters() {
-    {
-        let yaml = indoc! {"
+    #[test]
+    fn test_deserialize_with_bad_parameters() {
+        {
+            let yaml = indoc! {"
             width: -1.0 mm                   # <== WIDTH MUST BE POSITIVE
             opening_width: 1.0 mm
             height: 1.0 mm
             opening_height: 0.5 mm
             consider_tooth_tip_leakage: true
             "};
-        assert!(serde_yaml::from_str::<RectangularSlot>(&yaml).is_err());
-    }
+            assert!(serde_yaml::from_str::<RectangularSlot>(&yaml).is_err());
+        }
 
-    {
-        let yaml = indoc! {"
+        {
+            let yaml = indoc! {"
             width: 1.0 mm
             opening_width: 1.0 mm
             height: 1.0 mm
             opening_height: 2.0  mm           # <== OPENING_HEIGHT MUST SMALLER THAN HEIGHT
             consider_tooth_tip_leakage: true
             "};
-        assert!(serde_yaml::from_str::<RectangularSlot>(&yaml).is_err());
+            assert!(serde_yaml::from_str::<RectangularSlot>(&yaml).is_err());
+        }
+    }
+}
+
+#[cfg(feature = "cairo")]
+#[test]
+fn test_plot() {
+    use cairo_viewport::*;
+
+    fn compare_to_reference<P: AsRef<std::path::Path>>(
+        drawables: &[DrawableCow<'_>],
+        path: P,
+        view: Option<Viewport>,
+    ) {
+        let view = view.unwrap_or(
+            Viewport::from_bounded_entities(drawables.iter(), SideLength::Long(500)).unwrap(),
+        );
+        let callback = |path: &std::path::Path| {
+            return view.write_to_file(path, move |cr| {
+                cr.set_source_rgb(1.0, 1.0, 1.0);
+                cr.paint()?;
+                for drawable in drawables.iter() {
+                    drawable.draw(cr)?;
+                }
+                return Ok(());
+            });
+        };
+        assert!(compare_or_create(path, callback, 0.99).is_ok());
+    }
+
+    {
+        let opening_height = Length::new::<millimeter>(1.0);
+        let opening_width = Length::new::<millimeter>(3.0);
+        let width = Length::new::<millimeter>(8.0);
+        let height = Length::new::<millimeter>(20.0);
+        let slot =
+            RectangularSlot::new(width, opening_width, height, opening_height, true).unwrap();
+
+        compare_to_reference(
+            slot.drawables(&CoilLayout::SingleFilled).as_slice(),
+            "tests/img/rectangular_w_opening.png",
+            None,
+        );
+
+        compare_to_reference(
+            slot.drawables(&CoilLayout::Single).as_slice(),
+            "tests/img/rectangular_wo_opening.png",
+            None,
+        );
+    }
+    {
+        let opening_height = Length::new::<millimeter>(1.0);
+        let opening_width = Length::new::<millimeter>(0.0);
+        let width = Length::new::<millimeter>(8.0);
+        let height = Length::new::<millimeter>(20.0);
+        let slot =
+            RectangularSlot::new(width, opening_width, height, opening_height, true).unwrap();
+
+        compare_to_reference(
+            slot.drawables(&CoilLayout::SingleFilled).as_slice(),
+            "tests/img/rectangular_wo_opening.png",
+            None,
+        );
+
+        compare_to_reference(
+            slot.drawables(&CoilLayout::Single).as_slice(),
+            "tests/img/rectangular_wo_opening.png",
+            None,
+        );
     }
 }

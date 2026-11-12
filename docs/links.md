@@ -20,6 +20,7 @@ modify the components. -->
 [magnetic_core.png]: https://raw.githubusercontent.com/StefanMathis/stem_slot/refs/heads/main/docs/img/magnetic_core.png
 
 [![Documentation](https://docs.rs/stem_slot/badge.svg)](https://docs.rs/stem_slot)
+[![CI](https://github.com/StefanMathis/stem_slot/actions/workflows/ci.yml/badge.svg)](https://github.com/StefanMathis/stem_slot/actions/workflows/ci.yml)
 
 Slot definition for stem – a Simulation Toolbox for Electric Motors. The
 [stem book](https://stefanmathis.github.io/stem_book/) provides a comprehensive

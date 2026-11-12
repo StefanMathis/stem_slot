@@ -95,6 +95,8 @@ need for a tag). Its serialized form is that of the
 [`OpenTrapezoidSlotAngleBuilder`] struct.
 
 ```
+# #[cfg(feature = "serde")]
+# {
 use approxim;
 use stem_slot::prelude::*;
 use serde_yaml;
@@ -128,6 +130,7 @@ consider_tooth_tip_leakage: true
 
 let slot: OpenTrapezoidSlot = serde_yaml::from_str(&str).expect("valid dimensions");
 approxim::assert_abs_diff_eq!(slot.opening_width().get::<millimeter>(), 5.0, epsilon=1e-3);
+# }
 ```
  */
 #[derive(Clone, Debug)]
